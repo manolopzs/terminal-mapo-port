@@ -5,7 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { fetchLiveQuotes, fetchEarningsSchedule, fetchMarketSentiment, fetchPortfolioNews } from "./liveData";
+import { fetchLiveQuotes, fetchEarningsSchedule, fetchMarketSentiment, fetchPortfolioNews, fetchExtendedQuotes } from "./liveData";
 import { insertHoldingSchema, insertTradeSchema } from "@shared/schema";
 
 const anthropic = new Anthropic();
@@ -740,20 +740,28 @@ Return ONLY the JSON object, no markdown, no explanation.`;
       const holdings = await storage.getHoldings(portfolioId);
       const summary = await storage.getPortfolioSummary(portfolioId);
 
-      // Read cash from mapo-ai-portfolio.json
-      let cash = 277.00;
-      try {
-        const mapoPath = join(process.cwd(), "mapo-ai-portfolio.json");
-        const mapoRaw = readFileSync(mapoPath, "utf-8");
-        const mapoData = JSON.parse(mapoRaw);
-        if (typeof mapoData.cash === "number") {
-          cash = mapoData.cash;
+      // Determine cash: prefer summary.cash (from portfolioMeta / in-memory storage),
+      // fall back to mapo-ai-portfolio.json, then hardcoded default.
+      let cash: number;
+      const summaryCash = (summary as any).cash;
+      if (typeof summaryCash === "number") {
+        cash = summaryCash;
+      } else {
+        cash = 277.00;
+        try {
+          const mapoPath = join(process.cwd(), "mapo-ai-portfolio.json");
+          const mapoRaw = readFileSync(mapoPath, "utf-8");
+          const mapoData = JSON.parse(mapoRaw);
+          if (typeof mapoData.cash === "number") {
+            cash = mapoData.cash;
+          }
+        } catch (_e) {
+          // default cash stays 277.00
         }
-      } catch (_e) {
-        // default cash stays 277.00
       }
 
-      const totalValue = summary.totalValue + cash;
+      // summary.totalValue already includes cash (from MemStorage.getPortfolioSummary)
+      const totalValue = summary.totalValue;
       const cashTargetPct = 10;
       const numPositions = holdings.length;
       const targetPct = numPositions > 0 ? (100 - cashTargetPct) / numPositions : 0;
@@ -850,6 +858,67 @@ Return ONLY the JSON object, no markdown, no explanation.`;
       console.error("Rebalance error:", error);
       res.status(500).json({ error: "Failed to compute rebalance analysis" });
     }
+  });
+
+  // ====== EXTENDED QUOTES (52-week high/low) ======
+  app.get("/api/live/extended-quotes", async (req, res) => {
+    try {
+      const portfolioId = req.query.portfolioId as string | undefined;
+      const holdings = await storage.getHoldings(portfolioId);
+      const tickers = holdings.map(h => h.ticker);
+      const extendedQuotes = await fetchExtendedQuotes(tickers);
+      res.json(extendedQuotes);
+    } catch (error) {
+      console.error("Extended quotes error:", error);
+      res.status(500).json({ error: "Failed to fetch extended quotes" });
+    }
+  });
+
+  // ====== MACRO CALENDAR ======
+  app.get("/api/macro/calendar", (_req, res) => {
+    interface MacroEvent {
+      date: string;
+      type: "FOMC" | "CPI" | "GDP" | "EARNINGS";
+      label: string;
+      impact: "HIGH" | "MEDIUM";
+      daysUntil: number;
+    }
+
+    const fomcDates = [
+      "2026-01-28", "2026-03-18", "2026-05-06", "2026-06-17",
+      "2026-07-29", "2026-09-16", "2026-11-04", "2026-12-16",
+    ];
+    const cpiDates = [
+      "2026-01-15", "2026-02-12", "2026-03-12", "2026-04-10", "2026-05-13",
+      "2026-06-11", "2026-07-15", "2026-08-12", "2026-09-11", "2026-10-14",
+      "2026-11-12", "2026-12-10",
+    ];
+    const gdpDates = [
+      "2026-01-29", "2026-02-26", "2026-03-26", "2026-04-29",
+      "2026-07-30", "2026-10-29",
+    ];
+
+    const now = new Date();
+    const cutoff = new Date(now.getTime() + 90 * 86400000);
+
+    const rawEvents: Omit<MacroEvent, "daysUntil">[] = [
+      ...fomcDates.map(date => ({ date, type: "FOMC" as const, label: "FOMC Meeting", impact: "HIGH" as const })),
+      ...cpiDates.map(date => ({ date, type: "CPI" as const, label: "CPI Report", impact: "HIGH" as const })),
+      ...gdpDates.map(date => ({ date, type: "GDP" as const, label: "GDP Advance", impact: "MEDIUM" as const })),
+    ];
+
+    const events: MacroEvent[] = rawEvents
+      .map(e => ({
+        ...e,
+        daysUntil: Math.ceil((new Date(e.date).getTime() - now.getTime()) / 86400000),
+      }))
+      .filter(e => {
+        const eventDate = new Date(e.date);
+        return eventDate >= now && eventDate <= cutoff;
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    res.json(events);
   });
 
   return httpServer;

@@ -1,50 +1,71 @@
-# Backend Task Output: GET /api/rebalance
+# Backend Tasks — Completion Summary
 
-## What was added
+**Date:** 2026-03-27
 
-A new `GET /api/rebalance?portfolioId=X` endpoint was added to `/Users/manuelpozas/mapo-terminal/server/routes.ts`, inserted immediately before the final `return httpServer;` line.
+---
 
-## Endpoint logic summary
+## Task 1: 52-Week High/Low via Finnhub — DONE
 
-1. **Holdings & summary**: Fetches `storage.getHoldings(portfolioId)` and `storage.getPortfolioSummary(portfolioId)`.
-2. **Cash**: Reads `mapo-ai-portfolio.json` via `readFileSync` for the `cash` field (defaults to `277.00` if missing/parse error).
-3. **totalValue**: `summary.totalValue + cash` (note: `summary.totalValue` already includes cash for the MAPO portfolio per `getPortfolioSummary`; the endpoint adds the JSON cash on top as specified).
-4. **Per-position rebalancing**: Equal-weight target across all positions with `cashTargetPct = 10`. Action thresholds: `diffPct > 2` → SELL, `diffPct < -2` → BUY, else HOLD. `actionAmount` = dollars to trade; `shares` = actionAmount / price (rounded to 2 decimals).
-5. **Cash analysis**: `cashPct < 5` → RAISE, `cashPct > 20` → DEPLOY, else OK.
-6. **Drawdown alerts**: Any holding with `gainLossPct < -15` generates an alert string. `maxDrawdownAlert` is the single worst-performing position alert, or `null` if none.
-7. **Concentration alerts**: Holdings grouped by `sector`; any sector exceeding 40% of `totalValue` generates an alert.
+**File:** `server/liveData.ts`
 
-## Response shape
+Added `ExtendedQuote` interface and `fetchExtendedQuotes` function:
+- Uses `cachedAsync` with TTL of 3,600,000ms (1 hour)
+- Calls `/stock/metric?symbol=X&metric=all` for `metric["52WeekHigh"]` and `metric["52WeekLow"]`
+- Calls `/quote?symbol=X` for `currentPrice`
+- Both sub-calls are wrapped in `Promise.allSettled` so failures are isolated
+- Graceful fallback: returns `0` for any missing field
+- Full ticker list processed in parallel via `Promise.allSettled`
 
-```ts
-{
-  positions: Array<{
-    ticker, name, currentValue, currentPct, targetPct, diffPct,
-    action: "BUY" | "SELL" | "HOLD", actionAmount, shares, currentPrice
-  }>;
-  totalValue: number;
-  cashValue: number;
-  cashPct: number;
-  targetCashPct: number;       // always 10
-  cashAction: "DEPLOY" | "RAISE" | "OK";
-  cashActionAmount: number;
-  maxDrawdownAlert: string | null;
-  concentrationAlerts: string[];
-}
-```
+**File:** `server/routes.ts`
 
-## Files modified
+Added endpoint: `GET /api/live/extended-quotes?portfolioId=X`
+- Fetches holdings for portfolio, extracts tickers, calls `fetchExtendedQuotes`
+- Returns array of `ExtendedQuote` objects; caching is handled internally (1 hour TTL)
 
-- `/Users/manuelpozas/mapo-terminal/server/routes.ts` — new route added before `return httpServer`
+---
 
-## Files NOT modified
+## Task 2: Macro Calendar Endpoint — DONE
 
-- No client/ files touched
-- No existing routes modified
-- No other server files changed
+**File:** `server/routes.ts`
 
-## Notes
+Added endpoint: `GET /api/macro/calendar`
 
-- TypeScript strict-mode compilation passes with zero errors (`npx tsc --noEmit`).
-- Error handling follows the same try/catch + `res.status(500).json({ error: "..." })` pattern used by all other routes in the file.
-- `readFileSync` and `join` were already imported at the top of `routes.ts` — no new imports needed.
+- Hardcoded 2026 FOMC dates (8 meetings), CPI release dates (12 reports), GDP advance dates (6 releases)
+- Computes `daysUntil = Math.ceil((eventDate - now) / 86400000)`
+- Filters to events within the next 90 days from today
+- Sorts ascending by date
+- Returns typed `MacroEvent` array with `date`, `type`, `label`, `impact`, `daysUntil`
+
+---
+
+## Task 3: Fix Rebalance Cash — DONE
+
+**File:** `server/routes.ts` — `GET /api/rebalance`
+
+Prior behavior: always read cash from `mapo-ai-portfolio.json` (or hardcoded 277.00), then added it to `summary.totalValue` (causing double-counting since `getPortfolioSummary` already includes cash).
+
+Fixed priority order:
+1. `storage.getPortfolioSummary(portfolioId)` already returns a `cash` field populated from `portfolioMeta` (seeded from JSON, updated in-memory). Used if it is a number.
+2. Fall back to reading `mapo-ai-portfolio.json` directly.
+3. Fall back to hardcoded `277.00`.
+
+Also fixed the double-counting: `summary.totalValue` already includes cash, so `totalValue` is now set to `summary.totalValue` directly instead of `summary.totalValue + cash`.
+
+---
+
+## Task 4: fetchLiveQuotes — No Change Required
+
+Confirmed: `/quote` endpoint does not return 52-week data. The separate `fetchExtendedQuotes` function (Task 1) is the correct approach. No changes to `fetchLiveQuotes`.
+
+---
+
+## Verification
+
+`npx tsc --noEmit` — exit code 0, no TypeScript errors.
+
+---
+
+## Files Modified
+
+- `/Users/manuelpozas/mapo-terminal/server/liveData.ts` — added `ExtendedQuote` interface and `fetchExtendedQuotes`
+- `/Users/manuelpozas/mapo-terminal/server/routes.ts` — updated import, added two new endpoints, fixed rebalance cash logic

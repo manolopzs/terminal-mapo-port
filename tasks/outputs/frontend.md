@@ -1,36 +1,82 @@
-# Rebalance Tab — Frontend Implementation
+# Frontend Tasks — Implementation Summary
 
-## Files Created
+## Task 1: Decision Journal Tab
 
-### `/Users/manuelpozas/mapo-terminal/client/src/hooks/use-rebalance.ts`
-- Exports `RebalanceData` and `RebalancePosition` interfaces matching the spec exactly.
-- `useRebalance(portfolioId: string)` wraps `useQuery` with key `["/api/rebalance", portfolioId]`, fetches `./api/rebalance?portfolioId=X`, `staleTime: 30_000`, and `enabled: !!portfolioId`.
+### `/Users/manuelpozas/mapo-terminal/client/src/pages/JournalTab.tsx` — CREATED
 
-### `/Users/manuelpozas/mapo-terminal/client/src/pages/RebalanceTab.tsx`
-- Named export `RebalanceTab` accepting `{ portfolioId: string }`.
-- Loading state: spinner + text while `isLoading`.
-- Error state: `AlertTriangle` icon + "Failed to load rebalance data" + Retry button that calls `queryClient.invalidateQueries`.
-- Positions table with columns: TICKER | NAME | CURRENT % | TARGET % | DIFF | ACTION | AMOUNT.
-  - TARGET % column renders a numeric `<input>` per row; user edits are stored in `useState<Record<string, number>>`.
-  - DIFF and ACTION are recalculated locally whenever targets change (via `computeLocalDiff`).
-  - AMOUNT shows dollar value; if `currentPrice > 0`, also shows estimated shares.
-- Cash section showing current %, target %, and cash action (DEPLOY / RAISE / OK) with icon.
-- Alerts section: `maxDrawdownAlert` and each `concentrationAlerts` entry rendered with `AlertTriangle`.
-- "Recalculate" button calls `queryClient.invalidateQueries({ queryKey: ["/api/rebalance", portfolioId] })`.
-- "Equal Weight" button resets targets to 95% divided equally across positions (preserving min 5% cash).
-- All key elements carry `data-rebalance="*"` attributes for UI agent targeting.
-- Icons used: `RefreshCw`, `AlertTriangle`, `TrendingUp`, `TrendingDown`, `Minus`, `Loader2` (lucide-react).
+- `JournalEntry` interface with all required fields; `crypto.randomUUID()` with `Date.now()` fallback for IDs.
+- localStorage key `"mapo_journal"` — entries loaded on mount via lazy state init, persisted via `useEffect`.
+- Stats bar: total entries, win rate (wins / wins+losses), avg conviction for wins vs losses.
+- Filter bar: outcome filter (ALL / PENDING / WIN / LOSS / NEUTRAL) and action filter (ALL / BUY / SELL / WATCH / AVOID).
+- "New Entry" inline form toggle — fields: ticker (auto-uppercased), date (default today), action select, conviction 1-5 buttons, thesis textarea, MAPO score (optional number), outcome select.
+- Entry list sorted by date descending; each row shows date, ticker, action badge, conviction dots (filled/empty), thesis truncated to 100 chars, outcome badge, actualReturn if set.
+- Click row expands inline: full thesis + edit form for outcome and actualReturn + Save/Delete buttons.
+- Delete uses `window.confirm`.
+- `data-journal="*"` attributes on all key elements.
+
+---
+
+## Task 2: MAPO Score History
+
+### `/Users/manuelpozas/mapo-terminal/client/src/pages/MAPOScoreTab.tsx` — UPDATED
+
+- Added `ScoreHistoryEntry` interface: `{ ticker, score, signal, date, factors }`.
+- localStorage key `"mapo_score_history"` — loaded on mount, persisted via `useEffect` on every change.
+- On successful analysis: saves entry, deduplicates by ticker (keep latest), caps at 20 entries.
+- Added HISTORY side panel (200px, right side) visible when `scoreHistory.length > 0`.
+  - Each row: ticker | score (color-coded) | signal | date — clicking re-runs analysis.
+  - "Clear History" button at panel bottom.
+- All existing logic (in-session history pills, quick picks, factor breakdown, thesis/risks/catalysts) preserved unchanged.
+- Outer layout changed from single flex column to a row container wrapping main content + history panel.
+
+---
+
+## Task 3: Persist Rebalance Targets
+
+### `/Users/manuelpozas/mapo-terminal/client/src/pages/RebalanceTab.tsx` — UPDATED
+
+- localStorage key scoped as `"mapo_rebalance_targets_" + portfolioId`.
+- On mount/portfolioId change: `useEffect` loads saved targets from localStorage (resets to `{}` if none found or parse error).
+- On every `targets` state change: `useEffect` writes to localStorage when targets is non-empty.
+- `handleResetTargets` ("Equal Weight" button): also directly writes to localStorage after computing new targets.
+- Seed logic (equal-weight defaults on first server data load) unchanged — runs only when `Object.keys(targets).length === 0`.
+
+---
+
+## Task 4: Fix Geographic Diversification
+
+### `/Users/manuelpozas/mapo-terminal/client/src/components/RiskSuggestions.tsx` — UPDATED
+
+- Added `INTERNATIONAL_ETFS` list (12 tickers) and `INTERNATIONAL_STOCKS` list (9 tickers) as module-level constants.
+- Combined into `INTERNATIONAL_TICKERS` Set for O(1) lookup.
+- Geographic suggestion now checks: `holdings.some(h => INTERNATIONAL_TICKERS.has(h.ticker.toUpperCase()))`.
+  - If any international ticker found: suggestion is skipped entirely (no push to results).
+  - If no international exposure: suggestion is shown with the specific tickers listed in the description.
+
+---
+
+## Task 5: JOURNAL Tab in Dashboard
+
+### `/Users/manuelpozas/mapo-terminal/client/src/pages/Dashboard.tsx` — UPDATED
+
+- Added import: `import { JournalTab } from "@/pages/JournalTab"`.
+- Extended `TabId` union to `"PORTFOLIO" | "MARKET" | "SCREENER" | "MAPO" | "REBALANCE" | "JOURNAL"`.
+- Added `{ id: "JOURNAL", label: "JOURNAL" }` to `TABS` array.
+- Added conditional render: `{activeTab === "JOURNAL" && <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}><JournalTab /></div>}`.
+- JournalTab receives no props (portfolio-agnostic, uses own localStorage).
+
+---
 
 ## Files Modified
+- `/Users/manuelpozas/mapo-terminal/client/src/pages/Dashboard.tsx`
+- `/Users/manuelpozas/mapo-terminal/client/src/pages/MAPOScoreTab.tsx`
+- `/Users/manuelpozas/mapo-terminal/client/src/pages/RebalanceTab.tsx`
+- `/Users/manuelpozas/mapo-terminal/client/src/components/RiskSuggestions.tsx`
 
-### `/Users/manuelpozas/mapo-terminal/client/src/pages/Dashboard.tsx`
-- Added import: `import { RebalanceTab } from "@/pages/RebalanceTab";`
-- Extended `TabId` union to include `"REBALANCE"`.
-- Added `{ id: "REBALANCE", label: "REBALANCE" }` to the `TABS` array.
-- Added conditional render block for `activeTab === "REBALANCE"` that renders `<RebalanceTab portfolioId={activePortfolioId} />`.
+## Files Created
+- `/Users/manuelpozas/mapo-terminal/client/src/pages/JournalTab.tsx`
 
-## Implementation Notes
-- Target allocations are seeded on first data load: server `targetPct` is used when non-zero, otherwise equal weight (95% / n positions).
-- Diff threshold for action: BUY if diff < -0.5%, SELL if diff > 0.5%, otherwise HOLD — avoids hair-trigger trades on tiny rounding differences.
-- No styling decisions were made; all inline styles are structural layout only (flex/grid/padding/overflow).
-- No server files were modified.
+## Notes
+- No server files modified.
+- No styling decisions — all inline styles are structural (flex, overflow, layout dimensions) only.
+- No modal libraries used; all interactions are inline toggles or `window.confirm`.

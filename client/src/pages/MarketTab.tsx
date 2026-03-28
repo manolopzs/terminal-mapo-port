@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-react";
 
 const INDICES = [
   { symbol: "SPY", label: "S&P 500" },
@@ -160,7 +160,31 @@ function SectionHeader({ title, badge }: { title: string; badge?: string }) {
 
 export function MarketTab() {
   const allSymbols = [...INDICES, ...SECTORS, ...WATCHLIST].map((s) => s.symbol);
-  const { data: quotes, isLoading } = useMarketData(allSymbols);
+  const { data: quotes, isLoading, dataUpdatedAt, refetch, isFetching } = useMarketData(allSymbols);
+
+  const vix = quotes?.["VIX"]?.c ?? 0;
+  const tltChange = quotes?.["TLT"]?.dp ?? 0;
+  const uupChange = quotes?.["UUP"]?.dp ?? 0;
+
+  const vixNote =
+    vix === 0 ? "— loading"
+    : vix > 30 ? `${vix.toFixed(1)} — fear / opportunity zone`
+    : vix > 20 ? `${vix.toFixed(1)} — elevated volatility`
+    : `${vix.toFixed(1)} — calm / low volatility`;
+
+  const tltNote =
+    tltChange > 0.5 ? `+${tltChange.toFixed(2)}% — risk-off rotation`
+    : tltChange < -0.5 ? `${tltChange.toFixed(2)}% — risk-on (bonds selling)`
+    : `${tltChange >= 0 ? "+" : ""}${tltChange.toFixed(2)}% — neutral`;
+
+  const uupNote =
+    uupChange > 0.3 ? `+${uupChange.toFixed(2)}% — dollar strength headwind`
+    : uupChange < -0.3 ? `${uupChange.toFixed(2)}% — weak dollar (EM/growth tailwind)`
+    : `${uupChange >= 0 ? "+" : ""}${uupChange.toFixed(2)}% — neutral`;
+
+  const lastUpdated = dataUpdatedAt
+    ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : null;
 
   return (
     <div
@@ -183,18 +207,43 @@ export function MarketTab() {
           />
         ))}
 
-        {/* Market status */}
+        {/* Market Notes — dynamic */}
         <div style={{ padding: "14px", borderTop: "2px solid #1A2332", marginTop: 4 }}>
-          <div style={{ fontSize: 8, color: "#8B949E", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 8 }}>
-            Market Notes
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div style={{ fontSize: 8, color: "#8B949E", letterSpacing: 1.5, textTransform: "uppercase" }}>
+              Market Signals
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {lastUpdated && (
+                <span style={{ fontSize: 7, color: "#2D3748", fontFamily: "monospace" }}>
+                  {lastUpdated}
+                </span>
+              )}
+              <button
+                onClick={() => refetch()}
+                disabled={isFetching}
+                style={{ background: "none", border: "none", cursor: isFetching ? "default" : "pointer", padding: 2, color: isFetching ? "#2D3748" : "#484F58" }}
+              >
+                <RefreshCw size={9} style={{ animation: isFetching ? "spin 1s linear infinite" : "none" }} />
+              </button>
+            </div>
           </div>
-          <div style={{ fontSize: 9, color: "#484F58", lineHeight: 1.7 }}>
-            • VIX &gt;20 = elevated volatility<br />
-            • VIX &gt;30 = fear / opportunity zone<br />
-            • TLT rising = risk-off rotation<br />
-            • UUP rising = dollar strength headwind
+          <div style={{ fontSize: 9, color: "#8B949E", lineHeight: 2, fontFamily: "monospace" }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "#484F58" }}>VIX</span>
+              <span style={{ color: vix > 30 ? "#FF4D4D" : vix > 20 ? "#FFB300" : "#00C853" }}>{vixNote}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "#484F58" }}>TLT</span>
+              <span style={{ color: tltChange > 0.5 ? "#FFB300" : tltChange < -0.5 ? "#00C853" : "#8B949E" }}>{tltNote}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "#484F58" }}>UUP</span>
+              <span style={{ color: uupChange > 0.3 ? "#FF4D4D" : uupChange < -0.3 ? "#00C853" : "#8B949E" }}>{uupNote}</span>
+            </div>
           </div>
         </div>
+        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       </div>
 
       {/* Col 2: Sector Performance */}

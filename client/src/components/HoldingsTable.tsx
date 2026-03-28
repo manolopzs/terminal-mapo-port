@@ -34,21 +34,21 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
               style={{
                 position: "sticky",
                 top: 0,
-                background: "#0D1117",
+                background: "#0B0F1A",
                 zIndex: 1,
-                borderBottom: "1px solid #1A2332",
+                borderBottom: "1px solid #1C2840",
               }}
             >
-              {["TICKER", "PRICE", "CHG", "CHG%", "ALLOC%", ""].map((h) => (
+              {["TICKER", "SHARES", "PRICE", "CHG", "CHG%", "ALLOC%", ""].map((h) => (
                 <th
                   key={h || "actions"}
                   style={{
                     fontSize: 8,
                     fontWeight: 600,
-                    color: "#8B949E",
-                    letterSpacing: 1,
+                    color: "#4A5A6E",
+                    letterSpacing: 1.5,
                     textTransform: "uppercase",
-                    padding: "3px 6px",
+                    padding: "4px 6px",
                     textAlign: h === "TICKER" ? "left" : "right",
                     fontFamily: "'Inter', system-ui, sans-serif",
                     width: h === "" ? 24 : undefined,
@@ -69,7 +69,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                   key={h.id}
                   className="group"
                   style={{
-                    borderBottom: "1px solid rgba(26, 35, 50, 0.5)",
+                    borderBottom: "1px solid rgba(28, 40, 64, 0.5)",
                   }}
                 >
                   <td
@@ -82,6 +82,16 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                     }}
                   >
                     {h.ticker}
+                  </td>
+                  <td
+                    className="font-mono tabular-nums"
+                    style={{ fontSize: 10, color: "#8B949E", padding: "2px 6px", textAlign: "right" }}
+                  >
+                    {(h.quantity ?? 0) < 1
+                      ? (h.quantity ?? 0).toFixed(4)
+                      : (h.quantity ?? 0) % 1 === 0
+                        ? (h.quantity ?? 0).toFixed(0)
+                        : (h.quantity ?? 0).toFixed(2)}
                   </td>
                   <td
                     className="font-mono tabular-nums"
@@ -105,7 +115,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                   </td>
                   <td
                     className="font-mono tabular-nums"
-                    style={{ fontSize: 10, color: "#8B949E", padding: "2px 6px", textAlign: "right" }}
+                    style={{ fontSize: 10, color: "#5A6B80", padding: "2px 6px", textAlign: "right" }}
                   >
                     {alloc.toFixed(1)}%
                   </td>
@@ -147,9 +157,9 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
         <div
           style={{
             flexShrink: 0,
-            borderTop: "1px solid #1A2332",
-            background: "#080C14",
-            padding: "5px 8px",
+            borderTop: "1px solid #1C2840",
+            background: "#070B14",
+            padding: "6px 10px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -162,7 +172,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                 fontWeight: 700,
                 letterSpacing: 1.5,
                 textTransform: "uppercase",
-                color: "#8B949E",
+                color: "#4A5A6E",
               }}
             >
               TOTAL P&L
@@ -196,7 +206,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                 fontWeight: 600,
                 letterSpacing: 1,
                 textTransform: "uppercase",
-                color: "#484F58",
+                color: "#3A4A5C",
               }}
             >
               TODAY

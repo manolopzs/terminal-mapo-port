@@ -70,39 +70,41 @@ export function TickerTape() {
       style={{
         height: 24,
         minHeight: 24,
-        background: "#080C14",
-        borderBottom: "1px solid #1A2332",
+        background: "#060A12",
+        borderBottom: "1px solid #1C2840",
       }}
     >
       <div
         className="flex-shrink-0 flex items-center justify-center"
         style={{
-          background: "rgba(0, 230, 168, 0.15)",
-          color: "#00E6A8",
-          fontSize: 8,
+          background: "rgba(0, 217, 255, 0.08)",
+          color: "#00D9FF",
+          fontSize: 7,
           fontWeight: 700,
-          letterSpacing: 1,
-          padding: "0 8px",
+          letterSpacing: 1.5,
+          padding: "0 10px",
           height: "100%",
-          borderRight: "1px solid #1A2332",
+          borderRight: "1px solid #1C2840",
           zIndex: 1,
+          textTransform: "uppercase",
+          fontFamily: "'Inter', system-ui, sans-serif",
         }}
       >
-        MARKETS
+        MKT
       </div>
       <div className="overflow-hidden flex-1">
         <div className="animate-ticker flex items-center whitespace-nowrap">
           {doubled.map((t, i) => (
-            <span key={i} className="inline-flex items-center gap-1 mx-3" style={{ fontSize: 10 }}>
-              <span style={{ color: "#00D9FF", fontWeight: 600, letterSpacing: 0.5 }}>
+            <span key={i} className="inline-flex items-center gap-1" style={{ fontSize: 9, padding: "0 10px", borderRight: "1px solid rgba(28,40,64,0.6)" }}>
+              <span style={{ color: "#5A6B80", fontWeight: 700, letterSpacing: 1, fontFamily: "'JetBrains Mono', monospace", fontSize: 8 }}>
                 {t.symbol}
               </span>
-              <span className="font-mono tabular-nums" style={{ color: "#C9D1D9" }}>
+              <span className="font-mono tabular-nums" style={{ color: "#A0AABB" }}>
                 {t.price}
               </span>
               <span
                 className="font-mono tabular-nums"
-                style={{ color: t.change >= 0 ? "#00E6A8" : "#FF4458" }}
+                style={{ color: t.change >= 0 ? "#00E6A8" : "#FF4458", fontWeight: 600 }}
               >
                 {t.change >= 0 ? "+" : ""}
                 {t.change.toFixed(2)}%

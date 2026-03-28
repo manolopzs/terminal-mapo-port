@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, TrendingUp, TrendingDown } from "lucide-react";
+import { Search, TrendingUp, TrendingDown, ChevronUp, ChevronDown } from "lucide-react";
+
+type SortKey = "ticker" | "price" | "change" | "changePct" | "high" | "low" | "score";
+type SortDir = "asc" | "desc";
 
 const PRESET_SCREENS = [
   {
@@ -57,9 +60,15 @@ function mapoQuickScore(ticker: string, q: any): number {
 }
 
 function scoreColor(score: number) {
-  if (score >= 65) return "#00C853";
-  if (score >= 50) return "#FFB300";
-  return "#FF4D4D";
+  if (score >= 65) return "#00E6A8";
+  if (score >= 50) return "#F0883E";
+  return "#FF4458";
+}
+
+function scoreCircleClass(score: number) {
+  if (score >= 65) return "score-circle-green";
+  if (score >= 50) return "score-circle-yellow";
+  return "score-circle-red";
 }
 
 function scoreLabel(score: number) {
@@ -73,6 +82,8 @@ export function ScreenerTab() {
   const [activePreset, setActivePreset] = useState(0);
   const [customInput, setCustomInput] = useState("");
   const [customTickers, setCustomTickers] = useState<string[]>([]);
+  const [sortKey, setSortKey] = useState<SortKey>("score");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const displayTickers =
     customTickers.length > 0
@@ -92,11 +103,38 @@ export function ScreenerTab() {
     setCustomTickers(tickers);
   }
 
-  const rows = displayTickers.map((ticker) => {
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  }
+
+  const rawRows = displayTickers.map((ticker) => {
     const q = quotes?.[ticker];
     const score = mapoQuickScore(ticker, q);
     const isExcluded = PRESET_SCREENS[3].tickers.includes(ticker);
     return { ticker, q, score, isExcluded };
+  });
+
+  const rows = [...rawRows].sort((a, b) => {
+    let aVal: number | string = 0;
+    let bVal: number | string = 0;
+    switch (sortKey) {
+      case "ticker": aVal = a.ticker; bVal = b.ticker; break;
+      case "price": aVal = a.q?.c ?? 0; bVal = b.q?.c ?? 0; break;
+      case "change": aVal = a.q?.d ?? 0; bVal = b.q?.d ?? 0; break;
+      case "changePct": aVal = a.q?.dp ?? 0; bVal = b.q?.dp ?? 0; break;
+      case "high": aVal = a.q?.h ?? 0; bVal = b.q?.h ?? 0; break;
+      case "low": aVal = a.q?.l ?? 0; bVal = b.q?.l ?? 0; break;
+      case "score": aVal = a.score; bVal = b.score; break;
+    }
+    if (typeof aVal === "string") {
+      return sortDir === "asc" ? aVal.localeCompare(bVal as string) : (bVal as string).localeCompare(aVal);
+    }
+    return sortDir === "asc" ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
   });
 
   return (
@@ -105,47 +143,47 @@ export function ScreenerTab() {
       <div
         style={{
           padding: "10px 16px",
-          borderBottom: "1px solid #1A2332",
+          borderBottom: "1px solid #1C2840",
           display: "flex",
           alignItems: "center",
           gap: 12,
           flexShrink: 0,
+          background: "#080C14",
         }}
       >
         {/* Preset buttons */}
         <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-          {PRESET_SCREENS.map((ps, i) => (
-            <button
-              key={ps.label}
-              onClick={() => {
-                setActivePreset(i);
-                setCustomTickers([]);
-                setCustomInput("");
-              }}
-              style={{
-                padding: "4px 10px",
-                fontSize: 8,
-                fontWeight: 700,
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                fontFamily: "monospace",
-                background:
-                  activePreset === i && customTickers.length === 0
-                    ? "rgba(0,217,255,0.15)"
-                    : "transparent",
-                border:
-                  activePreset === i && customTickers.length === 0
-                    ? "1px solid #00D9FF"
-                    : "1px solid #1A2332",
-                borderRadius: 3,
-                color:
-                  activePreset === i && customTickers.length === 0 ? "#00D9FF" : "#8B949E",
-                cursor: "pointer",
-              }}
-            >
-              {ps.label}
-            </button>
-          ))}
+          {PRESET_SCREENS.map((ps, i) => {
+            const isActive = activePreset === i && customTickers.length === 0;
+            return (
+              <button
+                key={ps.label}
+                onClick={() => {
+                  setActivePreset(i);
+                  setCustomTickers([]);
+                  setCustomInput("");
+                }}
+                style={{
+                  padding: "4px 11px",
+                  fontSize: 8,
+                  fontWeight: 700,
+                  letterSpacing: 1.2,
+                  textTransform: "uppercase",
+                  fontFamily: "'Inter', system-ui, sans-serif",
+                  background: isActive ? "rgba(0,217,255,0.1)" : "#0B0F1A",
+                  border: isActive ? "1px solid rgba(0,217,255,0.35)" : "1px solid #1C2840",
+                  borderRadius: 3,
+                  color: isActive ? "#00D9FF" : "#5A6B80",
+                  cursor: "pointer",
+                  transition: "all 0.12s",
+                }}
+                onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.color = "#8B9AAB"; e.currentTarget.style.borderColor = "#2A3A54"; } }}
+                onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.color = "#5A6B80"; e.currentTarget.style.borderColor = "#1C2840"; } }}
+              >
+                {ps.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Custom search */}
@@ -153,7 +191,7 @@ export function ScreenerTab() {
           <div style={{ position: "relative", flex: 1 }}>
             <Search
               size={11}
-              color="#484F58"
+              color="#4A5A6E"
               style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)" }}
             />
             <input
@@ -162,18 +200,18 @@ export function ScreenerTab() {
               placeholder="Enter tickers: AAPL, NVDA, TSLA..."
               style={{
                 width: "100%",
-                background: "#080C14",
-                border: "1px solid #1A2332",
+                background: "#0B0F1A",
+                border: "1px solid #1C2840",
                 borderRadius: 3,
                 padding: "5px 10px 5px 26px",
                 fontSize: 10,
                 color: "#C9D1D9",
-                fontFamily: "monospace",
+                fontFamily: "'JetBrains Mono', monospace",
                 outline: "none",
                 boxSizing: "border-box",
               }}
-              onFocus={(e) => (e.target.style.borderColor = "#00D9FF")}
-              onBlur={(e) => (e.target.style.borderColor = "#1A2332")}
+              onFocus={(e) => (e.target.style.borderColor = "rgba(0,217,255,0.5)")}
+              onBlur={(e) => (e.target.style.borderColor = "#1C2840")}
             />
           </div>
           <button
@@ -182,19 +220,26 @@ export function ScreenerTab() {
               padding: "5px 14px",
               fontSize: 8,
               fontWeight: 700,
-              letterSpacing: 1,
+              letterSpacing: 1.2,
               textTransform: "uppercase",
-              background: "#00D9FF",
-              border: "none",
+              background: "rgba(0,217,255,0.12)",
+              border: "1px solid rgba(0,217,255,0.3)",
               borderRadius: 3,
-              color: "#080C14",
-              fontFamily: "monospace",
+              color: "#00D9FF",
+              fontFamily: "'Inter', system-ui, sans-serif",
               cursor: "pointer",
+              transition: "background 0.12s",
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,217,255,0.2)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,217,255,0.12)")}
           >
             Screen
           </button>
         </form>
+        {/* Row count */}
+        <div style={{ fontSize: 8, color: "#3A4A5C", fontFamily: "'Inter', system-ui, sans-serif", flexShrink: 0, letterSpacing: 1.2 }}>
+          {rows.length} ticker{rows.length !== 1 ? "s" : ""}
+        </div>
       </div>
 
       {/* Table header */}
@@ -203,23 +248,44 @@ export function ScreenerTab() {
           display: "grid",
           gridTemplateColumns: "80px 100px 80px 80px 80px 80px 100px 1fr",
           padding: "6px 16px",
-          borderBottom: "1px solid #1A2332",
-          background: "#0D1117",
+          borderBottom: "1px solid #1C2840",
+          background: "#0B0F1A",
           flexShrink: 0,
         }}
       >
-        {["TICKER", "PRICE", "CHG", "CHG %", "HIGH", "LOW", "SCORE", "SIGNAL"].map((h) => (
+        {(
+          [
+            { label: "TICKER", key: "ticker" as SortKey },
+            { label: "PRICE", key: "price" as SortKey },
+            { label: "CHG", key: "change" as SortKey },
+            { label: "CHG %", key: "changePct" as SortKey },
+            { label: "HIGH", key: "high" as SortKey },
+            { label: "LOW", key: "low" as SortKey },
+            { label: "SCORE", key: "score" as SortKey },
+            { label: "SIGNAL", key: null },
+          ] as { label: string; key: SortKey | null }[]
+        ).map(({ label, key }) => (
           <div
-            key={h}
+            key={label}
+            onClick={() => key && handleSort(key)}
             style={{
               fontSize: 7,
-              color: "#484F58",
+              color: sortKey === key ? "#00D9FF" : "#4A5A6E",
               letterSpacing: 1.5,
               textTransform: "uppercase",
-              fontFamily: "monospace",
+              fontFamily: "'Inter', system-ui, sans-serif",
+              cursor: key ? "pointer" : "default",
+              display: "flex",
+              alignItems: "center",
+              gap: 3,
+              userSelect: "none",
+              transition: "color 0.12s",
             }}
           >
-            {h}
+            {label}
+            {key && sortKey === key && (
+              sortDir === "desc" ? <ChevronDown size={8} /> : <ChevronUp size={8} />
+            )}
           </div>
         ))}
       </div>
@@ -229,11 +295,13 @@ export function ScreenerTab() {
         {isLoading ? (
           <div
             style={{
-              padding: 30,
+              padding: 40,
               textAlign: "center",
               fontSize: 9,
-              color: "#484F58",
-              fontFamily: "monospace",
+              color: "#3A4A5C",
+              fontFamily: "'Inter', system-ui, sans-serif",
+              letterSpacing: 1.5,
+              textTransform: "uppercase",
             }}
           >
             Fetching live quotes...
@@ -246,31 +314,31 @@ export function ScreenerTab() {
             const high = q?.h ?? 0;
             const low = q?.l ?? 0;
             const isPos = change >= 0;
-            const priceColor = isPos ? "#00C853" : "#FF4D4D";
+            const priceColor = isPos ? "#00E6A8" : "#FF4458";
 
             return (
               <div
                 key={ticker}
+                className="terminal-row"
                 style={{
                   display: "grid",
                   gridTemplateColumns: "80px 100px 80px 80px 80px 80px 100px 1fr",
                   padding: "8px 16px",
-                  borderBottom: "1px solid #0D1117",
+                  borderBottom: "1px solid rgba(28,40,64,0.5)",
                   alignItems: "center",
                   cursor: "default",
                 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = "rgba(0,217,255,0.03)")
-                }
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,217,255,0.03)")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
               >
                 <div
                   style={{
                     fontSize: 11,
                     fontWeight: 700,
-                    color: isExcluded ? "#484F58" : "#C9D1D9",
-                    fontFamily: "monospace",
+                    color: isExcluded ? "#3A4A5C" : "#C9D1D9",
+                    fontFamily: "'JetBrains Mono', monospace",
                     textDecoration: isExcluded ? "line-through" : "none",
+                    letterSpacing: 0.5,
                   }}
                 >
                   {ticker}
@@ -279,8 +347,8 @@ export function ScreenerTab() {
                   style={{
                     fontSize: 11,
                     fontWeight: 700,
-                    color: "#E8EDF2",
-                    fontFamily: "monospace",
+                    color: isExcluded ? "#3A4A5C" : "#E8EDF2",
+                    fontFamily: "'JetBrains Mono', monospace",
                   }}
                 >
                   {price > 0 ? `$${price.toFixed(2)}` : "—"}
@@ -288,8 +356,8 @@ export function ScreenerTab() {
                 <div
                   style={{
                     fontSize: 10,
-                    color: priceColor,
-                    fontFamily: "monospace",
+                    color: isExcluded ? "#3A4A5C" : priceColor,
+                    fontFamily: "'JetBrains Mono', monospace",
                     display: "flex",
                     alignItems: "center",
                     gap: 2,
@@ -307,35 +375,37 @@ export function ScreenerTab() {
                 <div
                   style={{
                     fontSize: 10,
-                    color: priceColor,
-                    fontFamily: "monospace",
+                    color: isExcluded ? "#3A4A5C" : priceColor,
+                    fontFamily: "'JetBrains Mono', monospace",
                     fontWeight: 700,
                   }}
                 >
                   {q ? `${isPos ? "+" : ""}${changePct.toFixed(2)}%` : "—"}
                 </div>
-                <div style={{ fontSize: 9, color: "#8B949E", fontFamily: "monospace" }}>
+                <div style={{ fontSize: 9, color: "#5A6B80", fontFamily: "'JetBrains Mono', monospace" }}>
                   {high > 0 ? `$${high.toFixed(2)}` : "—"}
                 </div>
-                <div style={{ fontSize: 9, color: "#8B949E", fontFamily: "monospace" }}>
+                <div style={{ fontSize: 9, color: "#5A6B80", fontFamily: "'JetBrains Mono', monospace" }}>
                   {low > 0 ? `$${low.toFixed(2)}` : "—"}
                 </div>
 
                 {/* MAPO Score */}
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <div
+                    className={isExcluded ? "" : scoreCircleClass(score)}
                     style={{
                       width: 32,
                       height: 32,
                       borderRadius: "50%",
-                      border: `2px solid ${isExcluded ? "#2D3748" : scoreColor(score)}`,
+                      border: `2px solid ${isExcluded ? "#1C2840" : scoreColor(score)}`,
+                      background: isExcluded ? "transparent" : `${scoreColor(score)}0D`,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       fontSize: 9,
                       fontWeight: 700,
-                      color: isExcluded ? "#484F58" : scoreColor(score),
-                      fontFamily: "monospace",
+                      color: isExcluded ? "#3A4A5C" : scoreColor(score),
+                      fontFamily: "'JetBrains Mono', monospace",
                     }}
                   >
                     {q ? score : "—"}
@@ -348,14 +418,15 @@ export function ScreenerTab() {
                     <span
                       style={{
                         fontSize: 7,
-                        padding: "2px 6px",
-                        background: "rgba(255,77,77,0.1)",
-                        border: "1px solid rgba(255,77,77,0.25)",
-                        borderRadius: 2,
-                        color: "#FF4D4D",
-                        fontFamily: "monospace",
-                        letterSpacing: 0.8,
+                        padding: "2px 7px",
+                        background: "rgba(255,68,88,0.08)",
+                        border: "1px solid rgba(255,68,88,0.2)",
+                        borderRadius: 3,
+                        color: "#FF4458",
+                        fontFamily: "'Inter', system-ui, sans-serif",
+                        letterSpacing: 1,
                         textTransform: "uppercase",
+                        fontWeight: 700,
                       }}
                     >
                       EXCLUDED
@@ -364,20 +435,21 @@ export function ScreenerTab() {
                     <span
                       style={{
                         fontSize: 7,
-                        padding: "2px 6px",
-                        background: `${scoreColor(score)}18`,
-                        border: `1px solid ${scoreColor(score)}40`,
-                        borderRadius: 2,
+                        padding: "2px 7px",
+                        background: `${scoreColor(score)}12`,
+                        border: `1px solid ${scoreColor(score)}35`,
+                        borderRadius: 3,
                         color: scoreColor(score),
-                        fontFamily: "monospace",
-                        letterSpacing: 0.8,
+                        fontFamily: "'Inter', system-ui, sans-serif",
+                        letterSpacing: 1,
                         textTransform: "uppercase",
+                        fontWeight: 700,
                       }}
                     >
                       {scoreLabel(score)}
                     </span>
                   ) : (
-                    <span style={{ fontSize: 8, color: "#484F58" }}>No data</span>
+                    <span style={{ fontSize: 8, color: "#2E3E52", fontFamily: "'Inter', system-ui, sans-serif" }}>—</span>
                   )}
                 </div>
               </div>
@@ -389,12 +461,13 @@ export function ScreenerTab() {
       {/* Footer note */}
       <div
         style={{
-          padding: "6px 16px",
-          borderTop: "1px solid #1A2332",
+          padding: "5px 16px",
+          borderTop: "1px solid #1C2840",
           fontSize: 7,
-          color: "#2D3748",
-          fontFamily: "monospace",
+          color: "#2E3E52",
+          fontFamily: "'Inter', system-ui, sans-serif",
           flexShrink: 0,
+          letterSpacing: 0.5,
         }}
       >
         * MAPO Score is a quick heuristic based on price action. Use AI Analyst for full 6-factor scoring.

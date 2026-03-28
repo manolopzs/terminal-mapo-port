@@ -11,6 +11,10 @@ interface Suggestion {
   suggestion: string;
 }
 
+const INTERNATIONAL_ETFS = ["EFA", "VEU", "VXUS", "EEM", "ACWX", "SCZ", "GXC", "EWJ", "EWZ", "ILF", "VEA", "IEMG"];
+const INTERNATIONAL_STOCKS = ["MELI", "NU", "GLOB", "TSM", "BABA", "NIO", "SE", "GRAB", "DKNG"];
+const INTERNATIONAL_TICKERS = new Set([...INTERNATIONAL_ETFS, ...INTERNATIONAL_STOCKS]);
+
 export function RiskSuggestions({ holdings }: RiskSuggestionsProps) {
   const suggestions = useMemo(() => {
     if (holdings.length === 0) return [];
@@ -51,12 +55,16 @@ export function RiskSuggestions({ holdings }: RiskSuggestionsProps) {
       }
     }
 
-    // Geographic diversification (all holdings assumed US)
-    results.push({
-      title: "Limited Geographic Diversification",
-      description: "100% U.S. equity exposure leaves the portfolio vulnerable to domestic-only macro shocks and USD risk.",
-      suggestion: "Add 10-15% international allocation via VXUS or EFA to capture global growth and reduce country risk.",
-    });
+    // Geographic diversification — only suggest if no international exposure detected
+    const hasInternational = holdings.some((h) => INTERNATIONAL_TICKERS.has(h.ticker.toUpperCase()));
+    if (!hasInternational) {
+      const holdingsList = holdings.map((h) => h.ticker).join(", ");
+      results.push({
+        title: "Limited Geographic Diversification",
+        description: `Current holdings (${holdingsList}) appear to be all U.S.-listed, leaving the portfolio vulnerable to domestic-only macro shocks and USD risk.`,
+        suggestion: "Add 10-15% international allocation via VXUS or EFA to capture global growth and reduce country risk.",
+      });
+    }
 
     // Number of positions
     if (holdings.length < 8) {

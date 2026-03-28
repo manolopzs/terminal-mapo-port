@@ -23,12 +23,13 @@ import { MarketTab } from "@/pages/MarketTab";
 import { ScreenerTab } from "@/pages/ScreenerTab";
 import { MAPOScoreTab } from "@/pages/MAPOScoreTab";
 import { RebalanceTab } from "@/pages/RebalanceTab";
+import { JournalTab } from "@/pages/JournalTab";
 import { useHoldings, usePortfolios, useSummary, useLiveQuotes, useLiveEarnings, useLiveSentiment, useLiveNews, useAnalytics } from "@/hooks/use-portfolio";
 import { queryClient } from "@/lib/queryClient";
 import { Loader2, Bot, LogOut } from "lucide-react";
 import { logout } from "@/lib/auth";
 
-type TabId = "PORTFOLIO" | "MARKET" | "SCREENER" | "MAPO" | "REBALANCE";
+type TabId = "PORTFOLIO" | "MARKET" | "SCREENER" | "MAPO" | "REBALANCE" | "JOURNAL";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "PORTFOLIO", label: "PORTFOLIO" },
@@ -36,6 +37,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "SCREENER", label: "SCREENER" },
   { id: "MAPO", label: "MAPO SCORE" },
   { id: "REBALANCE", label: "REBALANCE" },
+  { id: "JOURNAL", label: "JOURNAL" },
 ];
 
 export default function Dashboard() {
@@ -97,27 +99,28 @@ export default function Dashboard() {
     return (
       <div
         className="h-screen w-screen flex items-center justify-center"
-        style={{ background: "#080C14" }}
+        style={{ background: "#040810" }}
       >
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin" style={{ color: "#00D9FF" }} />
+          <Loader2 className="h-7 w-7 animate-spin" style={{ color: "#00D9FF", opacity: 0.8 }} />
           <span
             style={{
-              fontSize: 11,
-              color: "#8B949E",
+              fontSize: 10,
+              color: "#5A6B80",
               textTransform: "uppercase",
-              letterSpacing: 2,
+              letterSpacing: 2.5,
+              fontFamily: "'Inter', system-ui, sans-serif",
             }}
           >
             Initializing terminal...
           </span>
           <span
             style={{
-              fontSize: 9,
-              color: "#484F58",
+              fontSize: 8,
+              color: "#2E3E52",
               textTransform: "uppercase",
-              letterSpacing: 1,
-              marginTop: 4,
+              letterSpacing: 1.5,
+              fontFamily: "'Inter', system-ui, sans-serif",
             }}
           >
             Connecting to market data
@@ -156,8 +159,8 @@ export default function Dashboard() {
           style={{
             display: "flex",
             alignItems: "stretch",
-            borderBottom: "1px solid #1A2332",
-            background: "#080C14",
+            borderBottom: "1px solid #1C2840",
+            background: "#070B14",
             flexShrink: 0,
           }}
         >
@@ -166,25 +169,32 @@ export default function Dashboard() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               style={{
-                padding: "7px 18px",
+                padding: "8px 20px",
                 fontSize: 9,
                 fontWeight: 700,
-                letterSpacing: 2,
+                letterSpacing: 1.8,
                 textTransform: "uppercase",
-                fontFamily: "monospace",
-                background: "transparent",
+                fontFamily: "'Inter', system-ui, sans-serif",
+                background: activeTab === tab.id ? "rgba(0, 217, 255, 0.05)" : "transparent",
                 border: "none",
                 borderBottom: activeTab === tab.id ? "2px solid #00D9FF" : "2px solid transparent",
-                color: activeTab === tab.id ? "#00D9FF" : "#484F58",
+                borderTop: "2px solid transparent",
+                color: activeTab === tab.id ? "#00D9FF" : "#5A6B80",
                 cursor: "pointer",
                 transition: "all 0.15s",
                 marginBottom: -1,
               }}
               onMouseEnter={(e) => {
-                if (activeTab !== tab.id) e.currentTarget.style.color = "#8B949E";
+                if (activeTab !== tab.id) {
+                  e.currentTarget.style.color = "#8B9AAB";
+                  e.currentTarget.style.background = "rgba(255,255,255,0.02)";
+                }
               }}
               onMouseLeave={(e) => {
-                if (activeTab !== tab.id) e.currentTarget.style.color = "#484F58";
+                if (activeTab !== tab.id) {
+                  e.currentTarget.style.color = "#5A6B80";
+                  e.currentTarget.style.background = "transparent";
+                }
               }}
             >
               {tab.label}
@@ -195,22 +205,22 @@ export default function Dashboard() {
           <button
             onClick={() => { logout(); window.location.reload(); }}
             style={{
-              padding: "7px 14px",
+              padding: "8px 16px",
               fontSize: 8,
-              letterSpacing: 1,
+              letterSpacing: 1.2,
               textTransform: "uppercase",
-              fontFamily: "monospace",
+              fontFamily: "'Inter', system-ui, sans-serif",
               background: "transparent",
               border: "none",
-              color: "#2D3748",
+              color: "#3A4A5C",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               gap: 5,
               transition: "color 0.15s",
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#FF4D4D")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "#2D3748")}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#FF4458")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "#3A4A5C")}
           >
             <LogOut size={10} />
             Logout
@@ -238,6 +248,11 @@ export default function Dashboard() {
             <RebalanceTab portfolioId={activePortfolioId} />
           </div>
         )}
+        {activeTab === "JOURNAL" && (
+          <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+            <JournalTab />
+          </div>
+        )}
 
         {/* Portfolio tab — 4-column grid */}
         <div
@@ -248,20 +263,21 @@ export default function Dashboard() {
             gridTemplateRows: "1fr 1fr",
             gap: 0,
             minHeight: 0,
+            background: "#0A0E1A",
           }}
         >
           {/* Col 1, Row 1: Holdings */}
-          <div className="flex flex-col" style={{ borderRight: "1px solid #1A2332", overflow: "auto" }}>
+          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", overflow: "auto" }}>
             <HoldingsTable holdings={holdingsData} totalValue={totalValue} />
           </div>
 
           {/* Col 2, Row 1: Performance Chart */}
-          <div className="flex flex-col" style={{ borderRight: "1px solid #1A2332", overflow: "hidden" }}>
+          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", overflow: "hidden" }}>
             <PerformanceChart portfolioId={activePortfolioId} />
           </div>
 
           {/* Col 3, Row 1: Risk Analysis */}
-          <div className="flex flex-col" style={{ borderRight: "1px solid #1A2332", overflow: "auto" }}>
+          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", overflow: "auto" }}>
             <RiskAnalysis holdings={holdingsData} analytics={analytics} />
           </div>
 
@@ -270,17 +286,17 @@ export default function Dashboard() {
             <div style={{ flex: "0 0 auto", maxHeight: "45%", overflow: "auto" }}>
               <PortfolioHealth portfolioId={activePortfolioId} />
             </div>
-            <div style={{ flex: 1, overflow: "auto", borderTop: "1px solid #1A2332", minHeight: 0 }}>
+            <div style={{ flex: 1, overflow: "auto", borderTop: "1px solid #1C2840", minHeight: 0 }}>
               <RiskSuggestions holdings={holdingsData} />
             </div>
           </div>
 
           {/* Col 1, Row 2: Trade History + Drawdown Monitor */}
-          <div className="flex flex-col" style={{ borderRight: "1px solid #1A2332", borderTop: "1px solid #1A2332", overflow: "hidden" }}>
+          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", borderTop: "1px solid #1C2840", overflow: "hidden" }}>
             <div style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
               <TradeHistory portfolioId={activePortfolioId} />
             </div>
-            <div style={{ flex: "0 0 auto", maxHeight: "45%", overflow: "auto", borderTop: "1px solid #1A2332" }}>
+            <div style={{ flex: "0 0 auto", maxHeight: "45%", overflow: "auto", borderTop: "1px solid #1C2840" }}>
               <DrawdownMonitor portfolioId={activePortfolioId} />
             </div>
           </div>
@@ -288,28 +304,28 @@ export default function Dashboard() {
           {/* Col 2, Row 2: Asset Allocation + Correlation Matrix */}
           <div
             className="flex flex-col"
-            style={{ borderRight: "1px solid #1A2332", borderTop: "1px solid #1A2332", overflow: "auto" }}
+            style={{ borderRight: "1px solid #1C2840", borderTop: "1px solid #1C2840", overflow: "auto" }}
           >
             <AssetAllocation holdings={holdingsData} />
             <CorrelationMatrix holdings={holdingsData} correlationData={analytics?.correlation} top6Tickers={analytics?.top6Tickers} />
           </div>
 
           {/* Col 3, Row 2: Volatility + Earnings Calendar */}
-          <div className="flex flex-col" style={{ borderRight: "1px solid #1A2332", borderTop: "1px solid #1A2332", overflow: "hidden" }}>
+          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", borderTop: "1px solid #1C2840", overflow: "hidden" }}>
             <div className="flex-1" style={{ minHeight: 0, overflow: "auto" }}>
               <VolatilityBars holdings={holdingsData} volatilityData={analytics?.volatility} />
             </div>
-            <div className="flex-1" style={{ borderTop: "1px solid #1A2332", minHeight: 0, overflow: "auto" }}>
+            <div className="flex-1" style={{ borderTop: "1px solid #1C2840", minHeight: 0, overflow: "auto" }}>
               <EarningsCalendar holdings={holdingsData} liveEarnings={liveEarnings} />
             </div>
           </div>
 
           {/* Col 4, Row 2: Top Movers + Gain/Loss */}
-          <div className="flex flex-col" style={{ borderTop: "1px solid #1A2332", overflow: "hidden" }}>
+          <div className="flex flex-col" style={{ borderTop: "1px solid #1C2840", overflow: "hidden" }}>
             <div style={{ flex: "0 0 auto", maxHeight: "45%", overflow: "hidden" }}>
               <TopMovers holdings={holdingsData} />
             </div>
-            <div style={{ flex: 1, overflow: "auto", borderTop: "1px solid #1A2332", minHeight: 0 }}>
+            <div style={{ flex: 1, overflow: "auto", borderTop: "1px solid #1C2840", minHeight: 0 }}>
               <GainLossTable holdings={holdingsData} />
             </div>
           </div>
@@ -324,16 +340,16 @@ export default function Dashboard() {
         onClick={() => setAnalystOpen(true)}
         style={{
           position: "fixed",
-          bottom: 20,
-          right: 20,
-          width: 48,
-          height: 48,
-          borderRadius: 14,
-          background: "linear-gradient(135deg, #00D9FF 0%, #0066FF 100%)",
+          bottom: 24,
+          right: 24,
+          width: 46,
+          height: 46,
+          borderRadius: 12,
+          background: "linear-gradient(135deg, #00C4E8 0%, #0055DD 100%)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          boxShadow: "0 4px 20px rgba(0,217,255,0.25)",
+          boxShadow: "0 4px 24px rgba(0,180,255,0.3), 0 0 0 1px rgba(0,217,255,0.15)",
           border: "none",
           cursor: "pointer",
           zIndex: 90,
@@ -343,14 +359,20 @@ export default function Dashboard() {
           transform: analystOpen ? "scale(0.8)" : "scale(1)",
         }}
         onMouseEnter={(e) => {
-          if (!analystOpen) e.currentTarget.style.transform = "scale(1.08)";
+          if (!analystOpen) {
+            e.currentTarget.style.transform = "scale(1.1)";
+            e.currentTarget.style.boxShadow = "0 6px 28px rgba(0,180,255,0.45), 0 0 0 1px rgba(0,217,255,0.25)";
+          }
         }}
         onMouseLeave={(e) => {
-          if (!analystOpen) e.currentTarget.style.transform = "scale(1)";
+          if (!analystOpen) {
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.boxShadow = "0 4px 24px rgba(0,180,255,0.3), 0 0 0 1px rgba(0,217,255,0.15)";
+          }
         }}
         data-testid="button-open-analyst"
       >
-        <Bot size={22} color="#fff" />
+        <Bot size={20} color="#fff" />
       </button>
 
       {/* AI Analyst Panel */}

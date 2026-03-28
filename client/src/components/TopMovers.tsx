@@ -5,70 +5,34 @@ interface TopMoversProps {
   holdings: Holding[];
 }
 
-function RangeBar({ pct, isGainer }: { pct: number; isGainer: boolean }) {
-  const dotColor = isGainer ? "#00E6A8" : "#FF4458";
-  return (
-    <div>
-      <div style={{ fontSize: 7, color: "#8B949E", letterSpacing: 0.5, marginBottom: 2 }}>
-        52W RANGE
-      </div>
-      <div className="flex items-center gap-1">
-        <div style={{ flex: 1, height: 3, background: "#1A2332", borderRadius: 1, position: "relative" }}>
-          <div
-            style={{
-              position: "absolute",
-              left: `${Math.min(Math.max(pct, 2), 98)}%`,
-              top: "50%",
-              transform: "translate(-50%, -50%)",
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: dotColor,
-            }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function MoverCard({ holding, type }: { holding: Holding; type: "gainer" | "loser" }) {
   const isGainer = type === "gainer";
   const color = isGainer ? "#00E6A8" : "#FF4458";
   const arrow = isGainer ? "▲" : "▼";
   const label = isGainer ? "GAINER" : "LOSER";
   const changePct = holding.dayChangePct ?? 0;
-  // Estimate 52w range position from gain/loss
-  const rangePct = Math.min(Math.max(50 + (holding.gainLossPct ?? 0), 5), 95);
+  const totalPnlPct = holding.gainLossPct ?? 0;
+  const totalColor = totalPnlPct >= 0 ? "#00E6A8" : "#FF4458";
 
   return (
-    <div
-      style={{
-        background: "#0A0E18",
-        border: "1px solid #1A2332",
-        borderRadius: 2,
-        padding: "6px 8px",
-      }}
-    >
+    <div style={{ background: "#0A0E18", border: "1px solid #1A2332", borderRadius: 2, padding: "6px 8px" }}>
       <div style={{ fontSize: 8, color, fontWeight: 600, letterSpacing: 0.8, marginBottom: 2 }}>
         {arrow} {label}
       </div>
-      <div className="flex items-center justify-between" style={{ marginBottom: 4 }}>
-        <span
-          className="font-mono"
-          style={{ fontSize: 12, fontWeight: 700, color: "#C9D1D9" }}
-        >
+      <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
+        <span className="font-mono" style={{ fontSize: 12, fontWeight: 700, color: "#C9D1D9" }}>
           {holding.ticker}
         </span>
-        <span
-          className="font-mono tabular-nums"
-          style={{ fontSize: 12, fontWeight: 700, color }}
-        >
-          {changePct >= 0 ? "+" : ""}
-          {changePct.toFixed(2)}%
+        <span className="font-mono tabular-nums" style={{ fontSize: 12, fontWeight: 700, color }}>
+          {changePct >= 0 ? "+" : ""}{changePct.toFixed(2)}%
         </span>
       </div>
-      <RangeBar pct={rangePct} isGainer={isGainer} />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 7, color: "#484F58", letterSpacing: 1, textTransform: "uppercase", fontFamily: "monospace" }}>Total P&L</span>
+        <span className="font-mono tabular-nums" style={{ fontSize: 9, fontWeight: 600, color: totalColor }}>
+          {totalPnlPct >= 0 ? "+" : ""}{totalPnlPct.toFixed(1)}%
+        </span>
+      </div>
     </div>
   );
 }

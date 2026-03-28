@@ -86,6 +86,57 @@ export async function fetchLiveQuotes(rawTickers: string[]): Promise<LiveQuote[]
   });
 }
 
+export interface ExtendedQuote {
+  symbol: string;
+  week52High: number;
+  week52Low: number;
+  currentPrice: number;
+}
+
+export async function fetchExtendedQuotes(rawTickers: string[]): Promise<ExtendedQuote[]> {
+  if (rawTickers.length === 0 || !process.env.FINNHUB_API_KEY) return [];
+
+  const tickers = rawTickers
+    .map(t => t.replace(/[^A-Z0-9.\-]/gi, "").toUpperCase())
+    .filter(t => t.length > 0 && t.length <= 10);
+
+  const cacheKey = `extended-quotes:${[...tickers].sort().join(",")}`;
+  return cachedAsync(cacheKey, 3_600_000, async () => {
+    const results = await Promise.allSettled(
+      tickers.map(async (symbol): Promise<ExtendedQuote | null> => {
+        try {
+          const [metricData, quoteData] = await Promise.allSettled([
+            finnhub(`/stock/metric?symbol=${symbol}&metric=all`),
+            finnhub(`/quote?symbol=${symbol}`),
+          ]);
+
+          const metric = metricData.status === "fulfilled" ? metricData.value?.metric : null;
+          const quote = quoteData.status === "fulfilled" ? quoteData.value : null;
+
+          const week52High = metric?.["52WeekHigh"] ?? 0;
+          const week52Low = metric?.["52WeekLow"] ?? 0;
+          const currentPrice = quote?.c ?? 0;
+
+          return {
+            symbol,
+            week52High,
+            week52Low,
+            currentPrice,
+          };
+        } catch {
+          return { symbol, week52High: 0, week52Low: 0, currentPrice: 0 };
+        }
+      })
+    );
+
+    return results
+      .filter((r): r is PromiseFulfilledResult<ExtendedQuote> =>
+        r.status === "fulfilled" && r.value !== null
+      )
+      .map(r => r.value as ExtendedQuote);
+  });
+}
+
 export interface EarningsEvent {
   ticker: string;
   date: string;

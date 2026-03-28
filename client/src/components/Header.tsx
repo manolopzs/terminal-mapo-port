@@ -77,27 +77,28 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
 
   return (
     <div
-      className="flex items-center justify-between px-3 flex-shrink-0"
+      className="flex items-center justify-between px-4 flex-shrink-0 terminal-chrome-top"
       style={{
-        background: "#0D1117",
-        borderBottom: "1px solid #1A2332",
-        height: 52,
-        minHeight: 52,
+        background: "#080C14",
+        borderBottom: "1px solid #1C2840",
+        height: 56,
+        minHeight: 56,
       }}
     >
       {/* Left: Logo + Name */}
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center gap-3 flex-shrink-0">
         <div
           className="flex items-center justify-center font-bold"
           style={{
-            width: 28,
-            height: 28,
-            background: "#00D9FF",
-            color: "#080C14",
+            width: 30,
+            height: 30,
+            background: "linear-gradient(135deg, #00D9FF 0%, #0088CC 100%)",
+            color: "#040810",
             fontSize: 11,
             fontFamily: "'JetBrains Mono', monospace",
-            borderRadius: 2,
+            borderRadius: 4,
             letterSpacing: 1,
+            boxShadow: "0 0 10px rgba(0,217,255,0.2)",
           }}
         >
           MT
@@ -107,8 +108,8 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
             style={{
               fontSize: 12,
               fontWeight: 700,
-              color: "#C9D1D9",
-              letterSpacing: 2,
+              color: "#D6DFE8",
+              letterSpacing: 2.5,
               lineHeight: 1,
             }}
           >
@@ -117,10 +118,10 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
           <div
             style={{
               fontSize: 8,
-              color: "#8B949E",
-              letterSpacing: 1.5,
+              color: "#4A5A6E",
+              letterSpacing: 1.8,
               textTransform: "uppercase",
-              marginTop: 1,
+              marginTop: 2,
             }}
           >
             PERSONAL PORTFOLIO
@@ -129,12 +130,12 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
       </div>
 
       {/* Center-left: Portfolio Value */}
-      <div className="flex flex-col items-center flex-shrink-0" style={{ borderLeft: "1px solid #1A2332", paddingLeft: 12 }}>
+      <div className="flex flex-col items-center flex-shrink-0" style={{ borderLeft: "1px solid #1C2840", paddingLeft: 16 }}>
         <div
           style={{
             fontSize: 8,
-            color: "#8B949E",
-            letterSpacing: 1.5,
+            color: "#4A5A6E",
+            letterSpacing: 1.8,
             textTransform: "uppercase",
           }}
         >
@@ -142,20 +143,20 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
         </div>
         <div
           className="font-mono tabular-nums"
-          style={{ fontSize: 20, fontWeight: 700, color: "#FFFFFF", lineHeight: 1.1 }}
+          style={{ fontSize: 22, fontWeight: 700, color: "#E8EDF2", lineHeight: 1.1 }}
         >
           ${totalValue.toLocaleString("en-US", { minimumFractionDigits: 2 })}
         </div>
         <div
           className="font-mono tabular-nums"
-          style={{ fontSize: 10, color: dayColor, lineHeight: 1 }}
+          style={{ fontSize: 10, color: dayColor, lineHeight: 1, fontWeight: 600 }}
         >
           {dayChange >= 0 ? "+" : ""}${dayChange.toLocaleString("en-US", { minimumFractionDigits: 2 })} today
         </div>
         {cash > 0 && (
           <div
             className="font-mono tabular-nums"
-            style={{ fontSize: 9, color: "#484F58", lineHeight: 1, marginTop: 1 }}
+            style={{ fontSize: 9, color: "#3A4A5C", lineHeight: 1, marginTop: 2 }}
           >
             CASH ${cash.toLocaleString("en-US", { minimumFractionDigits: 2 })}
           </div>
@@ -167,10 +168,10 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
         <div
           style={{
             fontSize: 8,
-            color: "#8B949E",
-            letterSpacing: 1,
+            color: "#4A5A6E",
+            letterSpacing: 1.5,
             textTransform: "uppercase",
-            marginRight: 8,
+            marginRight: 10,
           }}
         >
           CHANGE
@@ -180,19 +181,19 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
             key={p.label}
             className="flex flex-col items-center"
             style={{
-              padding: "2px 8px",
-              borderLeft: "1px solid #1A2332",
+              padding: "2px 10px",
+              borderLeft: "1px solid #1C2840",
             }}
           >
-            <div style={{ fontSize: 8, color: "#8B949E", letterSpacing: 1 }}>
+            <div style={{ fontSize: 8, color: "#4A5A6E", letterSpacing: 1.2 }}>
               {p.label}
             </div>
             <div
               className="font-mono tabular-nums"
               style={{
                 fontSize: 11,
-                fontWeight: 600,
-                color: p.value === null ? "#8B949E" : p.value >= 0 ? "#00E6A8" : "#FF4458",
+                fontWeight: 700,
+                color: p.value === null ? "#3A4A5C" : p.value >= 0 ? "#00E6A8" : "#FF4458",
                 lineHeight: 1.2,
               }}
             >
@@ -203,12 +204,12 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
       </div>
 
       {/* Center-right: Total Return */}
-      <div className="flex flex-col items-center flex-shrink-0" style={{ borderLeft: "1px solid #1A2332", paddingLeft: 12 }}>
+      <div className="flex flex-col items-center flex-shrink-0" style={{ borderLeft: "1px solid #1C2840", paddingLeft: 14 }}>
         <div
           style={{
             fontSize: 8,
-            color: "#8B949E",
-            letterSpacing: 1.5,
+            color: "#4A5A6E",
+            letterSpacing: 1.8,
             textTransform: "uppercase",
           }}
         >
@@ -228,39 +229,39 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
         </div>
         <div
           className="font-mono tabular-nums"
-          style={{ fontSize: 9, color: "#8B949E", lineHeight: 1 }}
+          style={{ fontSize: 9, color: "#4A5A6E", lineHeight: 1 }}
         >
           {totalReturnDollar >= 0 ? "+" : ""}${totalReturnDollar.toLocaleString("en-US", { minimumFractionDigits: 2 })}
         </div>
       </div>
 
       {/* Right: Sentiment + Live + Market */}
-      <div className="flex items-center gap-3 flex-shrink-0">
+      <div className="flex items-center gap-4 flex-shrink-0">
         <div className="flex flex-col items-center">
-          <div style={{ fontSize: 8, color: "#8B949E", letterSpacing: 1, textTransform: "uppercase" }}>
+          <div style={{ fontSize: 8, color: "#4A5A6E", letterSpacing: 1.5, textTransform: "uppercase" }}>
             SENTIMENT
           </div>
           <div style={{
             fontSize: 11,
             fontWeight: 700,
             color: liveSentiment?.sentiment === "BULLISH" ? "#00E6A8" : liveSentiment?.sentiment === "BEARISH" ? "#FF4458" : "#F0883E",
-            letterSpacing: 1,
+            letterSpacing: 1.2,
           }}>
             {liveSentiment?.sentiment || "LOADING"}
           </div>
         </div>
 
-        <div className="flex flex-col items-center" style={{ borderLeft: "1px solid #1A2332", paddingLeft: 8 }}>
+        <div className="flex flex-col items-center" style={{ borderLeft: "1px solid #1C2840", paddingLeft: 10 }}>
           <div className="flex items-center gap-1">
             <div
               className="animate-pulse-dot"
-              style={{ width: 5, height: 5, borderRadius: "50%", background: liveQuotes ? "#00E6A8" : "#F0883E" }}
+              style={{ width: 6, height: 6, borderRadius: "50%", background: liveQuotes ? "#00E6A8" : "#F0883E", boxShadow: liveQuotes ? "0 0 5px rgba(0,230,168,0.4)" : "none" }}
             />
-            <span style={{ fontSize: 8, color: liveQuotes ? "#00E6A8" : "#F0883E", letterSpacing: 1 }}>
+            <span style={{ fontSize: 8, color: liveQuotes ? "#00E6A8" : "#F0883E", letterSpacing: 1.2, fontWeight: 700 }}>
               {liveQuotes ? "LIVE" : "LOADING"}
             </span>
           </div>
-          <div className="font-mono tabular-nums" style={{ fontSize: 9, color: "#8B949E" }}>
+          <div className="font-mono tabular-nums" style={{ fontSize: 9, color: "#4A5A6E" }}>
             {new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true, timeZone: "America/Chicago" })} CST
           </div>
         </div>
@@ -278,15 +279,15 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
               style={{
                 fontSize: 9,
                 fontWeight: 700,
-                letterSpacing: 1,
-                padding: "3px 8px",
-                borderRadius: 2,
-                background: isOpen ? "rgba(0, 230, 168, 0.15)" : "rgba(255, 68, 88, 0.15)",
+                letterSpacing: 1.2,
+                padding: "4px 10px",
+                borderRadius: 3,
+                background: isOpen ? "rgba(0, 230, 168, 0.1)" : "rgba(255, 68, 88, 0.1)",
                 color: isOpen ? "#00E6A8" : "#FF4458",
-                border: `1px solid ${isOpen ? "rgba(0, 230, 168, 0.3)" : "rgba(255, 68, 88, 0.3)"}`,
+                border: `1px solid ${isOpen ? "rgba(0, 230, 168, 0.25)" : "rgba(255, 68, 88, 0.25)"}`,
               }}
             >
-              MARKET: {isOpen ? "OPEN" : "CLOSED"}
+              MARKET {isOpen ? "OPEN" : "CLOSED"}
             </div>
           );
         })()}

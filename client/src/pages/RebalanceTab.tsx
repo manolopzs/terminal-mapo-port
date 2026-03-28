@@ -36,6 +36,23 @@ export function RebalanceTab({ portfolioId }: Props) {
   // Target allocations keyed by ticker — initialised from server data
   const [targets, setTargets] = useState<Record<string, number>>({});
 
+  // localStorage key scoped by portfolioId
+  const lsKey = `mapo_rebalance_targets_${portfolioId}`;
+
+  // On mount or when portfolioId changes, load saved targets from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(lsKey);
+      if (raw) {
+        setTargets(JSON.parse(raw) as Record<string, number>);
+      } else {
+        setTargets({});
+      }
+    } catch {
+      setTargets({});
+    }
+  }, [lsKey]);
+
   // When server data arrives and we have no local targets yet, seed equal-weight defaults
   useEffect(() => {
     if (data && data.positions.length > 0 && Object.keys(targets).length === 0) {
@@ -48,6 +65,13 @@ export function RebalanceTab({ portfolioId }: Props) {
       setTargets(seeded);
     }
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist targets to localStorage whenever they change
+  useEffect(() => {
+    if (Object.keys(targets).length > 0) {
+      localStorage.setItem(lsKey, JSON.stringify(targets));
+    }
+  }, [targets, lsKey]);
 
   function handleTargetChange(ticker: string, value: string) {
     const parsed = parseFloat(value);
@@ -62,7 +86,9 @@ export function RebalanceTab({ portfolioId }: Props) {
 
   function handleResetTargets() {
     if (data) {
-      setTargets(computeEqualWeightTargets(data.positions));
+      const newTargets = computeEqualWeightTargets(data.positions);
+      setTargets(newTargets);
+      localStorage.setItem(lsKey, JSON.stringify(newTargets));
     }
   }
 
@@ -94,6 +120,25 @@ export function RebalanceTab({ portfolioId }: Props) {
   }
 
   const { positions, totalValue, cashValue, cashPct, targetCashPct, cashAction, cashActionAmount, maxDrawdownAlert, concentrationAlerts } = data;
+
+  const targetsSum = positions.reduce((sum, p) => sum + (targets[p.ticker] ?? p.targetPct), 0);
+  const targetsSumOk = Math.abs(targetsSum - 100) < 1;
+
+  const totalToBuy = positions.reduce((sum, p) => {
+    const localTarget = targets[p.ticker] ?? p.targetPct;
+    const { action } = computeLocalDiff(p, localTarget);
+    const diffPct = parseFloat((p.currentPct - localTarget).toFixed(2));
+    const amt = Math.abs((diffPct / 100) * totalValue);
+    return action === "BUY" ? sum + amt : sum;
+  }, 0);
+
+  const totalToSell = positions.reduce((sum, p) => {
+    const localTarget = targets[p.ticker] ?? p.targetPct;
+    const { action } = computeLocalDiff(p, localTarget);
+    const diffPct = parseFloat((p.currentPct - localTarget).toFixed(2));
+    const amt = Math.abs((diffPct / 100) * totalValue);
+    return action === "SELL" ? sum + amt : sum;
+  }, 0);
 
   return (
     <div data-rebalance="root" style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", background: "#080C14" }}>
@@ -397,6 +442,21 @@ export function RebalanceTab({ portfolioId }: Props) {
                   );
                 })}
               </tbody>
+              <tfoot>
+                <tr style={{ borderTop: "2px solid #1A2332", background: "#0D1117" }}>
+                  <td colSpan={2} style={{ padding: "5px 8px", fontSize: 8, color: "#484F58", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1 }}>
+                    Targets total
+                  </td>
+                  <td style={{ padding: "5px 8px", textAlign: "right", fontFamily: "monospace", fontSize: 10, color: "#C9D1D9" }}>
+                    {positions.reduce((s, p) => s + p.currentPct, 0).toFixed(1)}%
+                  </td>
+                  <td style={{ padding: "5px 8px", textAlign: "right", fontFamily: "monospace", fontSize: 10, fontWeight: 700, color: targetsSumOk ? "#00C853" : "#FF4D4D" }}>
+                    {targetsSum.toFixed(1)}%
+                    {!targetsSumOk && <span style={{ fontSize: 7, marginLeft: 4, color: "#FFB300" }}>≠100</span>}
+                  </td>
+                  <td colSpan={3} />
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>
@@ -471,6 +531,35 @@ export function RebalanceTab({ portfolioId }: Props) {
               </div>
             </>
           )}
+
+          {/* Rebalance Summary */}
+          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, color: "#C9D1D9", background: "#0D1117", borderBottom: "1px solid #1A2332", padding: "8px 14px", flexShrink: 0, fontFamily: "monospace" }}>
+            Action Summary
+          </div>
+          <div style={{ padding: "14px", borderBottom: "1px solid #1A2332" }}>
+            <div style={{ display: "flex", gap: 16 }}>
+              <div style={{ flex: 1, background: "rgba(0,200,83,0.05)", border: "1px solid rgba(0,200,83,0.2)", borderRadius: 4, padding: "10px 14px" }}>
+                <div style={{ fontSize: 7, color: "#00C853", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace", marginBottom: 6 }}>Total to Buy</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "#00C853", fontFamily: "monospace" }}>
+                  ${totalToBuy.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </div>
+              </div>
+              <div style={{ flex: 1, background: "rgba(255,77,77,0.05)", border: "1px solid rgba(255,77,77,0.2)", borderRadius: 4, padding: "10px 14px" }}>
+                <div style={{ fontSize: 7, color: "#FF4D4D", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace", marginBottom: 6 }}>Total to Sell</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "#FF4D4D", fontFamily: "monospace" }}>
+                  ${totalToSell.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </div>
+              </div>
+            </div>
+            {!targetsSumOk && (
+              <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6, background: "rgba(255,179,0,0.07)", border: "1px solid rgba(255,179,0,0.2)", borderRadius: 3, padding: "7px 12px" }}>
+                <AlertTriangle size={11} style={{ color: "#FFB300", flexShrink: 0 }} />
+                <span style={{ fontSize: 8, color: "#FFB300", fontFamily: "monospace" }}>
+                  Targets sum to {targetsSum.toFixed(1)}% — adjust to reach 100% for accurate rebalancing
+                </span>
+              </div>
+            )}
+          </div>
 
           {/* Cash section */}
           <div

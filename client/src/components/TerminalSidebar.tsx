@@ -84,7 +84,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
     });
   }
 
-  const width = collapsed ? 42 : 200;
+  const width = collapsed ? 42 : 208;
 
   return (
     <>
@@ -93,9 +93,9 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
       style={{
         width,
         minWidth: width,
-        background: "#0A0E18",
-        borderRight: "1px solid #1A2332",
-        transition: "width 150ms ease, min-width 150ms ease",
+        background: "#070B14",
+        borderRight: "1px solid #1C2840",
+        transition: "width 180ms ease, min-width 180ms ease",
         overflow: "hidden",
       }}
     >
@@ -103,10 +103,10 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
       <div
         className="flex items-center justify-between flex-shrink-0"
         style={{
-          height: 52,
-          minHeight: 52,
-          padding: collapsed ? "0 8px" : "0 10px",
-          borderBottom: "1px solid #1A2332",
+          height: 56,
+          minHeight: 56,
+          padding: collapsed ? "0 8px" : "0 12px",
+          borderBottom: "1px solid #1C2840",
         }}
       >
         {!collapsed && (
@@ -114,8 +114,8 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
             style={{
               fontSize: 9,
               fontWeight: 700,
-              letterSpacing: 1.5,
-              color: "#8B949E",
+              letterSpacing: 1.8,
+              color: "#4A5A6E",
               textTransform: "uppercase",
               whiteSpace: "nowrap",
             }}
@@ -128,7 +128,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
           style={{
             background: "none",
             border: "none",
-            color: "#8B949E",
+            color: "#4A5A6E",
             cursor: "pointer",
             padding: 4,
             display: "flex",
@@ -136,7 +136,10 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
             justifyContent: "center",
             marginLeft: collapsed ? "auto" : 0,
             marginRight: collapsed ? "auto" : 0,
+            transition: "color 0.15s",
           }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#8B9AAB")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "#4A5A6E")}
           data-testid="sidebar-toggle"
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
@@ -144,7 +147,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
       </div>
 
       {/* Ticker tape spacer — match the TickerTape height */}
-      <div style={{ height: 24, minHeight: 24, borderBottom: "1px solid #1A2332", flexShrink: 0 }} />
+      <div style={{ height: 24, minHeight: 24, borderBottom: "1px solid #1C2840", flexShrink: 0 }} />
 
       {/* Portfolio list */}
       <div className="flex-1 overflow-auto" style={{ padding: 0 }}>
@@ -156,14 +159,17 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
               key={p.id}
               className="flex items-center"
               style={{
-                padding: collapsed ? "7px 0" : "7px 10px",
+                padding: collapsed ? "8px 0" : "8px 12px",
                 justifyContent: collapsed ? "center" : "flex-start",
-                background: isActive ? "rgba(0, 217, 255, 0.08)" : "transparent",
-                borderBottom: "1px solid rgba(26, 35, 50, 0.5)",
+                background: isActive ? "rgba(0, 217, 255, 0.07)" : "transparent",
+                borderBottom: "1px solid rgba(28, 40, 64, 0.6)",
                 borderLeft: isActive ? "2px solid #00D9FF" : "2px solid transparent",
                 cursor: "pointer",
                 position: "relative",
+                transition: "background 0.12s ease",
               }}
+              onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.02)"; }}
+              onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
             >
               <button
                 onClick={() => onSelectPortfolio(p.id)}
@@ -175,23 +181,24 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
                   flex: 1,
                   justifyContent: collapsed ? "center" : "flex-start",
                   padding: 0,
-                  color: isActive ? "#00D9FF" : "#C9D1D9",
+                  color: isActive ? "#00D9FF" : "#A0AABА",
                 }}
                 data-testid={`portfolio-${p.id}`}
               >
-                <Icon size={collapsed ? 14 : 12} style={{ flexShrink: 0 }} />
+                <Icon size={collapsed ? 14 : 12} style={{ flexShrink: 0, opacity: isActive ? 1 : 0.7 }} />
                 {!collapsed && (
                   <div className="flex flex-col items-start" style={{ minWidth: 0 }}>
                     <span
                       style={{
-                        fontSize: 9,
-                        fontWeight: 600,
-                        letterSpacing: 0.5,
+                        fontSize: 10,
+                        fontWeight: isActive ? 700 : 500,
+                        letterSpacing: 0.3,
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
-                        maxWidth: 110,
+                        maxWidth: 115,
                         display: "block",
+                        color: isActive ? "#00D9FF" : "#9AAABB",
                       }}
                     >
                       {p.name}
@@ -199,9 +206,10 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
                     <span
                       style={{
                         fontSize: 7,
-                        color: "#8B949E",
-                        letterSpacing: 0.5,
+                        color: "#3A4A5C",
+                        letterSpacing: 0.8,
                         textTransform: "uppercase",
+                        marginTop: 1,
                       }}
                     >
                       {p.type}
@@ -240,8 +248,8 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
       <div
         className="flex-shrink-0"
         style={{
-          borderTop: "1px solid #1A2332",
-          padding: collapsed ? "6px 4px" : "6px 8px",
+          borderTop: "1px solid #1C2840",
+          padding: collapsed ? "7px 5px" : "7px 9px",
         }}
       >
         {/* New Portfolio */}
@@ -254,14 +262,14 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
               autoFocus
               style={{
                 width: "100%",
-                fontSize: 9,
-                padding: "4px 6px",
-                background: "#0D1117",
-                border: "1px solid #1A2332",
-                borderRadius: 2,
+                fontSize: 10,
+                padding: "5px 8px",
+                background: "#0B0F1A",
+                border: "1px solid #1C2840",
+                borderRadius: 3,
                 color: "#C9D1D9",
                 outline: "none",
-                marginBottom: 3,
+                marginBottom: 4,
                 fontFamily: "'Inter', system-ui, sans-serif",
               }}
             />
@@ -270,14 +278,14 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
               onChange={(e) => setNewType(e.target.value)}
               style={{
                 width: "100%",
-                fontSize: 9,
-                padding: "3px 4px",
-                background: "#0D1117",
-                border: "1px solid #1A2332",
-                borderRadius: 2,
+                fontSize: 10,
+                padding: "4px 6px",
+                background: "#0B0F1A",
+                border: "1px solid #1C2840",
+                borderRadius: 3,
                 color: "#C9D1D9",
                 outline: "none",
-                marginBottom: 3,
+                marginBottom: 4,
                 fontFamily: "'Inter', system-ui, sans-serif",
               }}
             >
@@ -292,15 +300,15 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
                 disabled={createPortfolio.isPending}
                 style={{
                   flex: 1,
-                  fontSize: 8,
-                  fontWeight: 600,
-                  padding: "3px 0",
+                  fontSize: 9,
+                  fontWeight: 700,
+                  padding: "4px 0",
                   background: "#00D9FF",
-                  color: "#080C14",
+                  color: "#040810",
                   border: "none",
-                  borderRadius: 2,
+                  borderRadius: 3,
                   cursor: "pointer",
-                  letterSpacing: 0.5,
+                  letterSpacing: 0.8,
                   textTransform: "uppercase",
                 }}
               >
@@ -313,19 +321,19 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
                   setNewName("");
                 }}
                 style={{
-                  fontSize: 8,
-                  fontWeight: 600,
-                  padding: "3px 6px",
-                  background: "#1A2332",
-                  color: "#8B949E",
+                  fontSize: 9,
+                  fontWeight: 700,
+                  padding: "4px 8px",
+                  background: "#1C2840",
+                  color: "#5A6B80",
                   border: "none",
-                  borderRadius: 2,
+                  borderRadius: 3,
                   cursor: "pointer",
-                  letterSpacing: 0.5,
+                  letterSpacing: 0.8,
                   textTransform: "uppercase",
                 }}
               >
-                X
+                ✕
               </button>
             </div>
           </form>
@@ -335,18 +343,21 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
             className="flex items-center justify-center gap-1"
             style={{
               width: "100%",
-              fontSize: 8,
+              fontSize: 9,
               fontWeight: 600,
-              padding: collapsed ? "4px 0" : "4px 0",
-              background: "#1A2332",
-              color: "#8B949E",
-              border: "none",
-              borderRadius: 2,
+              padding: "5px 0",
+              background: "#111828",
+              color: "#5A6B80",
+              border: "1px solid #1C2840",
+              borderRadius: 3,
               cursor: "pointer",
               letterSpacing: 0.8,
               textTransform: "uppercase",
-              marginBottom: 3,
+              marginBottom: 4,
+              transition: "background 0.12s, color 0.12s",
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#1A2540"; e.currentTarget.style.color = "#8B9AAB"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "#111828"; e.currentTarget.style.color = "#5A6B80"; }}
             data-testid="new-portfolio-btn"
           >
             <FolderPlus size={10} />
@@ -363,18 +374,21 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
           className="flex items-center justify-center gap-1"
           style={{
             width: "100%",
-            fontSize: 8,
+            fontSize: 9,
             fontWeight: 600,
-            padding: "4px 0",
-            background: "rgba(255, 68, 88, 0.08)",
+            padding: "5px 0",
+            background: "rgba(255, 68, 88, 0.07)",
             color: "#FF4458",
-            border: "1px solid rgba(255, 68, 88, 0.2)",
-            borderRadius: 2,
+            border: "1px solid rgba(255, 68, 88, 0.18)",
+            borderRadius: 3,
             cursor: "pointer",
             letterSpacing: 0.8,
             textTransform: "uppercase",
-            marginBottom: 3,
+            marginBottom: 4,
+            transition: "background 0.12s",
           }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255, 68, 88, 0.14)")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255, 68, 88, 0.07)")}
           data-testid="log-trade-btn"
         >
           <ArrowRightLeft size={10} />
@@ -390,17 +404,20 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
           className="flex items-center justify-center gap-1"
           style={{
             width: "100%",
-            fontSize: 8,
-            fontWeight: 600,
-            padding: "4px 0",
-            background: "rgba(0, 217, 255, 0.1)",
+            fontSize: 9,
+            fontWeight: 700,
+            padding: "5px 0",
+            background: "rgba(0, 217, 255, 0.09)",
             color: "#00D9FF",
-            border: "1px solid rgba(0, 217, 255, 0.2)",
-            borderRadius: 2,
+            border: "1px solid rgba(0, 217, 255, 0.18)",
+            borderRadius: 3,
             cursor: "pointer",
             letterSpacing: 0.8,
             textTransform: "uppercase",
+            transition: "background 0.12s",
           }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0, 217, 255, 0.16)")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0, 217, 255, 0.09)")}
           data-testid="add-position-btn"
         >
           <Plus size={10} />
@@ -416,7 +433,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
         style={{
           position: "fixed",
           inset: 0,
-          background: "rgba(8,12,20,0.85)",
+          background: "rgba(4,8,16,0.9)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",

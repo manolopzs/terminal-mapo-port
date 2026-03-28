@@ -1,6 +1,29 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Search, Loader2 } from "lucide-react";
+
+const SCORE_HISTORY_KEY = "mapo_score_history";
+
+interface ScoreHistoryEntry {
+  ticker: string;
+  score: number;
+  signal: string;
+  date: string;
+  factors: MAPOAnalysis["factors"];
+}
+
+function loadScoreHistory(): ScoreHistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(SCORE_HISTORY_KEY);
+    return raw ? (JSON.parse(raw) as ScoreHistoryEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveScoreHistory(history: ScoreHistoryEntry[]) {
+  localStorage.setItem(SCORE_HISTORY_KEY, JSON.stringify(history));
+}
 
 interface MAPOAnalysis {
   ticker: string;
@@ -22,17 +45,17 @@ interface MAPOAnalysis {
 }
 
 function scoreColor(score: number) {
-  if (score >= 80) return "#00C853";
-  if (score >= 65) return "#4CAF50";
-  if (score >= 50) return "#FFB300";
-  return "#FF4D4D";
+  if (score >= 80) return "#00E6A8";
+  if (score >= 65) return "#00E6A8";
+  if (score >= 50) return "#F0883E";
+  return "#FF4458";
 }
 
 function signalBg(signal: string) {
-  if (signal.includes("STRONG BUY")) return { bg: "rgba(0,200,83,0.1)", border: "rgba(0,200,83,0.3)", color: "#00C853" };
-  if (signal.includes("BUY")) return { bg: "rgba(76,175,80,0.1)", border: "rgba(76,175,80,0.3)", color: "#4CAF50" };
-  if (signal.includes("HOLD")) return { bg: "rgba(255,179,0,0.1)", border: "rgba(255,179,0,0.3)", color: "#FFB300" };
-  return { bg: "rgba(255,77,77,0.1)", border: "rgba(255,77,77,0.3)", color: "#FF4D4D" };
+  if (signal.includes("STRONG BUY")) return { bg: "rgba(0,230,168,0.1)", border: "rgba(0,230,168,0.25)", color: "#00E6A8" };
+  if (signal.includes("BUY")) return { bg: "rgba(0,230,168,0.07)", border: "rgba(0,230,168,0.2)", color: "#00E6A8" };
+  if (signal.includes("HOLD")) return { bg: "rgba(240,136,62,0.1)", border: "rgba(240,136,62,0.25)", color: "#F0883E" };
+  return { bg: "rgba(255,68,88,0.1)", border: "rgba(255,68,88,0.25)", color: "#FF4458" };
 }
 
 const FACTORS: { key: keyof MAPOAnalysis["factors"]; label: string; weight: number }[] = [
@@ -44,9 +67,18 @@ const FACTORS: { key: keyof MAPOAnalysis["factors"]; label: string; weight: numb
   { key: "macroFit", label: "Macro Fit", weight: 10 },
 ];
 
+const QUICK_PICKS = ["HIMS", "OKTA", "COHR", "SEZL", "PLTR", "HOOD", "NVDA", "NET", "CRWD", "APP"];
+
 export function MAPOScoreTab() {
   const [ticker, setTicker] = useState("");
   const [result, setResult] = useState<MAPOAnalysis | null>(null);
+  const [history, setHistory] = useState<string[]>([]);
+  const [scoreHistory, setScoreHistory] = useState<ScoreHistoryEntry[]>(() => loadScoreHistory());
+
+  // Persist score history whenever it changes
+  useEffect(() => {
+    saveScoreHistory(scoreHistory);
+  }, [scoreHistory]);
 
   const analyze = useMutation({
     mutationFn: async (symbol: string) => {
@@ -58,25 +90,54 @@ export function MAPOScoreTab() {
       if (!res.ok) throw new Error("Analysis failed");
       return res.json() as Promise<MAPOAnalysis>;
     },
-    onSuccess: (data) => setResult(data),
+    onSuccess: (data) => {
+      setResult(data);
+      setHistory((prev) => {
+        const updated = [data.ticker, ...prev.filter((t) => t !== data.ticker)];
+        return updated.slice(0, 6);
+      });
+      // Save to persistent score history
+      const entry: ScoreHistoryEntry = {
+        ticker: data.ticker,
+        score: data.score,
+        signal: data.signal,
+        date: new Date().toISOString(),
+        factors: data.factors,
+      };
+      setScoreHistory((prev) => {
+        // Deduplicate by ticker (keep latest), then cap at 20
+        const deduped = [entry, ...prev.filter((h) => h.ticker !== data.ticker)];
+        return deduped.slice(0, 20);
+      });
+    },
   });
+
+  function runAnalysis(sym: string) {
+    if (!sym) return;
+    setResult(null); // clear stale result immediately
+    analyze.mutate(sym);
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const sym = ticker.trim().toUpperCase();
-    if (!sym) return;
-    analyze.mutate(sym);
+    runAnalysis(ticker.trim().toUpperCase());
   }
 
   const sig = result ? signalBg(result.signal) : null;
 
+  function clearScoreHistory() {
+    setScoreHistory([]);
+  }
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+    <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
+    {/* Main analysis area */}
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {/* Search bar */}
       <div
         style={{
           padding: "12px 16px",
-          borderBottom: "1px solid #1A2332",
+          borderBottom: "1px solid #1C2840",
           flexShrink: 0,
         }}
       >
@@ -96,7 +157,7 @@ export function MAPOScoreTab() {
           <div style={{ position: "relative", flex: 1, maxWidth: 300 }}>
             <Search
               size={11}
-              color="#484F58"
+              color="#4A5A6E"
               style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)" }}
             />
             <input
@@ -105,8 +166,8 @@ export function MAPOScoreTab() {
               placeholder="Enter ticker (e.g. NVDA)"
               style={{
                 width: "100%",
-                background: "#080C14",
-                border: "1px solid #1A2332",
+                background: "#070B14",
+                border: "1px solid #1C2840",
                 borderRadius: 3,
                 padding: "7px 10px 7px 28px",
                 fontSize: 11,
@@ -129,10 +190,10 @@ export function MAPOScoreTab() {
               fontWeight: 700,
               letterSpacing: 1.5,
               textTransform: "uppercase",
-              background: analyze.isPending ? "#1A2332" : "linear-gradient(135deg, #00D9FF 0%, #0066FF 100%)",
+              background: analyze.isPending ? "#0E1828" : "linear-gradient(135deg, #00C4E8 0%, #0055DD 100%)",
               border: "none",
               borderRadius: 3,
-              color: analyze.isPending ? "#484F58" : "#080C14",
+              color: analyze.isPending ? "#4A5A6E" : "#070B14",
               fontFamily: "monospace",
               cursor: analyze.isPending ? "not-allowed" : "pointer",
             }}
@@ -156,7 +217,7 @@ export function MAPOScoreTab() {
             <div
               style={{
                 fontSize: 11,
-                color: "#484F58",
+                color: "#4A5A6E",
                 fontFamily: "monospace",
                 letterSpacing: 2,
                 textTransform: "uppercase",
@@ -165,44 +226,46 @@ export function MAPOScoreTab() {
             >
               Enter a ticker to run full MAPO 6-factor analysis
             </div>
-            <div style={{ fontSize: 9, color: "#2D3748", maxWidth: 400, margin: "0 auto", lineHeight: 1.8 }}>
-              Analysis uses: Financial Health (25%) · Valuation (20%) · Growth (20%) · Technical (15%) · Sentiment (10%) · Macro Fit (10%)
+            <div style={{ fontSize: 9, color: "#2E3E52", maxWidth: 400, margin: "0 auto", lineHeight: 1.8 }}>
+              Financial Health (25%) · Valuation (20%) · Growth (20%) · Technical (15%) · Sentiment (10%) · Macro Fit (10%)
             </div>
-            <div
-              style={{
-                marginTop: 20,
-                display: "flex",
-                justifyContent: "center",
-                gap: 10,
-                flexWrap: "wrap",
-              }}
-            >
-              {["HIMS", "OKTA", "COHR", "SEZL", "PLTR", "HOOD", "NVDA"].map((t) => (
-                <button
-                  key={t}
-                  onClick={() => { setTicker(t); analyze.mutate(t); }}
-                  style={{
-                    padding: "4px 10px",
-                    fontSize: 9,
-                    fontFamily: "monospace",
-                    background: "transparent",
-                    border: "1px solid #1A2332",
-                    borderRadius: 3,
-                    color: "#8B949E",
-                    cursor: "pointer",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "#00D9FF";
-                    e.currentTarget.style.color = "#00D9FF";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "#1A2332";
-                    e.currentTarget.style.color = "#8B949E";
-                  }}
-                >
-                  {t}
-                </button>
-              ))}
+
+            {history.length > 0 && (
+              <div style={{ marginTop: 28 }}>
+                <div style={{ fontSize: 7, color: "#4A5A6E", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace", marginBottom: 10 }}>
+                  Recent
+                </div>
+                <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
+                  {history.map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => { setTicker(t); runAnalysis(t); }}
+                      style={{ padding: "4px 10px", fontSize: 9, fontFamily: "monospace", background: "rgba(0,217,255,0.06)", border: "1px solid rgba(0,217,255,0.2)", borderRadius: 3, color: "#00D9FF", cursor: "pointer" }}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ marginTop: 20 }}>
+              <div style={{ fontSize: 7, color: "#4A5A6E", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace", marginBottom: 10 }}>
+                Quick picks
+              </div>
+              <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
+                {QUICK_PICKS.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => { setTicker(t); runAnalysis(t); }}
+                    style={{ padding: "4px 10px", fontSize: 9, fontFamily: "monospace", background: "transparent", border: "1px solid #1C2840", borderRadius: 3, color: "#8B949E", cursor: "pointer" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#00D9FF"; e.currentTarget.style.color = "#00D9FF"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#1A2332"; e.currentTarget.style.color = "#8B949E"; }}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -232,6 +295,25 @@ export function MAPOScoreTab() {
           </div>
         )}
 
+        {result && !analyze.isPending && history.length > 1 && (
+          <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+            {history.map((t) => (
+              <button
+                key={t}
+                onClick={() => { setTicker(t); runAnalysis(t); }}
+                style={{
+                  padding: "3px 10px", fontSize: 8, fontFamily: "monospace",
+                  background: t === result.ticker ? "rgba(0,217,255,0.1)" : "transparent",
+                  border: t === result.ticker ? "1px solid rgba(0,217,255,0.3)" : "1px solid #1C2840",
+                  borderRadius: 3, color: t === result.ticker ? "#00D9FF" : "#8B949E", cursor: "pointer",
+                }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
+
         {result && !analyze.isPending && (
           <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 16, maxWidth: 1100 }}>
             {/* Left: Score card */}
@@ -240,7 +322,7 @@ export function MAPOScoreTab() {
               <div
                 style={{
                   background: "#0D1117",
-                  border: "1px solid #1A2332",
+                  border: "1px solid #1C2840",
                   borderRadius: 4,
                   padding: 20,
                   marginBottom: 12,
@@ -299,7 +381,7 @@ export function MAPOScoreTab() {
               <div
                 style={{
                   background: "#0D1117",
-                  border: "1px solid #1A2332",
+                  border: "1px solid #1C2840",
                   borderRadius: 4,
                   padding: 16,
                 }}
@@ -333,7 +415,7 @@ export function MAPOScoreTab() {
                           {label}
                         </span>
                         <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <span style={{ fontSize: 7, color: "#484F58", fontFamily: "monospace" }}>
+                          <span style={{ fontSize: 7, color: "#4A5A6E", fontFamily: "monospace" }}>
                             {weight}%
                           </span>
                           <span style={{ fontSize: 9, fontWeight: 700, color, fontFamily: "monospace" }}>
@@ -364,7 +446,7 @@ export function MAPOScoreTab() {
               <div
                 style={{
                   background: "#0D1117",
-                  border: "1px solid #1A2332",
+                  border: "1px solid #1C2840",
                   borderRadius: 4,
                   padding: 16,
                 }}
@@ -380,7 +462,7 @@ export function MAPOScoreTab() {
                 <div
                   style={{
                     background: "#0D1117",
-                    border: "1px solid #1A2332",
+                    border: "1px solid #1C2840",
                     borderRadius: 4,
                     padding: 16,
                   }}
@@ -398,7 +480,7 @@ export function MAPOScoreTab() {
                 <div
                   style={{
                     background: "#0D1117",
-                    border: "1px solid #1A2332",
+                    border: "1px solid #1C2840",
                     borderRadius: 4,
                     padding: 16,
                   }}
@@ -419,7 +501,7 @@ export function MAPOScoreTab() {
               <div
                 style={{
                   background: "#0D1117",
-                  border: "1px solid #1A2332",
+                  border: "1px solid #1C2840",
                   borderRadius: 4,
                   padding: 16,
                 }}
@@ -437,6 +519,104 @@ export function MAPOScoreTab() {
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
+    </div>
+
+    {/* History side panel — only when there's history */}
+    {scoreHistory.length > 0 && (
+      <div
+        data-mapo="history-panel"
+        style={{
+          width: 200,
+          flexShrink: 0,
+          borderLeft: "1px solid #1C2840",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            padding: "8px 10px",
+            borderBottom: "1px solid #1C2840",
+            fontSize: 7,
+            fontWeight: 700,
+            letterSpacing: 2,
+            textTransform: "uppercase",
+            color: "#4A5A6E",
+            fontFamily: "monospace",
+            flexShrink: 0,
+          }}
+        >
+          History
+        </div>
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          {scoreHistory.map((h) => {
+            const sc = scoreColor(h.score);
+            const sig = signalBg(h.signal);
+            const dateStr = new Date(h.date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+            return (
+              <button
+                key={h.ticker + h.date}
+                data-mapo={`history-row-${h.ticker}`}
+                onClick={() => { setTicker(h.ticker); runAnalysis(h.ticker); }}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 3,
+                  padding: "8px 10px",
+                  background: "transparent",
+                  border: "none",
+                  borderBottom: "1px solid #0D1117",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.02)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontWeight: 700, fontFamily: "monospace", fontSize: 10, color: "#C9D1D9" }}>
+                    {h.ticker}
+                  </span>
+                  <span style={{ fontWeight: 700, fontFamily: "monospace", fontSize: 11, color: sc }}>
+                    {h.score}
+                  </span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 7, color: sig.color, fontFamily: "monospace", letterSpacing: 0.5 }}>
+                    {h.signal}
+                  </span>
+                  <span style={{ fontSize: 7, color: "#4A5A6E", fontFamily: "monospace" }}>
+                    {dateStr}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <button
+          data-mapo="btn-clear-history"
+          onClick={clearScoreHistory}
+          style={{
+            padding: "7px 10px",
+            fontSize: 7,
+            letterSpacing: 1.2,
+            textTransform: "uppercase",
+            fontFamily: "monospace",
+            background: "transparent",
+            border: "none",
+            borderTop: "1px solid #1C2840",
+            color: "#4A5A6E",
+            cursor: "pointer",
+            flexShrink: 0,
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#FF4D4D"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "#4A5A6E"; }}
+        >
+          Clear History
+        </button>
+      </div>
+    )}
     </div>
   );
 }
