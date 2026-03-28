@@ -8,6 +8,12 @@ export function TradeHistory({ portfolioId }: { portfolioId: string }) {
     (a, b) => b.date.localeCompare(a.date)
   );
 
+  const totalRealizedPnl = (trades ?? [])
+    .filter(t => t.pnl != null)
+    .reduce((sum, t) => sum + (t.pnl ?? 0), 0);
+
+  const hasPnl = (trades ?? []).some(t => t.pnl != null);
+
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: "#0D1117" }}>
       <div
@@ -25,9 +31,23 @@ export function TradeHistory({ portfolioId }: { portfolioId: string }) {
         >
           Trade History
         </span>
-        <span style={{ fontSize: 9, color: "#58A6FF" }}>
-          {sortedTrades.length} TRADES
-        </span>
+        <div className="flex items-center gap-3">
+          {hasPnl && (
+            <span
+              className="font-mono tabular-nums"
+              style={{
+                fontSize: 9,
+                fontWeight: 700,
+                color: totalRealizedPnl >= 0 ? "#00E6A8" : "#FF4458",
+              }}
+            >
+              REALIZED {totalRealizedPnl >= 0 ? "+" : ""}${totalRealizedPnl.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          )}
+          <span style={{ fontSize: 9, color: "#58A6FF" }}>
+            {sortedTrades.length} TRADES
+          </span>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
         <table className="w-full" style={{ fontSize: 10 }}>

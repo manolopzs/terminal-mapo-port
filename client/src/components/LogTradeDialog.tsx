@@ -70,16 +70,15 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
       },
       {
         onSuccess: () => {
-          // Update or remove the holding
           if (action === "SELL" && matchedHolding) {
             if (isFullExit) {
-              // Full exit — remove holding
               deleteHolding.mutate(matchedHolding.id);
             } else {
-              // Partial sell — reduce quantity and cost basis proportionally
+              // Partial sell — subtract sold shares' cost using avg cost per share
+              // (avoids floating point drift from proportional multiply)
+              const avgCostPerShare = matchedHolding.costBasis / matchedHolding.quantity;
               const newQty = matchedHolding.quantity - sharesNum;
-              const costRatio = newQty / matchedHolding.quantity;
-              const newCost = matchedHolding.costBasis * costRatio;
+              const newCost = avgCostPerShare * newQty;
               const newValue = newQty * priceNum;
               updateHolding.mutate({
                 id: matchedHolding.id,
@@ -93,6 +92,22 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
                 },
               });
             }
+          } else if (action === "BUY" && matchedHolding) {
+            // Add-on buy — update holding with new avg cost
+            const newQty = matchedHolding.quantity + sharesNum;
+            const newCost = matchedHolding.costBasis + total;
+            const newValue = newQty * priceNum;
+            updateHolding.mutate({
+              id: matchedHolding.id,
+              data: {
+                quantity: newQty,
+                costBasis: newCost,
+                value: newValue,
+                price: priceNum,
+                gainLoss: newValue - newCost,
+                gainLossPct: newCost > 0 ? ((newValue - newCost) / newCost) * 100 : 0,
+              },
+            });
           }
           onOpenChange(false);
           resetForm();
