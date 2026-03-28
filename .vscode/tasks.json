@@ -1,0 +1,91 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "🖥 FRONTEND Agent",
+      "type": "shell",
+      "command": "claude",
+      "args": ["--add-dir", "/Users/manuelpozas/mapo-terminal/client/src"],
+      "options": {
+        "cwd": "/Users/manuelpozas/mapo-terminal",
+        "env": {
+          "MAPO_DOMAIN": "FRONTEND"
+        }
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "group": "mapo-agents"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "⚙ BACKEND Agent",
+      "type": "shell",
+      "command": "claude",
+      "args": ["--add-dir", "/Users/manuelpozas/mapo-terminal/server", "--add-dir", "/Users/manuelpozas/mapo-terminal/api"],
+      "options": {
+        "cwd": "/Users/manuelpozas/mapo-terminal",
+        "env": {
+          "MAPO_DOMAIN": "BACKEND"
+        }
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "group": "mapo-agents"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🎨 UI-EXPERIENCE Agent",
+      "type": "shell",
+      "command": "claude",
+      "args": ["--add-dir", "/Users/manuelpozas/mapo-terminal/client/src"],
+      "options": {
+        "cwd": "/Users/manuelpozas/mapo-terminal",
+        "env": {
+          "MAPO_DOMAIN": "UI_EXPERIENCE"
+        }
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "group": "mapo-agents"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🚀 Dev Server",
+      "type": "shell",
+      "command": "export $(cat .env | xargs) && npm run dev",
+      "options": {
+        "cwd": "/Users/manuelpozas/mapo-terminal"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "🏗 ALL AGENTS + DEV SERVER",
+      "dependsOn": [
+        "🖥 FRONTEND Agent",
+        "⚙ BACKEND Agent",
+        "🎨 UI-EXPERIENCE Agent",
+        "🚀 Dev Server"
+      ],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    }
+  ]
+}
