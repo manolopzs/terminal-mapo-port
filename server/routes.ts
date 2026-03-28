@@ -641,5 +641,97 @@ INSTRUCTIONS:
     }
   });
 
+  // ====== MARKET QUOTES (for MarketTab + ScreenerTab) ======
+  app.get("/api/market/quotes", async (req, res) => {
+    try {
+      const symbolsParam = req.query.symbols as string;
+      if (!symbolsParam) return res.json({});
+      const symbols = symbolsParam.split(",").map(s => s.trim().toUpperCase()).filter(Boolean).slice(0, 40);
+      const quotes = await fetchLiveQuotes(symbols);
+      // Return as a Record<symbol, quote>
+      const result: Record<string, any> = {};
+      for (const q of quotes) {
+        result[q.symbol] = {
+          c: q.price,
+          d: q.change,
+          dp: q.changesPercentage,
+          h: q.dayHigh ?? 0,
+          l: q.dayLow ?? 0,
+          o: 0,
+          pc: q.previousClose ?? 0,
+        };
+      }
+      res.json(result);
+    } catch (error) {
+      console.error("Market quotes error:", error);
+      res.json({});
+    }
+  });
+
+  // ====== MAPO FULL 6-FACTOR SCORE ======
+  app.post("/api/mapo-score", async (req, res) => {
+    try {
+      const { ticker } = req.body;
+      if (!ticker || typeof ticker !== "string") {
+        return res.status(400).json({ error: "ticker required" });
+      }
+      const sym = ticker.toUpperCase().trim();
+
+      // Fetch a live quote for context
+      const quotes = await fetchLiveQuotes([sym]);
+      const q = quotes[0];
+      const priceCtx = q
+        ? `Current price: $${q.price.toFixed(2)}, Day change: ${q.changesPercentage >= 0 ? "+" : ""}${q.changesPercentage.toFixed(2)}%`
+        : "Live price not available";
+
+      const mapoPrompt = `You are the MAPO Portfolio Analyst v4.0. Analyze ${sym} using the MAPO 6-Factor scoring framework and return ONLY valid JSON matching this exact schema:
+
+{
+  "ticker": "${sym}",
+  "score": <integer 0-100>,
+  "factors": {
+    "financialHealth": <integer 0-100>,
+    "valuation": <integer 0-100>,
+    "growth": <integer 0-100>,
+    "technical": <integer 0-100>,
+    "sentiment": <integer 0-100>,
+    "macroFit": <integer 0-100>
+  },
+  "signal": "<STRONG BUY | BUY | HOLD | AVOID>",
+  "thesis": "<2-3 sentence investment thesis>",
+  "risks": ["<risk 1>", "<risk 2>", "<risk 3>"],
+  "catalysts": ["<catalyst 1>", "<catalyst 2>", "<catalyst 3>"],
+  "entryNote": "<specific entry/action note with price levels if applicable>"
+}
+
+Factor weights: Financial Health (25%), Valuation (20%), Growth (20%), Technical (15%), Sentiment (10%), Macro Fit (10%).
+Overall score = weighted average of factors.
+Signals: 80-100 = STRONG BUY, 65-79 = BUY, 50-64 = HOLD, <50 = AVOID.
+
+Market context: ${priceCtx}
+
+EXCLUSION LIST (auto score <30): BMNR, UP, MP, CLSK, NBIS, AMD, TE, IREN, IBIT
+
+Return ONLY the JSON object, no markdown, no explanation.`;
+
+      const response = await anthropic.messages.create({
+        model: "claude-opus-4-6",
+        max_tokens: 1024,
+        messages: [{ role: "user", content: mapoPrompt }],
+      });
+
+      const text = response.content[0].type === "text" ? response.content[0].text : "{}";
+      // Extract JSON — strip any accidental markdown
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) return res.status(500).json({ error: "Invalid AI response" });
+      const parsed = JSON.parse(jsonMatch[0]);
+
+      res.json({ ...parsed, rawResponse: text });
+    } catch (error) {
+      console.error("MAPO score error:", error);
+      res.status(500).json({ error: "Failed to compute MAPO score" });
+    }
+  });
+
   return httpServer;
 }

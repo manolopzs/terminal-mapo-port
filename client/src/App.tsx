@@ -6,34 +6,38 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/Dashboard";
 import NotFound from "@/pages/not-found";
-import { useEffect } from "react";
+import Login from "@/pages/Login";
+import { isAuthenticated } from "@/lib/auth";
+import { useState, useEffect } from "react";
 
 function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    // Default to dark mode for terminal aesthetic
     document.documentElement.classList.add("dark");
   }, []);
-
   return <>{children}</>;
 }
 
-function AppRouter() {
-  return (
-    <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route component={NotFound} />
-    </Switch>
-  );
-}
-
 function App() {
+  const [authed, setAuthed] = useState(isAuthenticated());
+
+  if (!authed) {
+    return (
+      <ThemeProvider>
+        <Login onSuccess={() => setAuthed(true)} />
+      </ThemeProvider>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
           <Toaster />
           <Router hook={useHashLocation}>
-            <AppRouter />
+            <Switch>
+              <Route path="/" component={Dashboard} />
+              <Route component={NotFound} />
+            </Switch>
           </Router>
         </TooltipProvider>
       </ThemeProvider>

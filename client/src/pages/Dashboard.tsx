@@ -19,9 +19,22 @@ import { TradeHistory } from "@/components/TradeHistory";
 import { AIAnalyst } from "@/components/AIAnalyst";
 import { AddPositionDialog } from "@/components/AddPositionDialog";
 import { LogTradeDialog } from "@/components/LogTradeDialog";
+import { MarketTab } from "@/pages/MarketTab";
+import { ScreenerTab } from "@/pages/ScreenerTab";
+import { MAPOScoreTab } from "@/pages/MAPOScoreTab";
 import { useHoldings, usePortfolios, useSummary, useLiveQuotes, useLiveEarnings, useLiveSentiment, useLiveNews, useAnalytics } from "@/hooks/use-portfolio";
 import { queryClient } from "@/lib/queryClient";
-import { Loader2, Bot } from "lucide-react";
+import { Loader2, Bot, LogOut } from "lucide-react";
+import { logout } from "@/lib/auth";
+
+type TabId = "PORTFOLIO" | "MARKET" | "SCREENER" | "MAPO";
+
+const TABS: { id: TabId; label: string }[] = [
+  { id: "PORTFOLIO", label: "PORTFOLIO" },
+  { id: "MARKET", label: "MARKET" },
+  { id: "SCREENER", label: "SCREENER" },
+  { id: "MAPO", label: "MAPO SCORE" },
+];
 
 export default function Dashboard() {
   const [activePortfolioId, setActivePortfolioId] = useState<string>("");
@@ -29,6 +42,7 @@ export default function Dashboard() {
   const [logTradeOpen, setLogTradeOpen] = useState(false);
   const [analystOpen, setAnalystOpen] = useState(false);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabId>("PORTFOLIO");
 
   // Safety timeout: if loading takes >8s, show dashboard anyway
   useEffect(() => {
@@ -135,11 +149,94 @@ export default function Dashboard() {
         {/* Markets ticker tape */}
         <TickerTape />
 
-        {/* 4-column grid — fills remaining space */}
+        {/* Bloomberg-style tab bar */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "stretch",
+            borderBottom: "1px solid #1A2332",
+            background: "#080C14",
+            flexShrink: 0,
+          }}
+        >
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: "7px 18px",
+                fontSize: 9,
+                fontWeight: 700,
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                fontFamily: "monospace",
+                background: "transparent",
+                border: "none",
+                borderBottom: activeTab === tab.id ? "2px solid #00D9FF" : "2px solid transparent",
+                color: activeTab === tab.id ? "#00D9FF" : "#484F58",
+                cursor: "pointer",
+                transition: "all 0.15s",
+                marginBottom: -1,
+              }}
+              onMouseEnter={(e) => {
+                if (activeTab !== tab.id) e.currentTarget.style.color = "#8B949E";
+              }}
+              onMouseLeave={(e) => {
+                if (activeTab !== tab.id) e.currentTarget.style.color = "#484F58";
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+          {/* Spacer + logout */}
+          <div style={{ flex: 1 }} />
+          <button
+            onClick={() => { logout(); window.location.reload(); }}
+            style={{
+              padding: "7px 14px",
+              fontSize: 8,
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              fontFamily: "monospace",
+              background: "transparent",
+              border: "none",
+              color: "#2D3748",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              transition: "color 0.15s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#FF4D4D")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "#2D3748")}
+          >
+            <LogOut size={10} />
+            Logout
+          </button>
+        </div>
+
+        {/* Tab content */}
+        {activeTab === "MARKET" && (
+          <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+            <MarketTab />
+          </div>
+        )}
+        {activeTab === "SCREENER" && (
+          <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+            <ScreenerTab />
+          </div>
+        )}
+        {activeTab === "MAPO" && (
+          <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+            <MAPOScoreTab />
+          </div>
+        )}
+
+        {/* Portfolio tab — 4-column grid */}
         <div
           className="flex-1 overflow-hidden"
           style={{
-            display: "grid",
+            display: activeTab === "PORTFOLIO" ? "grid" : "none",
             gridTemplateColumns: "1.1fr 1.4fr 1fr 1fr",
             gridTemplateRows: "1fr 1fr",
             gap: 0,
@@ -211,8 +308,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* News ticker at bottom */}
-        <NewsTicker holdings={holdingsData} liveNews={liveNews} />
+        {/* News ticker at bottom — only on portfolio tab */}
+        {activeTab === "PORTFOLIO" && <NewsTicker holdings={holdingsData} liveNews={liveNews} />}
       </div>
 
       {/* AI Analyst FAB */}
