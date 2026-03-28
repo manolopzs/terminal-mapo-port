@@ -232,7 +232,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
                     opacity: 0.5,
                     flexShrink: 0,
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "#FF4D4D"; e.currentTarget.style.opacity = "1"; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "#FF4458"; e.currentTarget.style.opacity = "1"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.color = "#8B949E"; e.currentTarget.style.opacity = "0.5"; }}
                   data-testid={`delete-portfolio-${p.id}`}
                 >
@@ -444,19 +444,19 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
       >
         <div
           style={{
-            background: "#0D1117",
-            border: "1px solid #FF4D4D",
+            background: "#0B0F1A",
+            border: "1px solid #FF4458",
             borderRadius: 4,
             padding: 24,
             width: 340,
-            boxShadow: "0 0 40px rgba(255,77,77,0.15)",
+            boxShadow: "0 0 40px rgba(255,68,88,0.15)",
           }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-            <Trash2 size={13} color="#FF4D4D" />
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#FF4D4D", fontFamily: "monospace" }}>
+            <Trash2 size={13} color="#FF4458" />
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#FF4458", fontFamily: "monospace" }}>
               Delete Portfolio
             </span>
           </div>
@@ -464,7 +464,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
           {/* Warning text */}
           <div style={{ marginBottom: 6 }}>
             <span style={{ fontSize: 10, color: "#C9D1D9" }}>You are about to permanently delete </span>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "#FF4D4D", fontFamily: "monospace" }}>"{confirmDelete.name}"</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "#FF4458", fontFamily: "monospace" }}>"{confirmDelete.name}"</span>
             <span style={{ fontSize: 10, color: "#C9D1D9" }}>.</span>
           </div>
           <div style={{ fontSize: 9, color: "#8B949E", marginBottom: 20, lineHeight: 1.6 }}>
@@ -474,7 +474,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
           {/* Type to confirm */}
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", fontSize: 8, color: "#8B949E", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace", marginBottom: 6 }}>
-              Type <span style={{ color: "#FF4D4D" }}>delete</span> to confirm
+              Type <span style={{ color: "#FF4458" }}>delete</span> to confirm
             </label>
             <input
               autoFocus
@@ -484,8 +484,8 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
               placeholder="delete"
               style={{
                 width: "100%",
-                background: "#080C14",
-                border: `1px solid ${confirmInput.toLowerCase() === "delete" ? "#FF4D4D" : "#1A2332"}`,
+                background: "#070B14",
+                border: `1px solid ${confirmInput.toLowerCase() === "delete" ? "#FF4458" : "#1C2840"}`,
                 borderRadius: 3,
                 padding: "7px 10px",
                 fontSize: 11,
@@ -510,7 +510,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
                 letterSpacing: 1.5,
                 textTransform: "uppercase",
                 background: "transparent",
-                border: "1px solid #1A2332",
+                border: "1px solid #1C2840",
                 borderRadius: 3,
                 color: "#8B949E",
                 fontFamily: "monospace",
@@ -529,10 +529,10 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
                 fontWeight: 700,
                 letterSpacing: 1.5,
                 textTransform: "uppercase",
-                background: confirmInput.toLowerCase() === "delete" ? "rgba(255,77,77,0.15)" : "#0D1117",
-                border: `1px solid ${confirmInput.toLowerCase() === "delete" ? "#FF4D4D" : "#2D3748"}`,
+                background: confirmInput.toLowerCase() === "delete" ? "rgba(255,68,88,0.15)" : "#0B0F1A",
+                border: `1px solid ${confirmInput.toLowerCase() === "delete" ? "#FF4458" : "#2E3E52"}`,
                 borderRadius: 3,
-                color: confirmInput.toLowerCase() === "delete" ? "#FF4D4D" : "#2D3748",
+                color: confirmInput.toLowerCase() === "delete" ? "#FF4458" : "#2E3E52",
                 fontFamily: "monospace",
                 cursor: confirmInput.toLowerCase() === "delete" ? "pointer" : "not-allowed",
                 transition: "all 0.15s",

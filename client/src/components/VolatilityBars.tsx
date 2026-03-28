@@ -48,7 +48,7 @@ export function VolatilityBars({ holdings, volatilityData }: VolatilityBarsProps
               <span className="font-mono" style={{ fontSize: 8, fontWeight: 600, color: "#00D9FF", width: 36, textAlign: "right", flexShrink: 0 }}>
                 {d.ticker}
               </span>
-              <div style={{ flex: 1, height: 8, background: "#1A2332", borderRadius: 1 }}>
+              <div style={{ flex: 1, height: 8, background: "#1C2840", borderRadius: 1 }}>
                 <div style={{ width: `${pct}%`, height: "100%", background: `linear-gradient(90deg, ${color}44, ${color})`, borderRadius: 1 }} />
               </div>
               <span className="font-mono tabular-nums" style={{ fontSize: 8, color: color, width: 30, textAlign: "right", flexShrink: 0 }}>

@@ -36,7 +36,7 @@ export function CorrelationMatrix({ holdings, correlationData, top6Tickers }: Co
 
   if (tickers.length < 2) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", flex: "1 1 0", minHeight: 0, background: "#0D1117" }}>
+      <div style={{ display: "flex", flexDirection: "column", flex: "1 1 0", minHeight: 0, background: "#0B0F1A" }}>
         <div className="terminal-panel-header" style={{ flexShrink: 0 }}>
           <span className="terminal-panel-title">Correlation Matrix</span>
           <span className="terminal-badge">PRICE-BASED</span>
@@ -50,7 +50,7 @@ export function CorrelationMatrix({ holdings, correlationData, top6Tickers }: Co
 
   if (!matrix) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", flex: "1 1 0", minHeight: 0, background: "#0D1117" }}>
+      <div style={{ display: "flex", flexDirection: "column", flex: "1 1 0", minHeight: 0, background: "#0B0F1A" }}>
         <div className="terminal-panel-header" style={{ flexShrink: 0 }}>
           <span className="terminal-panel-title">Correlation Matrix</span>
           <span className="terminal-badge">PRICE-BASED</span>
@@ -63,7 +63,7 @@ export function CorrelationMatrix({ holdings, correlationData, top6Tickers }: Co
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", flex: "1 1 0", minHeight: 0, background: "#0D1117" }}>
+    <div style={{ display: "flex", flexDirection: "column", flex: "1 1 0", minHeight: 0, background: "#0B0F1A" }}>
       <div className="terminal-panel-header" style={{ flexShrink: 0 }}>
         <span className="terminal-panel-title">Correlation Matrix</span>
         <span className="terminal-badge">PRICE-BASED</span>
@@ -87,7 +87,7 @@ export function CorrelationMatrix({ holdings, correlationData, top6Tickers }: Co
                   {rowT}
                 </td>
                 {matrix[ri].map((val, ci) => (
-                  <td key={ci} className="font-mono tabular-nums" style={{ fontSize: 8, fontWeight: 500, color: getTextColor(val), background: getCellColor(val), textAlign: "center", padding: "3px 1px", border: "1px solid #0D1117", width: 38, height: 24 }}>
+                  <td key={ci} className="font-mono tabular-nums" style={{ fontSize: 8, fontWeight: 500, color: getTextColor(val), background: getCellColor(val), textAlign: "center", padding: "3px 1px", border: "1px solid #0B0F1A", width: 38, height: 24 }}>
                     {val.toFixed(2)}
                   </td>
                 ))}

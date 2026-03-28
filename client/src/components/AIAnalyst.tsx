@@ -117,7 +117,7 @@ export function AIAnalyst({ portfolioId, open, onClose }: AIAnalystProps) {
             alignItems: "center",
             justifyContent: "space-between",
             padding: "16px 20px",
-            borderBottom: "1px solid #1A2332",
+            borderBottom: "1px solid #1C2840",
             flexShrink: 0,
           }}
         >
@@ -166,7 +166,7 @@ export function AIAnalyst({ portfolioId, open, onClose }: AIAnalystProps) {
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 data-testid="button-clear-chat"
               >
-                <Trash2 size={15} color="#484F58" />
+                <Trash2 size={15} color="#4A5A6E" />
               </button>
             )}
             <button
@@ -188,7 +188,7 @@ export function AIAnalyst({ portfolioId, open, onClose }: AIAnalystProps) {
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
               data-testid="button-close-chat"
             >
-              <X size={16} color="#484F58" />
+              <X size={16} color="#4A5A6E" />
             </button>
           </div>
         </div>
@@ -200,12 +200,12 @@ export function AIAnalyst({ portfolioId, open, onClose }: AIAnalystProps) {
             alignItems: "center",
             gap: 6,
             padding: "8px 20px",
-            borderBottom: "1px solid #1A2332",
+            borderBottom: "1px solid #1C2840",
             flexShrink: 0,
             background: "#0A0E16",
           }}
         >
-          <span style={{ fontSize: 10, color: "#484F58", textTransform: "uppercase", letterSpacing: 0.8, marginRight: 4, fontWeight: 500 }}>Model</span>
+          <span style={{ fontSize: 10, color: "#4A5A6E", textTransform: "uppercase", letterSpacing: 0.8, marginRight: 4, fontWeight: 500 }}>Model</span>
           {AI_MODELS.map((m) => {
             const active = selectedModel === m.key;
             return (
@@ -251,7 +251,7 @@ export function AIAnalyst({ portfolioId, open, onClose }: AIAnalystProps) {
                 </span>
                 <span style={{
                   fontSize: 10,
-                  color: active ? "#8B949E" : "#484F58",
+                  color: active ? "#8B949E" : "#4A5A6E",
                   whiteSpace: "nowrap",
                 }}>
                   {m.sub}
@@ -295,7 +295,7 @@ export function AIAnalyst({ portfolioId, open, onClose }: AIAnalystProps) {
                 <div style={{ fontSize: 16, fontWeight: 600, color: "#E6EDF3", marginBottom: 6 }}>
                   How can I help?
                 </div>
-                <div style={{ fontSize: 13, color: "#484F58", lineHeight: 1.5, maxWidth: 280 }}>
+                <div style={{ fontSize: 13, color: "#4A5A6E", lineHeight: 1.5, maxWidth: 280 }}>
                   Ask about your portfolio, get scoring analysis, risk alerts, or rebalancing recommendations.
                 </div>
               </div>
@@ -318,8 +318,8 @@ export function AIAnalyst({ portfolioId, open, onClose }: AIAnalystProps) {
                       gap: 8,
                       padding: "12px 14px",
                       borderRadius: 10,
-                      border: "1px solid #1A2332",
-                      background: "#0D1117",
+                      border: "1px solid #1C2840",
+                      background: "#0B0F1A",
                       cursor: sendMessage.isPending ? "default" : "pointer",
                       textAlign: "left",
                       transition: "all 0.15s",
@@ -332,8 +332,8 @@ export function AIAnalyst({ portfolioId, open, onClose }: AIAnalystProps) {
                       }
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "#1A2332";
-                      e.currentTarget.style.background = "#0D1117";
+                      e.currentTarget.style.borderColor = "#1C2840";
+                      e.currentTarget.style.background = "#0B0F1A";
                     }}
                     data-testid={`button-quick-${label.replace(/\s+/g, "-").toLowerCase()}`}
                   >
@@ -368,7 +368,7 @@ export function AIAnalyst({ portfolioId, open, onClose }: AIAnalystProps) {
                 <span className="analyst-dot analyst-dot-2" />
                 <span className="analyst-dot analyst-dot-3" />
               </div>
-              <span style={{ fontSize: 12, color: "#484F58" }}>
+              <span style={{ fontSize: 12, color: "#4A5A6E" }}>
                 Analyzing...
               </span>
               <style>{`
@@ -410,20 +410,20 @@ export function AIAnalyst({ portfolioId, open, onClose }: AIAnalystProps) {
         <div style={{
           flexShrink: 0,
           padding: "12px 20px 16px",
-          borderTop: "1px solid #1A2332",
+          borderTop: "1px solid #1C2840",
         }}>
           <div style={{
             display: "flex",
             alignItems: "flex-end",
             gap: 8,
-            background: "#0D1117",
-            border: "1px solid #1A2332",
+            background: "#0B0F1A",
+            border: "1px solid #1C2840",
             borderRadius: 12,
             padding: "10px 12px 10px 16px",
             transition: "border-color 0.15s",
           }}
           onFocus={(e) => (e.currentTarget.style.borderColor = "#2D333B")}
-          onBlur={(e) => (e.currentTarget.style.borderColor = "#1A2332")}
+          onBlur={(e) => (e.currentTarget.style.borderColor = "#1C2840")}
           >
             <textarea
               ref={inputRef}
@@ -466,7 +466,7 @@ export function AIAnalyst({ portfolioId, open, onClose }: AIAnalystProps) {
             >
               <Send
                 size={15}
-                color={input.trim() ? "#080C14" : "#2D333B"}
+                color={input.trim() ? "#070B14" : "#2D333B"}
               />
             </button>
           </div>
@@ -490,7 +490,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           maxWidth: "80%",
           padding: "10px 14px",
           borderRadius: "14px 14px 4px 14px",
-          background: "#1A2332",
+          background: "#1C2840",
           fontSize: 13,
           lineHeight: 1.6,
           color: "#E6EDF3",
@@ -540,10 +540,10 @@ function formatMarkdown(text: string) {
   html = html.replace(/^## (.+)$/gm, '<div style="font-size:14px;font-weight:600;color:#E6EDF3;margin:18px 0 8px;letter-spacing:-0.2px">$1</div>');
 
   // List items
-  html = html.replace(/^[-•] (.+)$/gm, '<div style="padding-left:16px;position:relative;margin:3px 0"><span style="position:absolute;left:0;color:#484F58">•</span>$1</div>');
+  html = html.replace(/^[-•] (.+)$/gm, '<div style="padding-left:16px;position:relative;margin:3px 0"><span style="position:absolute;left:0;color:#4A5A6E">•</span>$1</div>');
 
   // Numbered list
-  html = html.replace(/^(\d+)\. (.+)$/gm, '<div style="padding-left:20px;position:relative;margin:3px 0"><span style="position:absolute;left:0;color:#484F58;font-size:12px;font-weight:500">$1.</span>$2</div>');
+  html = html.replace(/^(\d+)\. (.+)$/gm, '<div style="padding-left:20px;position:relative;margin:3px 0"><span style="position:absolute;left:0;color:#4A5A6E;font-size:12px;font-weight:500">$1.</span>$2</div>');
 
   // Simple table rows
   html = html.replace(
@@ -551,12 +551,12 @@ function formatMarkdown(text: string) {
     (match) => {
       const cells = match.split("|").filter(Boolean).map((c) => c.trim());
       if (cells.every((c) => /^[-:]+$/.test(c))) return "";
-      return `<div style="display:flex;gap:12px;font-family:JetBrains Mono,monospace;font-size:11px;padding:3px 0;border-bottom:1px solid #1A2332">${cells.map((c) => `<span style="flex:1;color:#8B949E">${c}</span>`).join("")}</div>`;
+      return `<div style="display:flex;gap:12px;font-family:JetBrains Mono,monospace;font-size:11px;padding:3px 0;border-bottom:1px solid #1C2840">${cells.map((c) => `<span style="flex:1;color:#8B949E">${c}</span>`).join("")}</div>`;
     }
   );
 
   // Horizontal rule
-  html = html.replace(/^---$/gm, '<div style="border-top:1px solid #1A2332;margin:12px 0"></div>');
+  html = html.replace(/^---$/gm, '<div style="border-top:1px solid #1C2840;margin:12px 0"></div>');
 
   return html;
 }

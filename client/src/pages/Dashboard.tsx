@@ -323,7 +323,7 @@ export default function Dashboard() {
           {/* Col 4, Row 2: Top Movers + Gain/Loss */}
           <div className="flex flex-col" style={{ borderTop: "1px solid #1C2840", overflow: "hidden" }}>
             <div style={{ flex: "0 0 auto", maxHeight: "45%", overflow: "hidden" }}>
-              <TopMovers holdings={holdingsData} />
+              <TopMovers holdings={holdingsData} portfolioId={activePortfolioId} />
             </div>
             <div style={{ flex: 1, overflow: "auto", borderTop: "1px solid #1C2840", minHeight: 0 }}>
               <GainLossTable holdings={holdingsData} />

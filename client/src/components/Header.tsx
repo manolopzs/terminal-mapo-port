@@ -79,7 +79,7 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
     <div
       className="flex items-center justify-between px-4 flex-shrink-0 terminal-chrome-top"
       style={{
-        background: "#080C14",
+        background: "#070B14",
         borderBottom: "1px solid #1C2840",
         height: 56,
         minHeight: 56,

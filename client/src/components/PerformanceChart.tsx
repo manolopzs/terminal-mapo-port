@@ -37,8 +37,8 @@ function CustomTooltip({ active, payload, label }: any) {
   return (
     <div
       style={{
-        background: "#0D1117",
-        border: "1px solid #1A2332",
+        background: "#0B0F1A",
+        border: "1px solid #1C2840",
         borderRadius: 6,
         padding: "8px 12px",
         fontSize: 11,
@@ -107,7 +107,7 @@ export function PerformanceChart({ portfolioId }: PerformanceChartProps) {
         <span className="terminal-badge">LAST 30 TRADING DAYS</span>
       </div>
       {/* Legend */}
-      <div className="flex items-center gap-4 px-2" style={{ height: 22, borderBottom: "1px solid #1A2332" }}>
+      <div className="flex items-center gap-4 px-2" style={{ height: 22, borderBottom: "1px solid #1C2840" }}>
         <div className="flex items-center gap-1">
           <div style={{ width: 14, height: 2, background: "#00D9FF", borderRadius: 1 }} />
           <span style={{ fontSize: 9, color: "#C9D1D9", fontWeight: 500 }}>Portfolio</span>
@@ -139,23 +139,23 @@ export function PerformanceChart({ portfolioId }: PerformanceChartProps) {
       <div style={{ flex: 1, minHeight: 0 }}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 10, right: 8, bottom: 4, left: -8 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1A2332" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#1C2840" vertical={false} />
             <XAxis
               dataKey="date"
               tick={{ fontSize: 9, fill: "#8B949E" }}
-              axisLine={{ stroke: "#1A2332" }}
+              axisLine={{ stroke: "#1C2840" }}
               tickLine={false}
               interval={tickInterval}
               tickFormatter={formatDateLabel}
             />
             <YAxis
               tick={{ fontSize: 9, fill: "#8B949E" }}
-              axisLine={{ stroke: "#1A2332" }}
+              axisLine={{ stroke: "#1C2840" }}
               tickLine={false}
               tickFormatter={(v: number) => `${v >= 0 ? "+" : ""}${v}%`}
               domain={["auto", "auto"]}
             />
-            <ReferenceLine y={0} stroke="#1A2332" strokeWidth={1} />
+            <ReferenceLine y={0} stroke="#1C2840" strokeWidth={1} />
             <Tooltip content={<CustomTooltip />} />
             <Area
               type="monotone"
@@ -164,7 +164,7 @@ export function PerformanceChart({ portfolioId }: PerformanceChartProps) {
               strokeWidth={2}
               fill="rgba(0, 217, 255, 0.06)"
               dot={false}
-              activeDot={{ r: 3, fill: "#00D9FF", stroke: "#0D1117", strokeWidth: 1 }}
+              activeDot={{ r: 3, fill: "#00D9FF", stroke: "#0B0F1A", strokeWidth: 1 }}
             />
             <Line
               type="monotone"
@@ -173,7 +173,7 @@ export function PerformanceChart({ portfolioId }: PerformanceChartProps) {
               strokeWidth={1.5}
               strokeDasharray="5 3"
               dot={false}
-              activeDot={{ r: 3, fill: "#F0883E", stroke: "#0D1117", strokeWidth: 1 }}
+              activeDot={{ r: 3, fill: "#F0883E", stroke: "#0B0F1A", strokeWidth: 1 }}
             />
             <Line
               type="monotone"
@@ -182,7 +182,7 @@ export function PerformanceChart({ portfolioId }: PerformanceChartProps) {
               strokeWidth={1.5}
               strokeDasharray="5 3"
               dot={false}
-              activeDot={{ r: 3, fill: "#A371F7", stroke: "#0D1117", strokeWidth: 1 }}
+              activeDot={{ r: 3, fill: "#A371F7", stroke: "#0B0F1A", strokeWidth: 1 }}
             />
           </ComposedChart>
         </ResponsiveContainer>

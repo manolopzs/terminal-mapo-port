@@ -115,8 +115,8 @@ export function PortfolioHealth({ portfolioId }: { portfolioId: string }) {
   return (
     <div
       style={{
-        background: "#0D1117",
-        border: "1px solid #1A2332",
+        background: "#0B0F1A",
+        border: "1px solid #1C2840",
         padding: "8px 10px",
         overflow: "auto",
         height: "100%",
@@ -164,7 +164,7 @@ export function PortfolioHealth({ portfolioId }: { portfolioId: string }) {
       </div>
 
       {/* Score bar */}
-      <div style={{ height: 2, background: "#1A2332", borderRadius: 1, marginBottom: 10 }}>
+      <div style={{ height: 2, background: "#1C2840", borderRadius: 1, marginBottom: 10 }}>
         <div
           style={{
             height: "100%",
@@ -192,7 +192,7 @@ export function PortfolioHealth({ portfolioId }: { portfolioId: string }) {
               alignItems: "center",
               justifyContent: "space-between",
               padding: "3px 6px",
-              background: "#080C14",
+              background: "#070B14",
               borderRadius: 2,
               minWidth: 0,
             }}

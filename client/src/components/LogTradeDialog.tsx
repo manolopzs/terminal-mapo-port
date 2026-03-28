@@ -131,8 +131,8 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         style={{
-          background: "#0D1117",
-          border: "1px solid #1A2332",
+          background: "#0B0F1A",
+          border: "1px solid #1C2840",
           borderRadius: 4,
           maxWidth: 440,
         }}
@@ -165,9 +165,9 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
                   fontWeight: 700,
                   letterSpacing: 1.5,
                   textTransform: "uppercase",
-                  border: `1px solid ${action === a ? (a === "BUY" ? "#00E6A8" : "#FF4458") : "#1A2332"}`,
+                  border: `1px solid ${action === a ? (a === "BUY" ? "#00E6A8" : "#FF4458") : "#1C2840"}`,
                   borderRadius: 2,
-                  background: action === a ? (a === "BUY" ? "rgba(0,230,168,0.1)" : "rgba(255,68,88,0.1)") : "#080C14",
+                  background: action === a ? (a === "BUY" ? "rgba(0,230,168,0.1)" : "rgba(255,68,88,0.1)") : "#070B14",
                   color: action === a ? (a === "BUY" ? "#00E6A8" : "#FF4458") : "#8B949E",
                   cursor: "pointer",
                 }}
@@ -199,8 +199,8 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
                       fontFamily: "'JetBrains Mono', monospace",
                       padding: "2px 6px",
                       borderRadius: 2,
-                      border: `1px solid ${ticker.toUpperCase() === h.ticker ? "#00D9FF" : "#1A2332"}`,
-                      background: ticker.toUpperCase() === h.ticker ? "rgba(0,217,255,0.1)" : "#080C14",
+                      border: `1px solid ${ticker.toUpperCase() === h.ticker ? "#00D9FF" : "#1C2840"}`,
+                      background: ticker.toUpperCase() === h.ticker ? "rgba(0,217,255,0.1)" : "#070B14",
                       color: ticker.toUpperCase() === h.ticker ? "#00D9FF" : "#8B949E",
                       cursor: "pointer",
                     }}
@@ -222,7 +222,7 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
                 placeholder="STRL"
                 required
                 className="mt-1 font-mono"
-                style={{ background: "#080C14", border: "1px solid #1A2332", color: "#C9D1D9", fontSize: 11 }}
+                style={{ background: "#070B14", border: "1px solid #1C2840", color: "#C9D1D9", fontSize: 11 }}
               />
             </div>
             <div>
@@ -237,7 +237,7 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
                 placeholder="10"
                 required
                 className="mt-1 font-mono"
-                style={{ background: "#080C14", border: "1px solid #1A2332", color: "#C9D1D9", fontSize: 11 }}
+                style={{ background: "#070B14", border: "1px solid #1C2840", color: "#C9D1D9", fontSize: 11 }}
               />
             </div>
             <div>
@@ -250,7 +250,7 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
                 placeholder="450.00"
                 required
                 className="mt-1 font-mono"
-                style={{ background: "#080C14", border: "1px solid #1A2332", color: "#C9D1D9", fontSize: 11 }}
+                style={{ background: "#070B14", border: "1px solid #1C2840", color: "#C9D1D9", fontSize: 11 }}
               />
             </div>
           </div>
@@ -263,7 +263,7 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
               onChange={(e) => setRationale(e.target.value)}
               placeholder="Taking profits / thesis broken / rebalancing..."
               className="mt-1"
-              style={{ background: "#080C14", border: "1px solid #1A2332", color: "#C9D1D9", fontSize: 10 }}
+              style={{ background: "#070B14", border: "1px solid #1C2840", color: "#C9D1D9", fontSize: 10 }}
             />
           </div>
 
@@ -271,8 +271,8 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
           {sharesNum > 0 && priceNum > 0 && (
             <div
               style={{
-                background: "#080C14",
-                border: "1px solid #1A2332",
+                background: "#070B14",
+                border: "1px solid #1C2840",
                 borderRadius: 2,
                 padding: "6px 8px",
               }}
@@ -308,7 +308,7 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
             disabled={createTrade.isPending || sharesNum <= 0 || priceNum <= 0}
             style={{
               background: action === "BUY" ? "#00E6A8" : "#FF4458",
-              color: "#080C14",
+              color: "#070B14",
               fontWeight: 700,
               fontSize: 10,
               letterSpacing: 1,

@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import type { Holding } from "@shared/schema";
 import type { EarningsEvent } from "@/hooks/use-portfolio";
@@ -14,6 +15,15 @@ interface EarningsRow {
   time: string;
   fiscalPeriod: string;
   isLive: boolean;
+}
+
+
+interface MacroEvent {
+  date: string;
+  type: "FOMC" | "CPI" | "GDP";
+  label: string;
+  impact: "HIGH" | "MEDIUM";
+  daysUntil: number;
 }
 
 export function EarningsCalendar({ holdings, liveEarnings }: EarningsCalendarProps) {
@@ -60,6 +70,17 @@ export function EarningsCalendar({ holdings, liveEarnings }: EarningsCalendarPro
     const withoutDates = earnings.filter(e => !e.isLive);
     return [...withDates, ...withoutDates];
   }, [earnings]);
+
+
+  const { data: macroEvents } = useQuery<MacroEvent[]>({
+    queryKey: ["/api/macro/calendar"],
+    queryFn: async () => {
+      const res = await fetch("/api/macro/calendar");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    staleTime: 3_600_000,
+  });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, background: "#0B0F1A" }}>
@@ -143,6 +164,28 @@ export function EarningsCalendar({ holdings, liveEarnings }: EarningsCalendarPro
             ))}
           </tbody>
         </table>
+
+        {/* Macro Events section */}
+        {macroEvents && macroEvents.length > 0 && (
+          <div style={{ borderTop: "2px solid #1A2332", marginTop: 4, paddingTop: 4 }}>
+            <div style={{ padding: "4px 6px 2px", fontSize: 7, fontWeight: 700, letterSpacing: 1.8, textTransform: "uppercase", color: "#484F58", fontFamily: "monospace" }}>
+              Macro Events
+            </div>
+            {macroEvents.slice(0, 5).map((ev) => {
+              const typeColor = ev.type === "FOMC" ? "#FFB300" : ev.type === "CPI" ? "#00D9FF" : "#8B949E";
+              const urgency = ev.daysUntil <= 7 ? "#FF4D4D" : ev.daysUntil <= 14 ? "#FFB300" : "#484F58";
+              return (
+                <div key={ev.date + ev.type} style={{ display: "flex", alignItems: "center", padding: "3px 6px", borderBottom: "1px solid rgba(26,35,50,0.4)" }}>
+                  <span style={{ fontSize: 8, fontWeight: 700, color: typeColor, fontFamily: "monospace", width: 36, flexShrink: 0 }}>{ev.type}</span>
+                  <span style={{ fontSize: 8, color: "#8B949E", flex: 1, fontFamily: "monospace" }}>{ev.label}</span>
+                  <span style={{ fontSize: 8, color: urgency, fontFamily: "monospace", flexShrink: 0 }}>
+                    {ev.daysUntil === 0 ? "TODAY" : ev.daysUntil === 1 ? "TMRW" : `${ev.daysUntil}d`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

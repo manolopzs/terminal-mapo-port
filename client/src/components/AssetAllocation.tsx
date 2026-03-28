@@ -57,8 +57,8 @@ export function AssetAllocation({ holdings }: AssetAllocationProps) {
               </Pie>
               <Tooltip
                 contentStyle={{
-                  background: "#0D1117",
-                  border: "1px solid #1A2332",
+                  background: "#0B0F1A",
+                  border: "1px solid #1C2840",
                   borderRadius: 2,
                   fontSize: 9,
                   color: "#C9D1D9",

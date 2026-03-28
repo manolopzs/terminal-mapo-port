@@ -51,9 +51,9 @@ export function GainLossTable({ holdings }: GainLossTableProps) {
               style={{
                 position: "sticky",
                 top: 0,
-                background: "#0D1117",
+                background: "#0B0F1A",
                 zIndex: 1,
-                borderBottom: "1px solid #1A2332",
+                borderBottom: "1px solid #1C2840",
               }}
             >
               {["TICKER", "COST", "VALUE", "P&L", "P&L%"].map((h) => (
@@ -129,8 +129,8 @@ export function GainLossTable({ holdings }: GainLossTableProps) {
       <div
         style={{
           flexShrink: 0,
-          borderTop: "1px solid #1A2332",
-          background: "#080C14",
+          borderTop: "1px solid #1C2840",
+          background: "#070B14",
           padding: "4px 5px",
           display: "flex",
           alignItems: "center",

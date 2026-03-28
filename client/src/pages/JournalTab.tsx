@@ -42,7 +42,7 @@ function saveEntries(entries: JournalEntry[]) {
 
 const CONVICTION_DOTS = (n: number) =>
   Array.from({ length: 5 }, (_, i) => (
-    <span key={i} style={{ color: i < n ? "#00D9FF" : "#1A2332", fontSize: 9, fontFamily: "monospace" }}>
+    <span key={i} style={{ color: i < n ? "#00D9FF" : "#1C2840", fontSize: 9, fontFamily: "monospace" }}>
       {i < n ? "●" : "○"}
     </span>
   ));
@@ -172,7 +172,7 @@ export function JournalTab() {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "8px 14px",
-          borderBottom: "1px solid #1A2332",
+          borderBottom: "1px solid #1C2840",
           flexShrink: 0,
         }}
       >
@@ -217,14 +217,14 @@ export function JournalTab() {
           alignItems: "center",
           gap: 0,
           padding: "8px 16px",
-          borderBottom: "1px solid #1A2332",
-          background: "#0D1117",
+          borderBottom: "1px solid #1C2840",
+          background: "#0B0F1A",
           flexShrink: 0,
           fontFamily: "monospace",
         }}
       >
         <StatItem label="Total Entries" value={String(stats.total)} />
-        <span style={{ color: "#1A2332", margin: "0 14px", fontSize: 12 }}>|</span>
+        <span style={{ color: "#1C2840", margin: "0 14px", fontSize: 12 }}>|</span>
         <StatItem
           label="Win Rate"
           value={stats.winRate === "—" ? "—" : `${stats.winRate}%`}
@@ -232,13 +232,13 @@ export function JournalTab() {
             stats.winRate === "—"
               ? "#C9D1D9"
               : parseInt(stats.winRate) > 50
-              ? "#00C853"
-              : "#FF4D4D"
+              ? "#00E6A8"
+              : "#FF4458"
           }
         />
-        <span style={{ color: "#1A2332", margin: "0 14px", fontSize: 12 }}>|</span>
+        <span style={{ color: "#1C2840", margin: "0 14px", fontSize: 12 }}>|</span>
         <StatItem label="Avg Conv (Wins)" value={stats.avgConvWin} />
-        <span style={{ color: "#1A2332", margin: "0 14px", fontSize: 12 }}>|</span>
+        <span style={{ color: "#1C2840", margin: "0 14px", fontSize: 12 }}>|</span>
         <StatItem label="Avg Conv (Losses)" value={stats.avgConvLoss} />
       </div>
 
@@ -248,8 +248,8 @@ export function JournalTab() {
           data-journal="new-entry-form"
           onSubmit={handleAddEntry}
           style={{
-            background: "#0D1117",
-            border: "1px solid #1A2332",
+            background: "#0B0F1A",
+            border: "1px solid #1C2840",
             borderRadius: 4,
             padding: 16,
             margin: "12px 16px",
@@ -330,9 +330,9 @@ export function JournalTab() {
                     width: 28,
                     height: 28,
                     border: "1px solid",
-                    borderColor: form.conviction >= n ? "#00D9FF" : "#1A2332",
+                    borderColor: form.conviction >= n ? "#00D9FF" : "#1C2840",
                     background: form.conviction >= n ? "rgba(0,217,255,0.15)" : "transparent",
-                    color: form.conviction >= n ? "#00D9FF" : "#484F58",
+                    color: form.conviction >= n ? "#00D9FF" : "#4A5A6E",
                     borderRadius: 2,
                     cursor: "pointer",
                     fontSize: 9,
@@ -375,7 +375,7 @@ export function JournalTab() {
               background: "#00D9FF",
               border: "none",
               borderRadius: 2,
-              color: "#080C14",
+              color: "#070B14",
               cursor: "pointer",
             }}
           >
@@ -391,13 +391,13 @@ export function JournalTab() {
           display: "flex",
           gap: 8,
           padding: "6px 16px",
-          borderBottom: "1px solid #1A2332",
-          background: "#080C14",
+          borderBottom: "1px solid #1C2840",
+          background: "#070B14",
           flexShrink: 0,
           alignItems: "center",
         }}
       >
-        <span style={{ fontSize: 7, color: "#484F58", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace" }}>
+        <span style={{ fontSize: 7, color: "#4A5A6E", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace" }}>
           Filter:
         </span>
         {(["ALL", "PENDING", "WIN", "LOSS", "NEUTRAL"] as const).map((o) => (
@@ -408,7 +408,7 @@ export function JournalTab() {
             onClick={() => setFilterOutcome(o)}
           />
         ))}
-        <span style={{ width: 1, background: "#1A2332", height: 16 }} />
+        <span style={{ width: 1, background: "#1C2840", height: 16 }} />
         {(["ALL", "BUY", "SELL", "WATCH", "AVOID"] as const).map((a) => (
           <FilterChip
             key={a}
@@ -427,7 +427,7 @@ export function JournalTab() {
               textAlign: "center",
               marginTop: 60,
               fontSize: 10,
-              color: "#484F58",
+              color: "#4A5A6E",
               fontFamily: "monospace",
               letterSpacing: 1.5,
               textTransform: "uppercase",
@@ -440,7 +440,7 @@ export function JournalTab() {
         {filtered.map((entry) => {
           const isExpanded = expandedId === entry.id;
           return (
-            <div key={entry.id} data-journal={`entry-${entry.id}`} style={{ borderBottom: "1px solid #0D1117" }}>
+            <div key={entry.id} data-journal={`entry-${entry.id}`} style={{ borderBottom: "1px solid #0B0F1A" }}>
               {/* Entry row */}
               <div
                 data-journal="entry-row"
@@ -458,7 +458,7 @@ export function JournalTab() {
                 onMouseLeave={(e) => { if (!isExpanded) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
               >
                 {/* Date */}
-                <span style={{ fontSize: 9, color: "#484F58", fontFamily: "monospace", flexShrink: 0, width: 80 }}>
+                <span style={{ fontSize: 9, color: "#4A5A6E", fontFamily: "monospace", flexShrink: 0, width: 80 }}>
                   {entry.date}
                 </span>
 
@@ -508,7 +508,7 @@ export function JournalTab() {
                       fontSize: 9,
                       fontFamily: "monospace",
                       flexShrink: 0,
-                      color: entry.actualReturn >= 0 ? "#00C853" : "#FF4D4D",
+                      color: entry.actualReturn >= 0 ? "#00E6A8" : "#FF4458",
                     }}
                   >
                     {entry.actualReturn >= 0 ? "+" : ""}{entry.actualReturn.toFixed(1)}%
@@ -523,8 +523,8 @@ export function JournalTab() {
                   style={{
                     padding: "12px 14px 14px 20px",
                     background: "rgba(0,217,255,0.02)",
-                    borderTop: "1px solid #1A2332",
-                    borderLeft: "3px solid #1A2332",
+                    borderTop: "1px solid #1C2840",
+                    borderLeft: "3px solid #1C2840",
                     marginLeft: 16,
                   }}
                 >
@@ -536,13 +536,13 @@ export function JournalTab() {
                       fontFamily: "monospace",
                       lineHeight: 1.7,
                       marginBottom: 14,
-                      background: "#0D1117",
-                      border: "1px solid #1A2332",
+                      background: "#0B0F1A",
+                      border: "1px solid #1C2840",
                       borderRadius: 3,
                       padding: "10px 12px",
                     }}
                   >
-                    <span style={{ fontSize: 7, color: "#484F58", letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                    <span style={{ fontSize: 7, color: "#4A5A6E", letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
                       Full Thesis
                     </span>
                     {entry.thesis}
@@ -586,7 +586,7 @@ export function JournalTab() {
                         fontFamily: "monospace",
                         background: "transparent",
                         border: "1px solid rgba(0,200,83,0.4)",
-                        color: "#00C853",
+                        color: "#00E6A8",
                         borderRadius: 2,
                         cursor: "pointer",
                       }}
@@ -606,7 +606,7 @@ export function JournalTab() {
                         fontFamily: "monospace",
                         background: "transparent",
                         border: "1px solid rgba(255,77,77,0.3)",
-                        color: "#FF4D4D",
+                        color: "#FF4458",
                         borderRadius: 2,
                         cursor: "pointer",
                       }}
@@ -627,8 +627,8 @@ export function JournalTab() {
 // ---- Sub-components ----
 
 const inputStyle: React.CSSProperties = {
-  background: "#080C14",
-  border: "1px solid #1A2332",
+  background: "#070B14",
+  border: "1px solid #1C2840",
   borderRadius: 3,
   color: "#C9D1D9",
   fontFamily: "monospace",
@@ -651,7 +651,7 @@ function FieldGroup({
       <span
         style={{
           fontSize: 7,
-          color: "#484F58",
+          color: "#4A5A6E",
           letterSpacing: 1.5,
           textTransform: "uppercase",
           fontFamily: "monospace",
@@ -667,7 +667,7 @@ function FieldGroup({
 function StatItem({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <span style={{ fontSize: 7, color: "#484F58", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace" }}>
+      <span style={{ fontSize: 7, color: "#4A5A6E", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace" }}>
         {label}
       </span>
       <span style={{ fontSize: 11, fontWeight: 700, color: valueColor ?? "#C9D1D9", fontFamily: "monospace" }}>
@@ -697,7 +697,7 @@ function FilterChip({
         textTransform: "uppercase",
         fontFamily: "monospace",
         background: active ? "rgba(0,217,255,0.1)" : "transparent",
-        border: active ? "1px solid rgba(0,217,255,0.35)" : "1px solid #1A2332",
+        border: active ? "1px solid rgba(0,217,255,0.35)" : "1px solid #1C2840",
         color: active ? "#00D9FF" : "#8B949E",
         borderRadius: 2,
         cursor: "pointer",
@@ -710,10 +710,10 @@ function FilterChip({
 
 function ActionBadge({ action }: { action: JournalEntry["action"] }) {
   const map = {
-    BUY: { bg: "rgba(0,200,83,0.1)", border: "rgba(0,200,83,0.3)", color: "#00C853" },
-    SELL: { bg: "rgba(255,77,77,0.1)", border: "rgba(255,77,77,0.3)", color: "#FF4D4D" },
-    WATCH: { bg: "rgba(255,179,0,0.1)", border: "rgba(255,179,0,0.3)", color: "#FFB300" },
-    AVOID: { bg: "rgba(72,79,88,0.15)", border: "rgba(72,79,88,0.4)", color: "#484F58" },
+    BUY: { bg: "rgba(0,200,83,0.1)", border: "rgba(0,200,83,0.3)", color: "#00E6A8" },
+    SELL: { bg: "rgba(255,77,77,0.1)", border: "rgba(255,77,77,0.3)", color: "#FF4458" },
+    WATCH: { bg: "rgba(240,136,62,0.1)", border: "rgba(240,136,62,0.3)", color: "#F0883E" },
+    AVOID: { bg: "rgba(72,79,88,0.15)", border: "rgba(72,79,88,0.4)", color: "#4A5A6E" },
   };
   const s = map[action];
   return (
@@ -740,9 +740,9 @@ function ActionBadge({ action }: { action: JournalEntry["action"] }) {
 function OutcomeBadge({ outcome }: { outcome: JournalEntry["outcome"] }) {
   const map = {
     PENDING: { bg: "rgba(139,148,158,0.1)", border: "rgba(139,148,158,0.2)", color: "#8B949E" },
-    WIN: { bg: "rgba(0,200,83,0.1)", border: "rgba(0,200,83,0.3)", color: "#00C853" },
-    LOSS: { bg: "rgba(255,77,77,0.1)", border: "rgba(255,77,77,0.3)", color: "#FF4D4D" },
-    NEUTRAL: { bg: "rgba(255,179,0,0.1)", border: "rgba(255,179,0,0.3)", color: "#FFB300" },
+    WIN: { bg: "rgba(0,200,83,0.1)", border: "rgba(0,200,83,0.3)", color: "#00E6A8" },
+    LOSS: { bg: "rgba(255,77,77,0.1)", border: "rgba(255,77,77,0.3)", color: "#FF4458" },
+    NEUTRAL: { bg: "rgba(240,136,62,0.1)", border: "rgba(240,136,62,0.3)", color: "#F0883E" },
   };
   const s = map[outcome];
   return (
