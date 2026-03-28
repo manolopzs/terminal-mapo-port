@@ -107,8 +107,8 @@ export class MemStorage implements IStorage {
       };
       this.portfolios.set(mapoId, mapoPortfolio);
       this.portfolioMeta.set(mapoId, {
-        cash: 277.49,
-        startingCapital: mapoData.startingCapital || 20454.16,
+        cash: mapoData.cash ?? 277.00,
+        startingCapital: mapoData.startingCapital || 20469.11,
       });
 
       for (const h of mapoData.holdings) {

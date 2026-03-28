@@ -1,7 +1,7 @@
 {
   "name": "Mapo AI Portfolio",
   "type": "custom",
-  "startingCapital": 20454.16,
+  "startingCapital": 20469.11,
   "startDate": "2026-01-29",
   "holdings": [
     {
@@ -350,5 +350,6 @@
       "exitDate": "2026-03-03",
       "reason": "Macro headwinds"
     }
-  ]
+  ],
+  "cash": 277.0
 }

@@ -28,6 +28,7 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
   });
 
   const totalValue = summary?.totalValue ?? 0;
+  const cash = (summary as any)?.cash ?? 0;
   const dayChange = summary?.dayChange ?? 0;
   const dayChangePct = summary?.dayChangePct ?? 0;
   const totalReturn = summary?.totalGainLossPct ?? 0;
@@ -151,6 +152,14 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
         >
           {dayChange >= 0 ? "+" : ""}${dayChange.toLocaleString("en-US", { minimumFractionDigits: 2 })} today
         </div>
+        {cash > 0 && (
+          <div
+            className="font-mono tabular-nums"
+            style={{ fontSize: 9, color: "#484F58", lineHeight: 1, marginTop: 1 }}
+          >
+            CASH ${cash.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+          </div>
+        )}
       </div>
 
       {/* Center: Period Returns */}
