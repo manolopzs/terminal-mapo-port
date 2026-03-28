@@ -4,7 +4,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 
 // Validate required environment variables
-const requiredEnvVars = ["ANTHROPIC_API_KEY"];
+const requiredEnvVars = ["ANTHROPIC_API_KEY", "FINNHUB_API_KEY"];
 const missing = requiredEnvVars.filter(v => !process.env[v]);
 if (missing.length > 0) {
   console.warn(`[startup] Warning: Missing environment variables: ${missing.join(", ")}. Some features may not work.`);

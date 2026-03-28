@@ -1,9 +1,12 @@
-import { exec } from "child_process";
-import { promisify } from "util";
+/**
+ * Live market data via Finnhub REST API (https://finnhub.io)
+ * Free tier: 60 API calls / minute — sufficient for this portfolio.
+ * Set FINNHUB_API_KEY environment variable to enable live data.
+ */
 
-const execAsync = promisify(exec);
+const FINNHUB_BASE = "https://finnhub.io/api/v1";
 
-// Simple in-memory cache with TTL
+// In-memory cache with TTL
 const cache = new Map<string, { data: any; expiry: number }>();
 
 async function cachedAsync<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T> {
@@ -15,41 +18,13 @@ async function cachedAsync<T>(key: string, ttlMs: number, fn: () => Promise<T>):
   return data;
 }
 
-async function callTool(sourceId: string, toolName: string, args: Record<string, any>): Promise<any> {
-  try {
-    const params = JSON.stringify({ source_id: sourceId, tool_name: toolName, arguments: args });
-    // Escape single quotes for shell
-    const escaped = params.replace(/'/g, "'\\''");
-    const { stdout } = await execAsync(`external-tool call '${escaped}'`, { timeout: 30000 });
-    return JSON.parse(stdout);
-  } catch (e: any) {
-    console.error(`external-tool error (${toolName}):`, e.message?.slice(0, 200));
-    return null;
-  }
-}
-
-// Parse the markdown table from finance_quotes into structured data
-function parseQuotes(content: string): Array<Record<string, string>> {
-  const results: Array<Record<string, string>> = [];
-  const blocks = content.split(/##\s+\w+\s+Quote/);
-
-  for (const block of blocks) {
-    if (!block.includes("|")) continue;
-    const lines = block.split("\n").filter(l => l.trim().startsWith("|") && !l.includes("---"));
-    if (lines.length < 2) continue;
-
-    const headers = lines[0].split("|").filter(c => c.trim() !== "").map(c => c.trim());
-    for (let i = 1; i < lines.length; i++) {
-      const cells = lines[i].split("|").filter(c => c.trim() !== "").map(c => c.trim());
-      if (cells.length >= headers.length) {
-        const row: Record<string, string> = {};
-        headers.forEach((h, idx) => { row[h] = cells[idx]; });
-        results.push(row);
-      }
-    }
-  }
-
-  return results;
+async function finnhub(path: string): Promise<any> {
+  const key = process.env.FINNHUB_API_KEY;
+  if (!key) return null;
+  const url = `${FINNHUB_BASE}${path}${path.includes("?") ? "&" : "?"}token=${key}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+  if (!res.ok) throw new Error(`Finnhub ${res.status}: ${path}`);
+  return res.json();
 }
 
 export interface LiveQuote {
@@ -68,53 +43,46 @@ export interface LiveQuote {
   marketStatus: string;
 }
 
-// Fetch live quotes for a batch of tickers — async, non-blocking
-// Cache for 60 seconds
-export async function fetchLiveQuotes(tickers: string[]): Promise<LiveQuote[]> {
-  if (tickers.length === 0) return [];
-  // Sanitize: only allow alphanumeric, dots, and hyphens (valid ticker chars)
-  const sanitized = tickers.map(t => t.replace(/[^A-Z0-9.\-]/gi, "")).filter(t => t.length > 0 && t.length <= 10);
-  if (sanitized.length === 0) return [];
-  const key = `quotes:${sanitized.sort().join(",")}`;
-  return cachedAsync(key, 60_000, async () => {
-    // Fetch all batches in parallel
-    const batches: string[][] = [];
-    for (let i = 0; i < sanitized.length; i += 10) {
-      batches.push(sanitized.slice(i, i + 10));
-    }
+export async function fetchLiveQuotes(rawTickers: string[]): Promise<LiveQuote[]> {
+  if (rawTickers.length === 0 || !process.env.FINNHUB_API_KEY) return [];
 
-    const batchResults = await Promise.all(
-      batches.map(batch =>
-        callTool("finance", "finance_quotes", {
-          ticker_symbols: batch,
-          fields: ["price", "change", "changesPercentage", "previousClose", "dayLow", "dayHigh", "yearLow", "yearHigh", "volume", "marketCap"],
-        })
-      )
+  const tickers = rawTickers
+    .map(t => t.replace(/[^A-Z0-9.\-]/gi, "").toUpperCase())
+    .filter(t => t.length > 0 && t.length <= 10);
+
+  const cacheKey = `quotes:${[...tickers].sort().join(",")}`;
+  return cachedAsync(cacheKey, 60_000, async () => {
+    const results = await Promise.allSettled(
+      tickers.map(async (symbol): Promise<LiveQuote | null> => {
+        try {
+          const data = await finnhub(`/quote?symbol=${symbol}`);
+          if (!data || !data.c || data.c === 0) return null;
+          return {
+            symbol,
+            name: symbol,
+            price: data.c,
+            change: data.d ?? 0,
+            changesPercentage: data.dp ?? 0,
+            previousClose: data.pc ?? 0,
+            dayLow: data.l ?? 0,
+            dayHigh: data.h ?? 0,
+            yearLow: 0,
+            yearHigh: 0,
+            volume: 0,
+            marketCap: 0,
+            marketStatus: "open",
+          };
+        } catch {
+          return null;
+        }
+      })
     );
 
-    const allQuotes: LiveQuote[] = [];
-    for (const result of batchResults) {
-      if (!result?.content) continue;
-      const parsed = parseQuotes(result.content);
-      for (const row of parsed) {
-        allQuotes.push({
-          symbol: row.symbol || "",
-          name: row.name || "",
-          price: parseFloat(row.price) || 0,
-          change: parseFloat(row.change) || 0,
-          changesPercentage: parseFloat(row.changesPercentage) || 0,
-          previousClose: parseFloat(row.previousClose) || 0,
-          dayLow: parseFloat(row.dayLow) || 0,
-          dayHigh: parseFloat(row.dayHigh) || 0,
-          yearLow: parseFloat(row.yearLow) || 0,
-          yearHigh: parseFloat(row.yearHigh) || 0,
-          volume: parseFloat(row.volume) || 0,
-          marketCap: parseFloat(row.marketCap) || 0,
-          marketStatus: row.market_status || row.marketStatus || "unknown",
-        });
-      }
-    }
-    return allQuotes;
+    return results
+      .filter((r): r is PromiseFulfilledResult<LiveQuote> =>
+        r.status === "fulfilled" && r.value !== null
+      )
+      .map(r => r.value as LiveQuote);
   });
 }
 
@@ -126,65 +94,42 @@ export interface EarningsEvent {
   status: string;
 }
 
-// Fetch upcoming earnings — batch tickers in smaller groups for reliability
-// Cache for 1 hour
-export async function fetchEarningsSchedule(tickers: string[]): Promise<EarningsEvent[]> {
-  if (tickers.length === 0) return [];
-  // Sanitize: only allow alphanumeric, dots, and hyphens (valid ticker chars)
-  const sanitized = tickers.map(t => t.replace(/[^A-Z0-9.\-]/gi, "")).filter(t => t.length > 0 && t.length <= 10);
-  if (sanitized.length === 0) return [];
-  const key = `earnings:${sanitized.sort().join(",")}`;
-  return cachedAsync(key, 3_600_000, async () => {
-    // Batch into groups of 5 for reliability
-    const batches: string[][] = [];
-    for (let i = 0; i < sanitized.length; i += 5) {
-      batches.push(sanitized.slice(i, i + 5));
-    }
+export async function fetchEarningsSchedule(rawTickers: string[]): Promise<EarningsEvent[]> {
+  if (rawTickers.length === 0 || !process.env.FINNHUB_API_KEY) return [];
 
-    const batchResults = await Promise.all(
-      batches.map(batch =>
-        callTool("finance", "finance_earnings_schedule", {
-          ticker_symbols: batch,
-          direction: "upcoming",
-          limit: 1,
-        })
-      )
+  const tickers = rawTickers
+    .map(t => t.replace(/[^A-Z0-9.\-]/gi, "").toUpperCase())
+    .filter(t => t.length > 0 && t.length <= 10);
+
+  const cacheKey = `earnings:${[...tickers].sort().join(",")}`;
+  return cachedAsync(cacheKey, 3_600_000, async () => {
+    const today = new Date().toISOString().split("T")[0];
+    const in90Days = new Date(Date.now() + 90 * 864e5).toISOString().split("T")[0];
+
+    const results = await Promise.allSettled(
+      tickers.map(async (symbol): Promise<EarningsEvent | null> => {
+        try {
+          const data = await finnhub(`/calendar/earnings?from=${today}&to=${in90Days}&symbol=${symbol}`);
+          const item = data?.earningsCalendar?.[0];
+          if (!item) return null;
+          return {
+            ticker: symbol,
+            date: item.date ?? "",
+            time: item.hour === "bmo" ? "Before Open" : item.hour === "amc" ? "After Close" : item.hour ?? "",
+            fiscalPeriod: item.quarter ? `Q${item.quarter} ${item.year}` : "",
+            status: "upcoming",
+          };
+        } catch {
+          return null;
+        }
+      })
     );
 
-    const events: EarningsEvent[] = [];
-    for (const result of batchResults) {
-      if (!result?.content) continue;
-      try {
-        const parsed = JSON.parse(result.content);
-        for (const item of parsed) {
-          if (!item.content) continue;
-          const lines = item.content.split("\n");
-          let currentTicker = "";
-          for (const line of lines) {
-            const tickerMatch = line.match(/\*\*(\w+)\*\*/);
-            if (tickerMatch) {
-              currentTicker = tickerMatch[1];
-            }
-            const dateMatch = line.match(/Earnings Date:\s*(.+)/);
-            if (dateMatch && currentTicker) {
-              const dateParts = dateMatch[1].split(" at ");
-              const fiscalMatch = item.content.match(new RegExp(`${currentTicker}[\\s\\S]*?Fiscal Period:\\s*(.+)`));
-              events.push({
-                ticker: currentTicker,
-                date: dateParts[0]?.trim() || "",
-                time: dateParts[1]?.trim() || "",
-                fiscalPeriod: fiscalMatch?.[1]?.trim() || "",
-                status: "upcoming",
-              });
-              currentTicker = "";
-            }
-          }
-        }
-      } catch (e) {
-        console.error("Error parsing earnings batch:", e);
-      }
-    }
-    return events;
+    return results
+      .filter((r): r is PromiseFulfilledResult<EarningsEvent> =>
+        r.status === "fulfilled" && r.value !== null
+      )
+      .map(r => r.value as EarningsEvent);
   });
 }
 
@@ -193,88 +138,79 @@ export interface MarketSentiment {
   marketStatus: string;
 }
 
-// Fetch market sentiment — async
-// Cache for 5 minutes
 export async function fetchMarketSentiment(): Promise<MarketSentiment> {
+  if (!process.env.FINNHUB_API_KEY) return { sentiment: "UNCERTAIN", marketStatus: "unknown" };
+
   return cachedAsync("market-sentiment", 300_000, async () => {
-    const result = await callTool("finance", "finance_market_sentiment", {
-      query: "US stock market sentiment today",
-      action: "Analyzing US stock market sentiment",
-      market_type: "market",
-      country: "US",
-    });
+    try {
+      // Use SPY quote to derive sentiment from daily change
+      const [spy, statusData] = await Promise.allSettled([
+        finnhub("/quote?symbol=SPY"),
+        finnhub("/stock/market-status?exchange=US"),
+      ]);
 
-    if (!result?.content) return { sentiment: "UNCERTAIN", marketStatus: "unknown" };
+      const spyData = spy.status === "fulfilled" ? spy.value : null;
+      const isOpen = statusData.status === "fulfilled" ? statusData.value?.isOpen : null;
 
-    const content = result.content as string;
-    let sentiment = "UNCERTAIN";
-    if (content.includes("BULLISH")) sentiment = "BULLISH";
-    else if (content.includes("BEARISH")) sentiment = "BEARISH";
-    else if (content.includes("NEUTRAL")) sentiment = "NEUTRAL";
+      let sentiment = "NEUTRAL";
+      if (spyData?.dp != null) {
+        if (spyData.dp > 0.5) sentiment = "BULLISH";
+        else if (spyData.dp < -0.5) sentiment = "BEARISH";
+        else sentiment = "NEUTRAL";
+      }
 
-    const statusMatch = content.match(/Market Status:\s*(\w+)/);
-    const marketStatus = statusMatch?.[1] || "unknown";
-
-    return { sentiment, marketStatus };
+      return {
+        sentiment,
+        marketStatus: isOpen === true ? "open" : isOpen === false ? "closed" : "unknown",
+      };
+    } catch {
+      return { sentiment: "UNCERTAIN", marketStatus: "unknown" };
+    }
   });
 }
 
-// Fetch news headlines — 4 tickers for variety
-// Cache for 10 minutes
-export async function fetchPortfolioNews(tickers: string[]): Promise<Array<{ ticker: string; headline: string; time: string; source: string }>> {
-  if (tickers.length === 0) return [];
-  // Sanitize: only allow alphanumeric, dots, and hyphens (valid ticker chars)
-  const sanitized = tickers.map(t => t.replace(/[^A-Z0-9.\-]/gi, "")).filter(t => t.length > 0 && t.length <= 10);
-  if (sanitized.length === 0) return [];
-  const selectedTickers = sanitized.slice(0, 4);
-  const key = `news:${selectedTickers.sort().join(",")}`;
-  return cachedAsync(key, 600_000, async () => {
-    const results: Array<{ ticker: string; headline: string; time: string; source: string }> = [];
+export async function fetchPortfolioNews(
+  rawTickers: string[]
+): Promise<Array<{ ticker: string; headline: string; time: string; source: string }>> {
+  if (rawTickers.length === 0 || !process.env.FINNHUB_API_KEY) return [];
 
-    // Fetch 4 tickers in parallel
-    const newsResults = await Promise.all(
-      selectedTickers.map(async (ticker) => {
-        try {
-          const result = await callTool("finance", "finance_ticker_sentiment", {
-            ticker_symbol: ticker,
-            query: `Latest news and analysis for ${ticker}`,
-            action: `Analyzing sentiment for ${ticker}`,
-          });
-          return { ticker, result };
-        } catch {
-          return { ticker, result: null };
-        }
+  const tickers = rawTickers
+    .map(t => t.replace(/[^A-Z0-9.\-]/gi, "").toUpperCase())
+    .filter(t => t.length > 0 && t.length <= 10)
+    .slice(0, 4);
+
+  const cacheKey = `news:${[...tickers].sort().join(",")}`;
+  return cachedAsync(cacheKey, 600_000, async () => {
+    const from = new Date(Date.now() - 7 * 864e5).toISOString().split("T")[0];
+    const to = new Date().toISOString().split("T")[0];
+
+    const newsResults = await Promise.allSettled(
+      tickers.map(async (symbol) => {
+        const items = await finnhub(`/company-news?symbol=${symbol}&from=${from}&to=${to}`);
+        return { symbol, items: Array.isArray(items) ? items.slice(0, 3) : [] };
       })
     );
 
-    const seenHeadlines = new Set<string>();
+    const seen = new Set<string>();
+    const output: Array<{ ticker: string; headline: string; time: string; source: string }> = [];
 
-    for (const { ticker, result } of newsResults) {
-      if (!result?.content) continue;
-      const content = result.content as string;
-
-      // Extract key topics — issue/topic line is the primary headline
-      const issueMatch = content.match(/(?:Issue|Topic|Question|Key Question)[\s\d]*[:\-]\s*(.+)/i);
-      const bullMatch = content.match(/(?:Bull|Bullish)[^:]*:\s*(.+?)(?:\n|$)/i);
-      const bearMatch = content.match(/(?:Bear|Bearish)[^:]*:\s*(.+?)(?:\n|$)/i);
-
-      // Clean headline: remove trailing asterisks and markdown
-      const clean = (s: string) => s.replace(/\*+/g, "").replace(/^\s*[-–]\s*/, "").trim().slice(0, 120);
-
-      if (issueMatch) {
-        const h = clean(issueMatch[1]);
-        if (!seenHeadlines.has(h)) { seenHeadlines.add(h); results.push({ ticker, headline: h, time: "now", source: "Analyst" }); }
-      }
-      if (bullMatch) {
-        const h = clean(bullMatch[1]);
-        if (!seenHeadlines.has(h)) { seenHeadlines.add(h); results.push({ ticker, headline: h, time: "today", source: "Analysis" }); }
-      }
-      if (bearMatch) {
-        const h = clean(bearMatch[1]);
-        if (!seenHeadlines.has(h)) { seenHeadlines.add(h); results.push({ ticker, headline: h, time: "today", source: "Analysis" }); }
+    for (const r of newsResults) {
+      if (r.status !== "fulfilled") continue;
+      const { symbol, items } = r.value;
+      for (const item of items) {
+        const headline = (item.headline ?? "").slice(0, 120);
+        if (!headline || seen.has(headline)) continue;
+        seen.add(headline);
+        const hoursAgo = Math.round((Date.now() - item.datetime * 1000) / 3_600_000);
+        output.push({
+          ticker: symbol,
+          headline,
+          time: hoursAgo < 1 ? "now" : hoursAgo < 24 ? `${hoursAgo}h ago` : "today",
+          source: item.source ?? "News",
+        });
       }
     }
 
-    return results.slice(0, 12);
+    return output.slice(0, 12);
   });
 }
