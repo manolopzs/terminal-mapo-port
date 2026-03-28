@@ -22,18 +22,20 @@ import { LogTradeDialog } from "@/components/LogTradeDialog";
 import { MarketTab } from "@/pages/MarketTab";
 import { ScreenerTab } from "@/pages/ScreenerTab";
 import { MAPOScoreTab } from "@/pages/MAPOScoreTab";
+import { RebalanceTab } from "@/pages/RebalanceTab";
 import { useHoldings, usePortfolios, useSummary, useLiveQuotes, useLiveEarnings, useLiveSentiment, useLiveNews, useAnalytics } from "@/hooks/use-portfolio";
 import { queryClient } from "@/lib/queryClient";
 import { Loader2, Bot, LogOut } from "lucide-react";
 import { logout } from "@/lib/auth";
 
-type TabId = "PORTFOLIO" | "MARKET" | "SCREENER" | "MAPO";
+type TabId = "PORTFOLIO" | "MARKET" | "SCREENER" | "MAPO" | "REBALANCE";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "PORTFOLIO", label: "PORTFOLIO" },
   { id: "MARKET", label: "MARKET" },
   { id: "SCREENER", label: "SCREENER" },
   { id: "MAPO", label: "MAPO SCORE" },
+  { id: "REBALANCE", label: "REBALANCE" },
 ];
 
 export default function Dashboard() {
@@ -229,6 +231,11 @@ export default function Dashboard() {
         {activeTab === "MAPO" && (
           <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
             <MAPOScoreTab />
+          </div>
+        )}
+        {activeTab === "REBALANCE" && (
+          <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+            <RebalanceTab portfolioId={activePortfolioId} />
           </div>
         )}
 

@@ -733,5 +733,124 @@ Return ONLY the JSON object, no markdown, no explanation.`;
     }
   });
 
+  // Rebalance analysis
+  app.get("/api/rebalance", async (req, res) => {
+    const portfolioId = req.query.portfolioId as string | undefined;
+    try {
+      const holdings = await storage.getHoldings(portfolioId);
+      const summary = await storage.getPortfolioSummary(portfolioId);
+
+      // Read cash from mapo-ai-portfolio.json
+      let cash = 277.00;
+      try {
+        const mapoPath = join(process.cwd(), "mapo-ai-portfolio.json");
+        const mapoRaw = readFileSync(mapoPath, "utf-8");
+        const mapoData = JSON.parse(mapoRaw);
+        if (typeof mapoData.cash === "number") {
+          cash = mapoData.cash;
+        }
+      } catch (_e) {
+        // default cash stays 277.00
+      }
+
+      const totalValue = summary.totalValue + cash;
+      const cashTargetPct = 10;
+      const numPositions = holdings.length;
+      const targetPct = numPositions > 0 ? (100 - cashTargetPct) / numPositions : 0;
+
+      // Per-position calculations
+      const positions = holdings.map((holding) => {
+        const currentPct = totalValue > 0 ? (holding.value / totalValue) * 100 : 0;
+        const diffPct = currentPct - targetPct;
+        const actionAmount = Math.abs((diffPct / 100) * totalValue);
+        const shares = holding.price > 0 ? Math.round((actionAmount / holding.price) * 100) / 100 : 0;
+        let action: "BUY" | "SELL" | "HOLD";
+        if (diffPct > 2) {
+          action = "SELL";
+        } else if (diffPct < -2) {
+          action = "BUY";
+        } else {
+          action = "HOLD";
+        }
+        return {
+          ticker: holding.ticker,
+          name: holding.name,
+          currentValue: holding.value,
+          currentPct: Math.round(currentPct * 100) / 100,
+          targetPct: Math.round(targetPct * 100) / 100,
+          diffPct: Math.round(diffPct * 100) / 100,
+          action,
+          actionAmount: Math.round(actionAmount * 100) / 100,
+          shares,
+          currentPrice: holding.price,
+        };
+      });
+
+      // Cash analysis
+      const cashPct = totalValue > 0 ? (cash / totalValue) * 100 : 0;
+      let cashAction: "DEPLOY" | "RAISE" | "OK";
+      if (cashPct < 5) {
+        cashAction = "RAISE";
+      } else if (cashPct > 20) {
+        cashAction = "DEPLOY";
+      } else {
+        cashAction = "OK";
+      }
+      const cashActionAmount = Math.round(Math.abs(((cashPct - cashTargetPct) / 100) * totalValue) * 100) / 100;
+
+      // Drawdown alerts (positions with gainLossPct < -15)
+      const drawdownAlerts: string[] = [];
+      for (const holding of holdings) {
+        const gainLossPct = holding.gainLossPct ?? 0;
+        if (gainLossPct < -15) {
+          drawdownAlerts.push(`${holding.ticker} at ${gainLossPct.toFixed(1)}% — re-score required`);
+        }
+      }
+      // maxDrawdownAlert = worst single-position alert (most negative gainLossPct)
+      let maxDrawdownAlert: string | null = null;
+      if (drawdownAlerts.length > 0) {
+        let worstPct = 0;
+        let worstAlert = "";
+        for (const holding of holdings) {
+          const gainLossPct = holding.gainLossPct ?? 0;
+          if (gainLossPct < -15 && gainLossPct < worstPct) {
+            worstPct = gainLossPct;
+            worstAlert = `${holding.ticker} at ${gainLossPct.toFixed(1)}% — re-score required`;
+          }
+        }
+        maxDrawdownAlert = worstAlert || null;
+      }
+
+      // Concentration alerts: group by sector
+      const sectorTotals: Record<string, number> = {};
+      for (const holding of holdings) {
+        const sector = holding.sector ?? "Other";
+        sectorTotals[sector] = (sectorTotals[sector] ?? 0) + holding.value;
+      }
+      const concentrationAlerts: string[] = [];
+      for (const [sector, sectorValue] of Object.entries(sectorTotals)) {
+        const sectorPct = totalValue > 0 ? (sectorValue / totalValue) * 100 : 0;
+        if (sectorPct > 40) {
+          concentrationAlerts.push(`${sector} sector at ${sectorPct.toFixed(0)}% — over 40% MAPO limit`);
+        }
+      }
+
+      res.json({
+        positions,
+        totalValue: Math.round(totalValue * 100) / 100,
+        cashValue: cash,
+        cashPct: Math.round(cashPct * 100) / 100,
+        targetCashPct: cashTargetPct,
+        cashAction,
+        cashActionAmount,
+        maxDrawdownAlert,
+        concentrationAlerts,
+      });
+    } catch (error) {
+      console.error("Rebalance error:", error);
+      res.status(500).json({ error: "Failed to compute rebalance analysis" });
+    }
+  });
+
   return httpServer;
 }
