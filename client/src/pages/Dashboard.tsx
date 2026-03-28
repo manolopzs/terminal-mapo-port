@@ -19,7 +19,7 @@ import { TradeHistory } from "@/components/TradeHistory";
 import { AIAnalyst } from "@/components/AIAnalyst";
 import { AddPositionDialog } from "@/components/AddPositionDialog";
 import { LogTradeDialog } from "@/components/LogTradeDialog";
-import { useHoldings, usePortfolios, useSummary, useLiveQuotes, useLiveEarnings, useLiveSentiment, useLiveNews } from "@/hooks/use-portfolio";
+import { useHoldings, usePortfolios, useSummary, useLiveQuotes, useLiveEarnings, useLiveSentiment, useLiveNews, useAnalytics } from "@/hooks/use-portfolio";
 import { queryClient } from "@/lib/queryClient";
 import { Loader2, Bot } from "lucide-react";
 
@@ -62,6 +62,7 @@ export default function Dashboard() {
   const { data: liveEarnings } = useLiveEarnings(activePortfolioId || undefined);
   const { data: liveSentiment } = useLiveSentiment();
   const { data: liveNews } = useLiveNews(activePortfolioId || undefined);
+  const { data: analytics } = useAnalytics(activePortfolioId || undefined);
 
   // When live quotes arrive, refetch holdings & summary to get updated prices
   const liveUpdatedAt = liveQuotesData?.updatedAt;
@@ -157,7 +158,7 @@ export default function Dashboard() {
 
           {/* Col 3, Row 1: Risk Analysis */}
           <div className="flex flex-col" style={{ borderRight: "1px solid #1A2332", overflow: "auto" }}>
-            <RiskAnalysis holdings={holdingsData} />
+            <RiskAnalysis holdings={holdingsData} analytics={analytics} />
           </div>
 
           {/* Col 4, Row 1: Portfolio Health + Risk Suggestions */}
@@ -186,13 +187,13 @@ export default function Dashboard() {
             style={{ borderRight: "1px solid #1A2332", borderTop: "1px solid #1A2332", overflow: "auto" }}
           >
             <AssetAllocation holdings={holdingsData} />
-            <CorrelationMatrix holdings={holdingsData} />
+            <CorrelationMatrix holdings={holdingsData} correlationData={analytics?.correlation} top6Tickers={analytics?.top6Tickers} />
           </div>
 
           {/* Col 3, Row 2: Volatility + Earnings Calendar */}
           <div className="flex flex-col" style={{ borderRight: "1px solid #1A2332", borderTop: "1px solid #1A2332", overflow: "hidden" }}>
             <div className="flex-1" style={{ minHeight: 0, overflow: "auto" }}>
-              <VolatilityBars holdings={holdingsData} />
+              <VolatilityBars holdings={holdingsData} volatilityData={analytics?.volatility} />
             </div>
             <div className="flex-1" style={{ borderTop: "1px solid #1A2332", minHeight: 0, overflow: "auto" }}>
               <EarningsCalendar holdings={holdingsData} liveEarnings={liveEarnings} />

@@ -4,7 +4,7 @@ import { Send, Trash2, X, Sparkles, Loader2, TrendingUp, Shield, BarChart3, Refr
 import type { ChatMessage } from "@shared/schema";
 
 const AI_MODELS = [
-  { key: "claude", label: "Claude", sub: "Sonnet 4.6", color: "#D97706" },
+  { key: "claude", label: "Claude", sub: "Opus 4.6", color: "#D97706" },
   { key: "gpt", label: "GPT", sub: "5.1", color: "#10B981" },
   { key: "gemini", label: "Gemini", sub: "3 Flash", color: "#6366F1" },
 ] as const;

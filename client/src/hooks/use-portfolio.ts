@@ -279,3 +279,27 @@ export function useLiveNews(portfolioId?: string) {
     staleTime: 600_000, // 10 minutes
   });
 }
+
+export function useAnalytics(portfolioId?: string) {
+  return useQuery<{
+    volatility: Record<string, number>;
+    correlation: Record<string, number>;
+    sharpe: number | null;
+    sortino: number | null;
+    beta: number | null;
+    maxDrawdown: number | null;
+    annualizedReturn: number | null;
+    annualizedVol: number | null;
+    top6Tickers: string[];
+  }>({
+    queryKey: ["/api/analytics", portfolioId],
+    queryFn: async () => {
+      const url = portfolioId ? `/api/analytics?portfolioId=${portfolioId}` : "/api/analytics";
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch analytics");
+      return res.json();
+    },
+    enabled: !!portfolioId,
+    staleTime: 5 * 60 * 1000,
+  });
+}

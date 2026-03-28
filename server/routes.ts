@@ -14,7 +14,7 @@ const openai = process.env.OPENAI_API_KEY ? new OpenAI() : null;
 type AIModel = "claude" | "gpt" | "gemini";
 
 const MODEL_MAP: Record<AIModel, { sdk: "anthropic" | "openai"; modelId: string; label: string }> = {
-  claude: { sdk: "anthropic", modelId: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+  claude: { sdk: "anthropic", modelId: "claude-opus-4-6", label: "Claude Opus 4.6" },
   gpt: { sdk: "openai", modelId: "gpt-4o", label: "GPT-4o" },
   gemini: { sdk: "openai", modelId: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
 };
@@ -492,6 +492,147 @@ INSTRUCTIONS:
     } catch (error) {
       console.error("Live news error:", error);
       res.status(500).json({ error: "Failed to fetch news" });
+    }
+  });
+
+  // Real analytics: volatility, correlation, risk metrics from price history
+  app.get("/api/analytics", async (req, res) => {
+    try {
+      const portfolioId = req.query.portfolioId as string | undefined;
+      const priceDataPath = join(process.cwd(), "price-data.json");
+      const priceDataRaw = readFileSync(priceDataPath, "utf-8");
+      const prices: Record<string, Record<string, number>> = JSON.parse(priceDataRaw);
+      const holdings = await storage.getHoldings(portfolioId);
+
+      if (holdings.length === 0) {
+        return res.json({ volatility: {}, correlation: {}, sharpe: null, sortino: null, beta: null, maxDrawdown: null });
+      }
+
+      const tickers = holdings.map(h => h.ticker);
+      const allDates = Object.keys(prices.VOO || {}).sort();
+      const recentDates = allDates.slice(-63); // ~3 months of trading days
+
+      // Compute log returns for each ticker + VOO (benchmark)
+      const getReturns = (ticker: string, dates: string[]): number[] => {
+        const tickerPrices = prices[ticker];
+        if (!tickerPrices) return [];
+        const returns: number[] = [];
+        for (let i = 1; i < dates.length; i++) {
+          const p0 = tickerPrices[dates[i - 1]];
+          const p1 = tickerPrices[dates[i]];
+          if (p0 && p1 && p0 > 0) {
+            returns.push(Math.log(p1 / p0));
+          }
+        }
+        return returns;
+      };
+
+      const mean = (arr: number[]): number =>
+        arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+
+      const stddev = (arr: number[]): number => {
+        if (arr.length < 2) return 0;
+        const m = mean(arr);
+        const variance = arr.reduce((s, v) => s + (v - m) ** 2, 0) / (arr.length - 1);
+        return Math.sqrt(variance);
+      };
+
+      const pearson = (a: number[], b: number[]): number => {
+        const len = Math.min(a.length, b.length);
+        if (len < 5) return 0;
+        const a2 = a.slice(0, len);
+        const b2 = b.slice(0, len);
+        const ma = mean(a2);
+        const mb = mean(b2);
+        const num = a2.reduce((s, v, i) => s + (v - ma) * (b2[i] - mb), 0);
+        const den = Math.sqrt(a2.reduce((s, v) => s + (v - ma) ** 2, 0) * b2.reduce((s, v) => s + (v - mb) ** 2, 0));
+        return den === 0 ? 0 : Math.max(-1, Math.min(1, num / den));
+      };
+
+      // Per-ticker annualized volatility (30-day window)
+      const volatility: Record<string, number> = {};
+      const tickerReturns: Record<string, number[]> = {};
+      for (const ticker of tickers) {
+        const rets = getReturns(ticker, recentDates);
+        tickerReturns[ticker] = rets;
+        const vol = stddev(rets) * Math.sqrt(252) * 100;
+        volatility[ticker] = parseFloat(vol.toFixed(1));
+      }
+
+      // Pairwise correlations (top 6 by value)
+      const top6 = [...holdings].sort((a, b) => (b.value ?? 0) - (a.value ?? 0)).slice(0, 6);
+      const correlation: Record<string, number> = {};
+      for (let i = 0; i < top6.length; i++) {
+        for (let j = 0; j < top6.length; j++) {
+          const key = `${top6[i].ticker}_${top6[j].ticker}`;
+          if (i === j) {
+            correlation[key] = 1.0;
+          } else {
+            const r1 = tickerReturns[top6[i].ticker] || [];
+            const r2 = tickerReturns[top6[j].ticker] || [];
+            correlation[key] = parseFloat(pearson(r1, r2).toFixed(3));
+          }
+        }
+      }
+
+      // Portfolio-level metrics using weighted daily returns
+      const totalValue = holdings.reduce((s, h) => s + (h.value ?? 0), 0);
+      const weights = holdings.map(h => ({ ticker: h.ticker, w: totalValue > 0 ? (h.value ?? 0) / totalValue : 0 }));
+
+      const portfolioReturns: number[] = [];
+      for (let i = 1; i < recentDates.length; i++) {
+        let dayReturn = 0;
+        let covered = 0;
+        for (const { ticker, w } of weights) {
+          const p0 = prices[ticker]?.[recentDates[i - 1]];
+          const p1 = prices[ticker]?.[recentDates[i]];
+          if (p0 && p1 && p0 > 0) {
+            dayReturn += Math.log(p1 / p0) * w;
+            covered += w;
+          }
+        }
+        if (covered > 0.3) portfolioReturns.push(dayReturn / covered);
+      }
+
+      const vooReturns = getReturns("VOO", recentDates);
+
+      // Annualized return
+      const annualizedReturn = mean(portfolioReturns) * 252 * 100;
+      const annualizedVol = stddev(portfolioReturns) * Math.sqrt(252) * 100;
+      const riskFreeRate = 4.5;
+
+      // Sharpe
+      const sharpe = annualizedVol > 0 ? parseFloat(((annualizedReturn - riskFreeRate) / annualizedVol).toFixed(2)) : null;
+
+      // Sortino (downside deviation only)
+      const downsideReturns = portfolioReturns.filter(r => r < 0);
+      const downsideVol = stddev(downsideReturns) * Math.sqrt(252) * 100;
+      const sortino = downsideVol > 0 ? parseFloat(((annualizedReturn - riskFreeRate) / downsideVol).toFixed(2)) : null;
+
+      // Beta vs VOO
+      const minLen = Math.min(portfolioReturns.length, vooReturns.length);
+      const pr = portfolioReturns.slice(0, minLen);
+      const vr = vooReturns.slice(0, minLen);
+      const covPV = pr.reduce((s, v, i) => s + (v - mean(pr)) * (vr[i] - mean(vr)), 0) / (minLen - 1);
+      const varVOO = vr.reduce((s, v) => s + (v - mean(vr)) ** 2, 0) / (minLen - 1);
+      const beta = varVOO > 0 ? parseFloat((covPV / varVOO).toFixed(2)) : null;
+
+      // Max drawdown from price history
+      let peak = 1.0;
+      let equity = 1.0;
+      let maxDD = 0;
+      for (const r of portfolioReturns) {
+        equity *= Math.exp(r);
+        if (equity > peak) peak = equity;
+        const dd = (equity - peak) / peak;
+        if (dd < maxDD) maxDD = dd;
+      }
+      const maxDrawdown = parseFloat((maxDD * 100).toFixed(1));
+
+      res.json({ volatility, correlation, sharpe, sortino, beta, maxDrawdown, annualizedReturn: parseFloat(annualizedReturn.toFixed(1)), annualizedVol: parseFloat(annualizedVol.toFixed(1)), top6Tickers: top6.map(h => h.ticker) });
+    } catch (error) {
+      console.error("Analytics error:", error);
+      res.status(500).json({ error: "Failed to compute analytics" });
     }
   });
 

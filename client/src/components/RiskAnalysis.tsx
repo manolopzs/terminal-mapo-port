@@ -3,32 +3,30 @@ import type { Holding } from "@shared/schema";
 
 interface RiskAnalysisProps {
   holdings: Holding[];
+  analytics?: {
+    sharpe: number | null;
+    sortino: number | null;
+    beta: number | null;
+    maxDrawdown: number | null;
+    annualizedReturn: number | null;
+    annualizedVol: number | null;
+  };
 }
 
-export function RiskAnalysis({ holdings }: RiskAnalysisProps) {
+export function RiskAnalysis({ holdings, analytics }: RiskAnalysisProps) {
   const metrics = useMemo(() => {
     if (holdings.length === 0) {
       return [
-        { label: "WEIGHTED VOLATILITY", value: "—", sub: "Annualized" },
-        { label: "MAX DRAWDOWN (1Y)", value: "—", sub: "Peak to trough" },
-        { label: "TOP CONCENTRATION", value: "—", sub: "No holdings" },
-        { label: "PORTFOLIO BETA", value: "—", sub: "vs S&P 500" },
-        { label: "SHARPE RATIO", value: "—", sub: "Risk-adj. return" },
-        { label: "SORTINO RATIO", value: "—", sub: "Downside risk-adj." },
+        { label: "ANNUALIZED VOL", value: "—", sub: "30-day realized", color: "#C9D1D9" },
+        { label: "MAX DRAWDOWN", value: "—", sub: "Peak to trough", color: "#C9D1D9" },
+        { label: "TOP CONCENTRATION", value: "—", sub: "No holdings", color: "#C9D1D9" },
+        { label: "PORTFOLIO BETA", value: "—", sub: "vs S&P 500", color: "#C9D1D9" },
+        { label: "SHARPE RATIO", value: "—", sub: "Risk-adj. return", color: "#C9D1D9" },
+        { label: "SORTINO RATIO", value: "—", sub: "Downside risk-adj.", color: "#C9D1D9" },
       ];
     }
 
     const totalValue = holdings.reduce((s, h) => s + (h.value ?? 0), 0);
-    const sorted = [...holdings].sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
-
-    // Weighted volatility estimate based on sector
-    const sectorVol: Record<string, number> = {
-      Crypto: 72, Technology: 48, Energy: 42, Industrials: 35,
-      Financials: 30, Healthcare: 38, "Consumer Discretionary": 32, Utilities: 22, Other: 40,
-    };
-    const weightedVol = totalValue > 0
-      ? holdings.reduce((s, h) => s + (sectorVol[h.sector || "Other"] || 40) * ((h.value ?? 0) / totalValue), 0)
-      : 0;
 
     // Top concentration - largest sector %
     const sectorMap = new Map<string, number>();
@@ -40,55 +38,37 @@ export function RiskAnalysis({ holdings }: RiskAnalysisProps) {
     let topSectorPct = 0;
     sectorMap.forEach((val, key) => {
       const pct = totalValue > 0 ? (val / totalValue) * 100 : 0;
-      if (pct > topSectorPct) {
-        topSectorPct = pct;
-        topSector = key;
-      }
+      if (pct > topSectorPct) { topSectorPct = pct; topSector = key; }
     });
 
-    // Portfolio beta estimate
-    const betaMap: Record<string, number> = {
-      Crypto: 1.8, Technology: 1.3, Energy: 1.1, Industrials: 1.0,
-      Financials: 1.1, Healthcare: 0.9, "Consumer Discretionary": 1.05, Utilities: 0.6, Other: 1.0,
-    };
-    const beta = totalValue > 0
-      ? holdings.reduce((s, h) => s + (betaMap[h.sector || "Other"] || 1.0) * ((h.value ?? 0) / totalValue), 0)
-      : 0;
+    const vol = analytics?.annualizedVol != null ? `${analytics.annualizedVol.toFixed(1)}%` : "—";
+    const dd = analytics?.maxDrawdown != null ? `${analytics.maxDrawdown.toFixed(1)}%` : "—";
+    const beta = analytics?.beta != null ? analytics.beta.toFixed(2) : "—";
+    const sharpe = analytics?.sharpe != null ? analytics.sharpe.toFixed(2) : "—";
+    const sortino = analytics?.sortino != null ? analytics.sortino.toFixed(2) : "—";
 
-    // Sharpe/Sortino estimates
-    const totalReturnPct = totalValue > 0
-      ? holdings.reduce((s, h) => s + (h.gainLossPct ?? 0) * ((h.value ?? 0) / totalValue), 0)
-      : 0;
-    const sharpe = weightedVol > 0 ? ((totalReturnPct - 4.5) / weightedVol * 4).toFixed(2) : "—";
-    const sortino = weightedVol > 0 ? ((totalReturnPct - 4.5) / (weightedVol * 0.7) * 4).toFixed(2) : "—";
-
-    // Max drawdown estimate
-    const drawdown = (weightedVol * 0.35).toFixed(1);
+    const ddNum = analytics?.maxDrawdown ?? 0;
+    const sharpeNum = analytics?.sharpe ?? 0;
 
     return [
-      { label: "WEIGHTED VOLATILITY", value: `${weightedVol.toFixed(1)}%`, sub: "Annualized" },
-      { label: "MAX DRAWDOWN (1Y)", value: `${drawdown}%`, sub: "Peak to trough" },
-      { label: "TOP CONCENTRATION", value: `${topSectorPct.toFixed(0)}%`, sub: topSector },
-      { label: "PORTFOLIO BETA", value: beta.toFixed(2), sub: "vs S&P 500" },
-      { label: "SHARPE RATIO", value: sharpe, sub: "Risk-adj. return" },
-      { label: "SORTINO RATIO", value: sortino, sub: "Downside risk-adj." },
+      { label: "ANNUALIZED VOL", value: vol, sub: "30-day realized", color: "#C9D1D9" },
+      { label: "MAX DRAWDOWN", value: dd, sub: "Peak to trough", color: ddNum < -15 ? "#FF4458" : ddNum < -8 ? "#F0883E" : "#00E6A8" },
+      { label: "TOP CONCENTRATION", value: `${topSectorPct.toFixed(0)}%`, sub: topSector, color: topSectorPct > 40 ? "#F0883E" : "#C9D1D9" },
+      { label: "PORTFOLIO BETA", value: beta, sub: "vs S&P 500", color: "#C9D1D9" },
+      { label: "SHARPE RATIO", value: sharpe, sub: "Risk-adj. return", color: sharpeNum >= 1 ? "#00E6A8" : sharpeNum >= 0 ? "#F0883E" : "#FF4458" },
+      { label: "SORTINO RATIO", value: sortino, sub: "Downside risk-adj.", color: "#C9D1D9" },
     ];
-  }, [holdings]);
+  }, [holdings, analytics]);
 
   return (
     <div className="terminal-panel" style={{ flex: "1 1 0", minHeight: 0 }}>
       <div className="terminal-panel-header">
         <span className="terminal-panel-title">Risk Analysis</span>
-        <span className="terminal-badge">METRICS</span>
+        <span className="terminal-badge">LIVE CALC</span>
       </div>
       <div
         className="flex-1 overflow-auto"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 0,
-          padding: 0,
-        }}
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0, padding: 0 }}
       >
         {metrics.map((m, i) => (
           <div
@@ -99,21 +79,10 @@ export function RiskAnalysis({ holdings }: RiskAnalysisProps) {
               borderBottom: i < 4 ? "1px solid #1A2332" : "none",
             }}
           >
-            <div
-              style={{
-                fontSize: 8,
-                color: "#8B949E",
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                marginBottom: 2,
-              }}
-            >
+            <div style={{ fontSize: 8, color: "#8B949E", letterSpacing: 1, textTransform: "uppercase", marginBottom: 2 }}>
               {m.label}
             </div>
-            <div
-              className="font-mono tabular-nums"
-              style={{ fontSize: 18, fontWeight: 700, color: "#FFFFFF", lineHeight: 1.2 }}
-            >
+            <div className="font-mono tabular-nums" style={{ fontSize: 18, fontWeight: 700, color: m.color ?? "#FFFFFF", lineHeight: 1.2 }}>
               {m.value}
             </div>
             <div style={{ fontSize: 8, color: "#8B949E", marginTop: 1 }}>{m.sub}</div>
