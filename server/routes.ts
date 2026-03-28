@@ -279,21 +279,26 @@ INSTRUCTIONS:
 
       // For Mapo AI portfolio, compute from trades
       if (trades.length > 0) {
-        // Load mapo-ai-portfolio.json for starting capital
-        let startingCapital = 20454.16;
+        // Load mapo-ai-portfolio.json for starting capital and start date
+        let startingCapital = 20469.11;
+        let mapoData: Record<string, any> = {};
         try {
           const mapoPath = join(process.cwd(), "mapo-ai-portfolio.json");
           const mapoRaw = readFileSync(mapoPath, "utf-8");
-          const mapoData = JSON.parse(mapoRaw);
+          mapoData = JSON.parse(mapoRaw);
           startingCapital = mapoData.startingCapital || startingCapital;
         } catch (e) {}
 
         // Sort trades by date
         const sortedTrades = [...trades].sort((a, b) => a.date.localeCompare(b.date));
-        const firstTradeDate = sortedTrades[0].date;
 
         // Get all trading dates from VOO
         const allDates = Object.keys(prices.VOO || {}).sort();
+
+        // Base date: portfolio startDate from JSON, falling back to first trade date.
+        // Find the first available price date on or after the portfolio start date.
+        const portfolioStartDate = mapoData.startDate || sortedTrades[0]?.date || allDates[0];
+        const baseDate = allDates.find(d => d >= portfolioStartDate) || allDates[0];
 
         // Group trades by date
         const tradesByDate: Record<string, typeof trades> = {};
@@ -305,8 +310,8 @@ INSTRUCTIONS:
         const positions: Record<string, number> = {};
         let cash = startingCapital;
 
-        const vooBase = prices.VOO?.[firstTradeDate] || 1;
-        const qqqBase = prices.QQQ?.[firstTradeDate] || 1;
+        const vooBase = prices.VOO?.[baseDate] || 1;
+        const qqqBase = prices.QQQ?.[baseDate] || 1;
 
         const performanceData: { date: string; portfolio: number; voo: number; qqq: number }[] = [];
 

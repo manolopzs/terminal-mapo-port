@@ -54,45 +54,6 @@ export class MemStorage implements IStorage {
   }
 
   private seedData() {
-    // Seed Charles Schwab (Plaid data)
-    try {
-      const dataPath = join(process.cwd(), "portfolio-data.json");
-      const raw = readFileSync(dataPath, "utf-8");
-      const data = JSON.parse(raw);
-
-      const portfolioId = randomUUID();
-      const portfolio: Portfolio = {
-        id: portfolioId,
-        name: data.institution || "Charles Schwab",
-        type: "brokerage",
-      };
-      this.portfolios.set(portfolioId, portfolio);
-
-      for (const h of data.holdings) {
-        const holdingId = randomUUID();
-        const holding: Holding = {
-          id: holdingId,
-          portfolioId,
-          ticker: h.ticker,
-          name: h.name,
-          quantity: h.quantity,
-          costBasis: h.costBasis,
-          price: h.price,
-          value: h.value,
-          dayChange: h.dayChange ?? 0,
-          dayChangePct: h.dayChangePct ?? 0,
-          gainLoss: h.gainLoss ?? 0,
-          gainLossPct: h.gainLossPct ?? 0,
-          type: h.type,
-          sector: h.sector ?? "Other",
-          source: "manual",
-        };
-        this.holdings.set(holdingId, holding);
-      }
-    } catch (e) {
-      console.error("Failed to seed Schwab portfolio data:", e);
-    }
-
     // Seed Mapo AI Portfolio
     try {
       const mapoPath = join(process.cwd(), "mapo-ai-portfolio.json");
