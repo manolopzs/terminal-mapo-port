@@ -178,7 +178,7 @@ export function MAPOScoreTab() {
                 textTransform: "uppercase",
               }}
               onFocus={(e) => (e.target.style.borderColor = "#00D9FF")}
-              onBlur={(e) => (e.target.style.borderColor = "#1A2332")}
+              onBlur={(e) => (e.target.style.borderColor = "#1C2840")}
             />
           </div>
           <button
@@ -260,7 +260,7 @@ export function MAPOScoreTab() {
                     onClick={() => { setTicker(t); runAnalysis(t); }}
                     style={{ padding: "4px 10px", fontSize: 9, fontFamily: "monospace", background: "transparent", border: "1px solid #1C2840", borderRadius: 3, color: "#8B949E", cursor: "pointer" }}
                     onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#00D9FF"; e.currentTarget.style.color = "#00D9FF"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#1A2332"; e.currentTarget.style.color = "#8B949E"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#1C2840"; e.currentTarget.style.color = "#8B949E"; }}
                   >
                     {t}
                   </button>
@@ -283,11 +283,11 @@ export function MAPOScoreTab() {
           <div
             style={{
               padding: 14,
-              background: "rgba(255,77,77,0.08)",
-              border: "1px solid rgba(255,77,77,0.2)",
+              background: "rgba(255,68,88,0.08)",
+              border: "1px solid rgba(255,68,88,0.2)",
               borderRadius: 4,
               fontSize: 10,
-              color: "#FF4D4D",
+              color: "#FF4458",
               fontFamily: "monospace",
             }}
           >
@@ -321,7 +321,7 @@ export function MAPOScoreTab() {
               {/* Main score */}
               <div
                 style={{
-                  background: "#0D1117",
+                  background: "#0B0F1A",
                   border: "1px solid #1C2840",
                   borderRadius: 4,
                   padding: 20,
@@ -380,7 +380,7 @@ export function MAPOScoreTab() {
               {/* Factor breakdown */}
               <div
                 style={{
-                  background: "#0D1117",
+                  background: "#0B0F1A",
                   border: "1px solid #1C2840",
                   borderRadius: 4,
                   padding: 16,
@@ -400,7 +400,7 @@ export function MAPOScoreTab() {
                 </div>
                 {FACTORS.map(({ key, label, weight }) => {
                   const val = result.factors[key];
-                  const color = val >= 65 ? "#00C853" : val >= 50 ? "#FFB300" : "#FF4D4D";
+                  const color = val >= 65 ? "#00E6A8" : val >= 50 ? "#F0883E" : "#FF4458";
                   return (
                     <div key={key} style={{ marginBottom: 10 }}>
                       <div
@@ -423,7 +423,7 @@ export function MAPOScoreTab() {
                           </span>
                         </span>
                       </div>
-                      <div style={{ height: 4, background: "#1A2332", borderRadius: 2 }}>
+                      <div style={{ height: 4, background: "#1C2840", borderRadius: 2 }}>
                         <div
                           style={{
                             height: "100%",
@@ -445,7 +445,7 @@ export function MAPOScoreTab() {
               {/* Thesis */}
               <div
                 style={{
-                  background: "#0D1117",
+                  background: "#0B0F1A",
                   border: "1px solid #1C2840",
                   borderRadius: 4,
                   padding: 16,
@@ -461,36 +461,36 @@ export function MAPOScoreTab() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div
                   style={{
-                    background: "#0D1117",
+                    background: "#0B0F1A",
                     border: "1px solid #1C2840",
                     borderRadius: 4,
                     padding: 16,
                   }}
                 >
-                  <div style={{ fontSize: 8, color: "#00C853", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8, fontFamily: "monospace" }}>
+                  <div style={{ fontSize: 8, color: "#00E6A8", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8, fontFamily: "monospace" }}>
                     Catalysts
                   </div>
                   {result.catalysts.map((c, i) => (
                     <div key={i} style={{ fontSize: 9, color: "#8B949E", lineHeight: 1.7, display: "flex", gap: 6 }}>
-                      <span style={{ color: "#00C853", flexShrink: 0 }}>+</span>
+                      <span style={{ color: "#00E6A8", flexShrink: 0 }}>+</span>
                       {c}
                     </div>
                   ))}
                 </div>
                 <div
                   style={{
-                    background: "#0D1117",
+                    background: "#0B0F1A",
                     border: "1px solid #1C2840",
                     borderRadius: 4,
                     padding: 16,
                   }}
                 >
-                  <div style={{ fontSize: 8, color: "#FF4D4D", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8, fontFamily: "monospace" }}>
+                  <div style={{ fontSize: 8, color: "#FF4458", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8, fontFamily: "monospace" }}>
                     Key Risks
                   </div>
                   {result.risks.map((r, i) => (
                     <div key={i} style={{ fontSize: 9, color: "#8B949E", lineHeight: 1.7, display: "flex", gap: 6 }}>
-                      <span style={{ color: "#FF4D4D", flexShrink: 0 }}>−</span>
+                      <span style={{ color: "#FF4458", flexShrink: 0 }}>−</span>
                       {r}
                     </div>
                   ))}
@@ -500,13 +500,13 @@ export function MAPOScoreTab() {
               {/* Entry note */}
               <div
                 style={{
-                  background: "#0D1117",
+                  background: "#0B0F1A",
                   border: "1px solid #1C2840",
                   borderRadius: 4,
                   padding: 16,
                 }}
               >
-                <div style={{ fontSize: 8, color: "#FFB300", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8, fontFamily: "monospace" }}>
+                <div style={{ fontSize: 8, color: "#F0883E", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8, fontFamily: "monospace" }}>
                   Entry / Action Note
                 </div>
                 <div style={{ fontSize: 10, color: "#C9D1D9", lineHeight: 1.7 }}>{result.entryNote}</div>
@@ -567,7 +567,7 @@ export function MAPOScoreTab() {
                   padding: "8px 10px",
                   background: "transparent",
                   border: "none",
-                  borderBottom: "1px solid #0D1117",
+                  borderBottom: "1px solid rgba(28,40,64,0.5)",
                   cursor: "pointer",
                   textAlign: "left",
                 }}
@@ -610,7 +610,7 @@ export function MAPOScoreTab() {
             cursor: "pointer",
             flexShrink: 0,
           }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#FF4D4D"; }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#FF4458"; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "#4A5A6E"; }}
         >
           Clear History

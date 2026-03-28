@@ -25,15 +25,15 @@ export function NewsTicker({ holdings, liveNews }: NewsTickerProps) {
     return (
       <div
         className="flex items-center flex-shrink-0 overflow-hidden"
-        style={{ height: 22, minHeight: 22, background: "#0A0E18", borderTop: "1px solid #1A2332" }}
+        style={{ height: 22, minHeight: 22, background: "#0A0E18", borderTop: "1px solid #1C2840" }}
       >
         <div
           className="flex-shrink-0 flex items-center justify-center"
-          style={{ background: "rgba(139,148,158,0.08)", padding: "0 8px", height: "100%", borderRight: "1px solid #1A2332" }}
+          style={{ background: "rgba(139,148,158,0.08)", padding: "0 8px", height: "100%", borderRight: "1px solid #1C2840" }}
         >
-          <span style={{ fontSize: 8, fontWeight: 700, color: "#484F58", letterSpacing: 1 }}>NEWS</span>
+          <span style={{ fontSize: 8, fontWeight: 700, color: "#4A5A6E", letterSpacing: 1 }}>NEWS</span>
         </div>
-        <span style={{ fontSize: 9, color: "#2D3748", padding: "0 12px", fontFamily: "monospace" }}>
+        <span style={{ fontSize: 9, color: "#2E3E52", padding: "0 12px", fontFamily: "monospace" }}>
           Awaiting live news feed...
         </span>
       </div>
@@ -47,7 +47,7 @@ export function NewsTicker({ holdings, liveNews }: NewsTickerProps) {
         height: 22,
         minHeight: 22,
         background: "#0A0E18",
-        borderTop: "1px solid #1A2332",
+        borderTop: "1px solid #1C2840",
       }}
     >
       <div
@@ -56,7 +56,7 @@ export function NewsTicker({ holdings, liveNews }: NewsTickerProps) {
           background: "rgba(0, 217, 255, 0.1)",
           padding: "0 8px",
           height: "100%",
-          borderRight: "1px solid #1A2332",
+          borderRight: "1px solid #1C2840",
         }}
       >
         <span

@@ -79,7 +79,7 @@ export function RiskSuggestions({ holdings }: RiskSuggestionsProps) {
     const highVolHoldings = holdings.filter((h) =>
       (h.sector === "Crypto" || Math.abs(h.gainLossPct ?? 0) > 50)
     );
-    if (highVolHoldings.length > 0 && results.length < 3) {
+    if (highVolHoldings.length > 0) {
       const names = highVolHoldings.map((h) => h.ticker).join(", ");
       results.push({
         title: "High Volatility Exposure",
@@ -88,7 +88,7 @@ export function RiskSuggestions({ holdings }: RiskSuggestionsProps) {
       });
     }
 
-    return results.slice(0, 3);
+    return results;
   }, [holdings]);
 
   if (suggestions.length === 0) {
@@ -109,7 +109,7 @@ export function RiskSuggestions({ holdings }: RiskSuggestionsProps) {
     <div className="terminal-panel" style={{ flex: "1.2 1 0", minHeight: 0 }}>
       <div className="terminal-panel-header">
         <span className="terminal-panel-title">Risk Suggestions</span>
-        <span className="terminal-badge terminal-badge-orange">INTEL</span>
+        <span className="terminal-badge terminal-badge-orange">{suggestions.length} ALERTS</span>
       </div>
       <div className="flex-1 overflow-auto" style={{ padding: 4 }}>
         {suggestions.map((s, i) => (
@@ -117,7 +117,7 @@ export function RiskSuggestions({ holdings }: RiskSuggestionsProps) {
             key={i}
             style={{
               background: "#0A0E18",
-              border: "1px solid #1A2332",
+              border: "1px solid #1C2840",
               borderRadius: 2,
               padding: "6px 8px",
               marginBottom: i < suggestions.length - 1 ? 4 : 0,

@@ -39,8 +39,8 @@ export function DrawdownMonitor({ portfolioId }: { portfolioId: string }) {
   return (
     <div
       style={{
-        background: "#0D1117",
-        border: "1px solid #1A2332",
+        background: "#0B0F1A",
+        border: "1px solid #1C2840",
         padding: "8px 10px",
         overflow: "auto",
         height: "100%",
@@ -79,7 +79,7 @@ export function DrawdownMonitor({ portfolioId }: { portfolioId: string }) {
             fontWeight: 600,
             letterSpacing: 1,
             textTransform: "uppercase",
-            color: "#484F58",
+            color: "#4A5A6E",
           }}
         >
           From Cost
@@ -89,7 +89,11 @@ export function DrawdownMonitor({ portfolioId }: { portfolioId: string }) {
       {/* Drawdown rows */}
       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
         {drawdowns.length === 0 && (
-          <span style={{ fontSize: 9, color: "#484F58", fontStyle: "italic" }}>No holdings</span>
+          <span style={{ fontSize: 9, color: "#00E6A8", fontFamily: "monospace" }}>
+            {holdingsData.filter(h => h.type !== "Cash" && h.ticker !== "CASH").length > 0
+              ? "All positions profitable"
+              : "No holdings"}
+          </span>
         )}
         {drawdowns.map((d) => (
           <div
@@ -120,7 +124,7 @@ export function DrawdownMonitor({ portfolioId }: { portfolioId: string }) {
               style={{
                 flex: 1,
                 height: 6,
-                background: "#1A2332",
+                background: "#1C2840",
                 borderRadius: 1,
                 overflow: "hidden",
                 position: "relative",

@@ -53,13 +53,13 @@ function useMarketData(symbols: string[]) {
 function QuoteCell({ data, label, symbol }: { data: any; label: string; symbol: string }) {
   if (!data) {
     return (
-      <div style={{ padding: "10px 14px", borderBottom: "1px solid #1A2332" }}>
+      <div style={{ padding: "10px 14px", borderBottom: "1px solid #1C2840" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: "#C9D1D9", fontFamily: "monospace" }}>{symbol}</div>
-            <div style={{ fontSize: 8, color: "#484F58", textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</div>
+            <div style={{ fontSize: 8, color: "#4A5A6E", textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</div>
           </div>
-          <div style={{ fontSize: 9, color: "#484F58" }}>—</div>
+          <div style={{ fontSize: 9, color: "#4A5A6E" }}>—</div>
         </div>
       </div>
     );
@@ -71,13 +71,13 @@ function QuoteCell({ data, label, symbol }: { data: any; label: string; symbol: 
   const isPos = change >= 0;
   const isNeutral = Math.abs(changePct) < 0.01;
 
-  const color = isNeutral ? "#8B949E" : isPos ? "#00C853" : "#FF4D4D";
+  const color = isNeutral ? "#8B949E" : isPos ? "#00E6A8" : "#FF4458";
 
   return (
     <div
       style={{
         padding: "10px 14px",
-        borderBottom: "1px solid #1A2332",
+        borderBottom: "1px solid #1C2840",
         cursor: "default",
         transition: "background 0.15s",
       }}
@@ -87,7 +87,7 @@ function QuoteCell({ data, label, symbol }: { data: any; label: string; symbol: 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#C9D1D9", fontFamily: "monospace" }}>{symbol}</div>
-          <div style={{ fontSize: 8, color: "#484F58", textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</div>
+          <div style={{ fontSize: 8, color: "#4A5A6E", textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</div>
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#E8EDF2", fontFamily: "monospace" }}>
@@ -116,8 +116,8 @@ function SectionHeader({ title, badge }: { title: string; badge?: string }) {
     <div
       style={{
         padding: "8px 14px",
-        background: "#0D1117",
-        borderBottom: "1px solid #1A2332",
+        background: "#0B0F1A",
+        borderBottom: "1px solid #1C2840",
         display: "flex",
         alignItems: "center",
         gap: 8,
@@ -196,7 +196,7 @@ export function MarketTab() {
       }}
     >
       {/* Col 1: Major Indices */}
-      <div style={{ borderRight: "1px solid #1A2332", overflowY: "auto" }}>
+      <div style={{ borderRight: "1px solid #1C2840", overflowY: "auto" }}>
         <SectionHeader title="Major Indices" badge="LIVE" />
         {INDICES.map((idx) => (
           <QuoteCell
@@ -208,21 +208,21 @@ export function MarketTab() {
         ))}
 
         {/* Market Notes — dynamic */}
-        <div style={{ padding: "14px", borderTop: "2px solid #1A2332", marginTop: 4 }}>
+        <div style={{ padding: "14px", borderTop: "2px solid #1C2840", marginTop: 4 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             <div style={{ fontSize: 8, color: "#8B949E", letterSpacing: 1.5, textTransform: "uppercase" }}>
               Market Signals
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {lastUpdated && (
-                <span style={{ fontSize: 7, color: "#2D3748", fontFamily: "monospace" }}>
+                <span style={{ fontSize: 7, color: "#2E3E52", fontFamily: "monospace" }}>
                   {lastUpdated}
                 </span>
               )}
               <button
                 onClick={() => refetch()}
                 disabled={isFetching}
-                style={{ background: "none", border: "none", cursor: isFetching ? "default" : "pointer", padding: 2, color: isFetching ? "#2D3748" : "#484F58" }}
+                style={{ background: "none", border: "none", cursor: isFetching ? "default" : "pointer", padding: 2, color: isFetching ? "#2E3E52" : "#4A5A6E" }}
               >
                 <RefreshCw size={9} style={{ animation: isFetching ? "spin 1s linear infinite" : "none" }} />
               </button>
@@ -230,16 +230,16 @@ export function MarketTab() {
           </div>
           <div style={{ fontSize: 9, color: "#8B949E", lineHeight: 2, fontFamily: "monospace" }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "#484F58" }}>VIX</span>
-              <span style={{ color: vix > 30 ? "#FF4D4D" : vix > 20 ? "#FFB300" : "#00C853" }}>{vixNote}</span>
+              <span style={{ color: "#4A5A6E" }}>VIX</span>
+              <span style={{ color: vix > 30 ? "#FF4458" : vix > 20 ? "#F0883E" : "#00E6A8" }}>{vixNote}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "#484F58" }}>TLT</span>
-              <span style={{ color: tltChange > 0.5 ? "#FFB300" : tltChange < -0.5 ? "#00C853" : "#8B949E" }}>{tltNote}</span>
+              <span style={{ color: "#4A5A6E" }}>TLT</span>
+              <span style={{ color: tltChange > 0.5 ? "#F0883E" : tltChange < -0.5 ? "#00E6A8" : "#8B949E" }}>{tltNote}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "#484F58" }}>UUP</span>
-              <span style={{ color: uupChange > 0.3 ? "#FF4D4D" : uupChange < -0.3 ? "#00C853" : "#8B949E" }}>{uupNote}</span>
+              <span style={{ color: "#4A5A6E" }}>UUP</span>
+              <span style={{ color: uupChange > 0.3 ? "#FF4458" : uupChange < -0.3 ? "#00E6A8" : "#8B949E" }}>{uupNote}</span>
             </div>
           </div>
         </div>
@@ -247,10 +247,10 @@ export function MarketTab() {
       </div>
 
       {/* Col 2: Sector Performance */}
-      <div style={{ borderRight: "1px solid #1A2332", overflowY: "auto" }}>
+      <div style={{ borderRight: "1px solid #1C2840", overflowY: "auto" }}>
         <SectionHeader title="Sector ETFs" badge="S&P SECTORS" />
         {isLoading ? (
-          <div style={{ padding: 20, fontSize: 9, color: "#484F58", fontFamily: "monospace" }}>
+          <div style={{ padding: 20, fontSize: 9, color: "#4A5A6E", fontFamily: "monospace" }}>
             Loading sector data...
           </div>
         ) : (
@@ -270,7 +270,7 @@ export function MarketTab() {
                 return (
                   <div
                     key={sec.symbol}
-                    style={{ padding: "8px 14px", borderBottom: "1px solid #0D1117" }}
+                    style={{ padding: "8px 14px", borderBottom: "1px solid #0B0F1A" }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,217,255,0.03)")}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                   >
@@ -286,25 +286,25 @@ export function MarketTab() {
                         <span style={{ fontSize: 10, fontWeight: 700, color: "#C9D1D9", fontFamily: "monospace" }}>
                           {sec.symbol}
                         </span>
-                        <span style={{ fontSize: 8, color: "#484F58", marginLeft: 6 }}>{sec.label}</span>
+                        <span style={{ fontSize: 8, color: "#4A5A6E", marginLeft: 6 }}>{sec.label}</span>
                       </div>
                       <span
                         style={{
                           fontSize: 10,
                           fontWeight: 700,
-                          color: isPos ? "#00C853" : "#FF4D4D",
+                          color: isPos ? "#00E6A8" : "#FF4458",
                           fontFamily: "monospace",
                         }}
                       >
                         {isPos ? "+" : ""}{pct.toFixed(2)}%
                       </span>
                     </div>
-                    <div style={{ height: 3, background: "#1A2332", borderRadius: 2 }}>
+                    <div style={{ height: 3, background: "#1C2840", borderRadius: 2 }}>
                       <div
                         style={{
                           height: "100%",
                           width: `${barWidth}%`,
-                          background: isPos ? "#00C853" : "#FF4D4D",
+                          background: isPos ? "#00E6A8" : "#FF4458",
                           borderRadius: 2,
                           transition: "width 0.5s ease",
                         }}
@@ -334,8 +334,8 @@ export function MarketTab() {
           style={{
             margin: 14,
             padding: 12,
-            background: "#0D1117",
-            border: "1px solid #1A2332",
+            background: "#0B0F1A",
+            border: "1px solid #1C2840",
             borderRadius: 3,
           }}
         >

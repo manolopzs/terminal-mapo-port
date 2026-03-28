@@ -62,11 +62,11 @@ export function EarningsCalendar({ holdings, liveEarnings }: EarningsCalendarPro
   }, [earnings]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, background: "#0D1117" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, background: "#0B0F1A" }}>
       <div className="terminal-panel-header" style={{ flexShrink: 0 }}>
         <span className="terminal-panel-title">Earnings Calendar</span>
         <span className="terminal-badge terminal-badge-green">
-          {liveEarnings && liveEarnings.length > 0 ? "LIVE" : "UPCOMING"}
+          {liveEarnings === undefined ? "LOADING" : sortedEarnings.filter(e => e.isLive).length > 0 ? `${sortedEarnings.filter(e => e.isLive).length} SCHEDULED` : "NONE SCHEDULED"}
         </span>
       </div>
       <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", minHeight: 0 }}>
@@ -76,9 +76,9 @@ export function EarningsCalendar({ holdings, liveEarnings }: EarningsCalendarPro
               style={{
                 position: "sticky",
                 top: 0,
-                background: "#0D1117",
+                background: "#0B0F1A",
                 zIndex: 1,
-                borderBottom: "1px solid #1A2332",
+                borderBottom: "1px solid #1C2840",
               }}
             >
               <th style={thStyle("left")}>TICKER</th>

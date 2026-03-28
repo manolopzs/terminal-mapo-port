@@ -17,6 +17,7 @@ export function RiskAnalysis({ holdings, analytics }: RiskAnalysisProps) {
   const metrics = useMemo(() => {
     if (holdings.length === 0) {
       return [
+        { label: "ANNUALIZED RETURN", value: "—", sub: "30-day est.", color: "#C9D1D9" },
         { label: "ANNUALIZED VOL", value: "—", sub: "30-day realized", color: "#C9D1D9" },
         { label: "MAX DRAWDOWN", value: "—", sub: "Peak to trough", color: "#C9D1D9" },
         { label: "TOP CONCENTRATION", value: "—", sub: "No holdings", color: "#C9D1D9" },
@@ -46,11 +47,16 @@ export function RiskAnalysis({ holdings, analytics }: RiskAnalysisProps) {
     const beta = analytics?.beta != null ? analytics.beta.toFixed(2) : "—";
     const sharpe = analytics?.sharpe != null ? analytics.sharpe.toFixed(2) : "—";
     const sortino = analytics?.sortino != null ? analytics.sortino.toFixed(2) : "—";
+    const annRet = analytics?.annualizedReturn != null
+      ? `${analytics.annualizedReturn >= 0 ? "+" : ""}${analytics.annualizedReturn.toFixed(1)}%`
+      : "—";
 
     const ddNum = analytics?.maxDrawdown ?? 0;
     const sharpeNum = analytics?.sharpe ?? 0;
+    const annRetNum = analytics?.annualizedReturn ?? 0;
 
     return [
+      { label: "ANNUALIZED RETURN", value: annRet, sub: "30-day est.", color: annRetNum > 0 ? "#00E6A8" : annRetNum < 0 ? "#FF4458" : "#C9D1D9" },
       { label: "ANNUALIZED VOL", value: vol, sub: "30-day realized", color: "#C9D1D9" },
       { label: "MAX DRAWDOWN", value: dd, sub: "Peak to trough", color: ddNum < -15 ? "#FF4458" : ddNum < -8 ? "#F0883E" : "#00E6A8" },
       { label: "TOP CONCENTRATION", value: `${topSectorPct.toFixed(0)}%`, sub: topSector, color: topSectorPct > 40 ? "#F0883E" : "#C9D1D9" },
@@ -75,8 +81,8 @@ export function RiskAnalysis({ holdings, analytics }: RiskAnalysisProps) {
             key={m.label}
             style={{
               padding: "8px 10px",
-              borderRight: i % 2 === 0 ? "1px solid #1A2332" : "none",
-              borderBottom: i < 4 ? "1px solid #1A2332" : "none",
+              borderRight: i % 2 === 0 ? "1px solid #1C2840" : "none",
+              borderBottom: Math.floor(i / 2) < Math.floor((metrics.length - 1) / 2) ? "1px solid #1C2840" : "none",
             }}
           >
             <div style={{ fontSize: 8, color: "#8B949E", letterSpacing: 1, textTransform: "uppercase", marginBottom: 2 }}>

@@ -498,8 +498,8 @@ function AddPositionDialogControlled({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         style={{
-          background: "#0D1117",
-          border: "1px solid #1A2332",
+          background: "#0B0F1A",
+          border: "1px solid #1C2840",
           borderRadius: 4,
           maxWidth: 420,
         }}
@@ -527,7 +527,7 @@ function AddPositionDialogControlled({
                 placeholder="AAPL"
                 required
                 className="mt-1 font-mono"
-                style={{ background: "#080C14", border: "1px solid #1A2332", color: "#C9D1D9", fontSize: 11 }}
+                style={{ background: "#080C14", border: "1px solid #1C2840", color: "#C9D1D9", fontSize: 11 }}
               />
             </div>
             <div>
@@ -538,7 +538,7 @@ function AddPositionDialogControlled({
                 placeholder="Apple Inc."
                 required
                 className="mt-1"
-                style={{ background: "#080C14", border: "1px solid #1A2332", color: "#C9D1D9", fontSize: 11 }}
+                style={{ background: "#080C14", border: "1px solid #1C2840", color: "#C9D1D9", fontSize: 11 }}
               />
             </div>
           </div>
@@ -553,7 +553,7 @@ function AddPositionDialogControlled({
                 placeholder="100"
                 required
                 className="mt-1 font-mono"
-                style={{ background: "#080C14", border: "1px solid #1A2332", color: "#C9D1D9", fontSize: 11 }}
+                style={{ background: "#080C14", border: "1px solid #1C2840", color: "#C9D1D9", fontSize: 11 }}
               />
             </div>
             <div>
@@ -566,7 +566,7 @@ function AddPositionDialogControlled({
                 placeholder="15000"
                 required
                 className="mt-1 font-mono"
-                style={{ background: "#080C14", border: "1px solid #1A2332", color: "#C9D1D9", fontSize: 11 }}
+                style={{ background: "#080C14", border: "1px solid #1C2840", color: "#C9D1D9", fontSize: 11 }}
               />
             </div>
             <div>
@@ -578,7 +578,7 @@ function AddPositionDialogControlled({
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="175.00"
                 className="mt-1 font-mono"
-                style={{ background: "#080C14", border: "1px solid #1A2332", color: "#C9D1D9", fontSize: 11 }}
+                style={{ background: "#080C14", border: "1px solid #1C2840", color: "#C9D1D9", fontSize: 11 }}
               />
             </div>
           </div>
@@ -586,10 +586,10 @@ function AddPositionDialogControlled({
             <div>
               <Label style={{ fontSize: 8, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Type</Label>
               <Select value={type} onValueChange={setType}>
-                <SelectTrigger className="mt-1" style={{ background: "#080C14", border: "1px solid #1A2332", color: "#C9D1D9", fontSize: 10 }}>
+                <SelectTrigger className="mt-1" style={{ background: "#080C14", border: "1px solid #1C2840", color: "#C9D1D9", fontSize: 10 }}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent style={{ background: "#0D1117", border: "1px solid #1A2332" }}>
+                <SelectContent style={{ background: "#0B0F1A", border: "1px solid #1C2840" }}>
                   <SelectItem value="Stock">Stock</SelectItem>
                   <SelectItem value="ETF">ETF</SelectItem>
                   <SelectItem value="Crypto">Crypto</SelectItem>
@@ -601,10 +601,10 @@ function AddPositionDialogControlled({
             <div>
               <Label style={{ fontSize: 8, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Sector</Label>
               <Select value={sector} onValueChange={setSector}>
-                <SelectTrigger className="mt-1" style={{ background: "#080C14", border: "1px solid #1A2332", color: "#C9D1D9", fontSize: 10 }}>
+                <SelectTrigger className="mt-1" style={{ background: "#080C14", border: "1px solid #1C2840", color: "#C9D1D9", fontSize: 10 }}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent style={{ background: "#0D1117", border: "1px solid #1A2332" }}>
+                <SelectContent style={{ background: "#0B0F1A", border: "1px solid #1C2840" }}>
                   <SelectItem value="Technology">Technology</SelectItem>
                   <SelectItem value="Healthcare">Healthcare</SelectItem>
                   <SelectItem value="Financials">Financials</SelectItem>
