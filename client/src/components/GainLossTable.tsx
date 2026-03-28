@@ -60,7 +60,7 @@ export function GainLossTable({ holdings }: GainLossTableProps) {
                 <th
                   key={h}
                   style={{
-                    fontSize: 7,
+                    fontSize: 10,
                     fontWeight: 600,
                     color: "#8B949E",
                     letterSpacing: 0.8,
@@ -139,7 +139,7 @@ export function GainLossTable({ holdings }: GainLossTableProps) {
       >
         <span
           style={{
-            fontSize: 8,
+            fontSize: 10,
             fontWeight: 700,
             letterSpacing: 1.5,
             textTransform: "uppercase",

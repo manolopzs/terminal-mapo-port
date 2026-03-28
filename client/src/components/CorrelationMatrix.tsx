@@ -74,7 +74,7 @@ export function CorrelationMatrix({ holdings, correlationData, top6Tickers }: Co
             <tr>
               <th style={{ width: 36 }} />
               {tickers.map((t) => (
-                <th key={t} style={{ fontSize: 7, fontWeight: 600, color: "#8B949E", letterSpacing: 0.5, padding: "2px 1px", textAlign: "center", fontFamily: "'JetBrains Mono', monospace", width: 38 }}>
+                <th key={t} style={{ fontSize: 10, fontWeight: 600, color: "#8B949E", letterSpacing: 0.5, padding: "2px 1px", textAlign: "center", fontFamily: "'JetBrains Mono', monospace", width: 38 }}>
                   {t}
                 </th>
               ))}
@@ -83,11 +83,11 @@ export function CorrelationMatrix({ holdings, correlationData, top6Tickers }: Co
           <tbody>
             {tickers.map((rowT, ri) => (
               <tr key={rowT}>
-                <td style={{ fontSize: 7, fontWeight: 600, color: "#8B949E", letterSpacing: 0.5, padding: "1px 4px 1px 0", textAlign: "right", fontFamily: "'JetBrains Mono', monospace" }}>
+                <td style={{ fontSize: 10, fontWeight: 600, color: "#8B949E", letterSpacing: 0.5, padding: "1px 4px 1px 0", textAlign: "right", fontFamily: "'JetBrains Mono', monospace" }}>
                   {rowT}
                 </td>
                 {matrix[ri].map((val, ci) => (
-                  <td key={ci} className="font-mono tabular-nums" style={{ fontSize: 8, fontWeight: 500, color: getTextColor(val), background: getCellColor(val), textAlign: "center", padding: "3px 1px", border: "1px solid #0B0F1A", width: 38, height: 24 }}>
+                  <td key={ci} className="font-mono tabular-nums" style={{ fontSize: 10, fontWeight: 500, color: getTextColor(val), background: getCellColor(val), textAlign: "center", padding: "3px 1px", border: "1px solid #0B0F1A", width: 38, height: 24 }}>
                     {val.toFixed(2)}
                   </td>
                 ))}

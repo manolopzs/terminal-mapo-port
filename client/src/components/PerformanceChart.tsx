@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ComposedChart,
@@ -24,8 +24,11 @@ interface PerformancePoint {
   qqq: number;
 }
 
+type Period = "5D" | "1M" | "ALL";
+
+const PERIODS: Period[] = ["5D", "1M", "ALL"];
+
 function formatDateLabel(dateStr: string): string {
-  // Input: "2026-01-29" → Output: "Jan 29"
   const [, month, day] = dateStr.split("-");
   const months = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   return `${months[parseInt(month)]} ${parseInt(day)}`;
@@ -39,25 +42,55 @@ function CustomTooltip({ active, payload, label }: any) {
       style={{
         background: "#0B0F1A",
         border: "1px solid #1C2840",
-        borderRadius: 6,
+        borderRadius: 4,
         padding: "8px 12px",
         fontSize: 11,
         lineHeight: 1.6,
+        boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
       }}
     >
-      <div style={{ color: "#8B949E", fontWeight: 600, marginBottom: 4, fontSize: 12 }}>
+      <div style={{ color: "#8B949E", fontWeight: 600, marginBottom: 6, fontSize: 10, letterSpacing: 1 }}>
         {formatDateLabel(label)}
       </div>
       {payload.map((entry: any) => {
-        const color = entry.dataKey === "portfolio" ? "#00D9FF" : entry.dataKey === "voo" ? "#F0883E" : "#A371F7";
-        const name = entry.dataKey === "portfolio" ? "Portfolio" : entry.dataKey === "voo" ? "VOO (S&P 500)" : "QQQ (NASDAQ)";
-        const val = entry.value;
+        const colorMap: Record<string, string> = {
+          portfolio: "#00D9FF",
+          voo: "#F0883E",
+          qqq: "#A371F7",
+        };
+        const nameMap: Record<string, string> = {
+          portfolio: "Portfolio",
+          voo: "VOO",
+          qqq: "QQQ",
+        };
+        const color = colorMap[entry.dataKey] ?? "#8B949E";
+        const name = nameMap[entry.dataKey] ?? entry.dataKey;
+        const val = entry.value as number;
         return (
-          <div key={entry.dataKey} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
-            <span style={{ color }}>{name}</span>
-            <span style={{ color: val >= 0 ? "#00E6A8" : "#FF4458", marginLeft: "auto", fontFamily: "JetBrains Mono, monospace" }}>
-              {val >= 0 ? "+" : ""}{val.toFixed(2)}%
+          <div
+            key={entry.dataKey}
+            style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}
+          >
+            <div
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: color,
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ color: "#8B949E", minWidth: 60 }}>{name}</span>
+            <span
+              style={{
+                color: val >= 0 ? "#00E6A8" : "#FF4458",
+                marginLeft: "auto",
+                fontFamily: "JetBrains Mono, monospace",
+                fontWeight: 600,
+              }}
+            >
+              {val >= 0 ? "+" : ""}
+              {val.toFixed(2)}%
             </span>
           </div>
         );
@@ -67,23 +100,41 @@ function CustomTooltip({ active, payload, label }: any) {
 }
 
 export function PerformanceChart({ portfolioId }: PerformanceChartProps) {
+  const [period, setPeriod] = useState<Period>("1M");
+
   const { data: rawData, isLoading } = useQuery<PerformancePoint[]>({
     queryKey: [`/api/performance?portfolioId=${portfolioId}`],
     queryFn: getQueryFn({ on401: "throw" }),
     staleTime: Infinity,
   });
 
-  const data = useMemo(() => {
-    if (!rawData || rawData.length === 0) return [];
-    // Skip the first data point (Jan 28 = pre-trade baseline) if it starts at exactly 0
+  const { data, alpha } = useMemo(() => {
+    if (!rawData || rawData.length === 0) return { data: [], alpha: null };
+
+    // Skip leading zero-portfolio baseline
     const startIdx = rawData.length > 1 && rawData[0].portfolio === 0 && rawData[0].voo !== 0 ? 1 : 0;
-    return rawData.slice(startIdx);
-  }, [rawData]);
+    const all = rawData.slice(startIdx);
 
-  // Calculate tick interval to show ~8-10 labels
-  const tickInterval = data.length > 0 ? Math.max(Math.floor(data.length / 8), 1) : 1;
+    let sliced = all;
+    if (period === "5D") sliced = all.slice(-5);
+    else if (period === "1M") sliced = all.slice(-21);
 
-  // Get latest values for the legend
+    // Compute alpha = portfolio return - SPY return over the period
+    let alphaVal: number | null = null;
+    if (sliced.length >= 2) {
+      const first = sliced[0];
+      const last = sliced[sliced.length - 1];
+      const portReturn = last.portfolio - first.portfolio;
+      const vooReturn = last.voo - first.voo;
+      alphaVal = portReturn - vooReturn;
+    } else if (sliced.length === 1) {
+      alphaVal = sliced[0].portfolio - sliced[0].voo;
+    }
+
+    return { data: sliced, alpha: alphaVal };
+  }, [rawData, period]);
+
+  const tickInterval = data.length > 0 ? Math.max(Math.floor(data.length / 7), 1) : 1;
   const latest = data.length > 0 ? data[data.length - 1] : null;
 
   if (isLoading) {
@@ -93,8 +144,24 @@ export function PerformanceChart({ portfolioId }: PerformanceChartProps) {
           <span className="terminal-panel-title">Performance</span>
           <span className="terminal-badge">LOADING...</span>
         </div>
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ color: "#8B949E", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>Loading performance data...</span>
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <span
+            style={{
+              color: "#8B949E",
+              fontSize: 10,
+              textTransform: "uppercase",
+              letterSpacing: 1,
+            }}
+          >
+            Loading...
+          </span>
         </div>
       </div>
     );
@@ -102,40 +169,111 @@ export function PerformanceChart({ portfolioId }: PerformanceChartProps) {
 
   return (
     <div className="terminal-panel" style={{ flex: "1.2 1 0", minHeight: 0 }}>
-      <div className="terminal-panel-header">
-        <span className="terminal-panel-title">Portfolio vs Benchmarks</span>
-        <span className="terminal-badge">LAST 30 TRADING DAYS</span>
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "4px 8px",
+          borderBottom: "1px solid #1C2840",
+          background: "#0B0F1A",
+          flexShrink: 0,
+          height: 28,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span className="terminal-panel-title">Performance vs Benchmarks</span>
+          {alpha !== null && (
+            <span
+              style={{
+                fontSize: 9,
+                fontWeight: 700,
+                padding: "1px 6px",
+                borderRadius: 2,
+                background: alpha >= 0 ? "rgba(0,230,168,0.1)" : "rgba(255,68,88,0.1)",
+                color: alpha >= 0 ? "#00E6A8" : "#FF4458",
+                border: `1px solid ${alpha >= 0 ? "rgba(0,230,168,0.2)" : "rgba(255,68,88,0.2)"}`,
+                letterSpacing: 0.5,
+                fontFamily: "JetBrains Mono, monospace",
+              }}
+            >
+              α {alpha >= 0 ? "+" : ""}
+              {alpha.toFixed(1)}%
+            </span>
+          )}
+        </div>
+        {/* Period selector */}
+        <div style={{ display: "flex", gap: 2 }}>
+          {PERIODS.map((p) => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              style={{
+                padding: "2px 8px",
+                fontSize: 9,
+                fontWeight: 600,
+                letterSpacing: 0.8,
+                border: "none",
+                borderRadius: 3,
+                cursor: "pointer",
+                background: period === p ? "rgba(0,217,255,0.12)" : "transparent",
+                color: period === p ? "#00D9FF" : "#4A5A6E",
+                transition: "all 0.15s",
+                fontFamily: "'Inter', system-ui, sans-serif",
+              }}
+              onMouseEnter={(e) => {
+                if (period !== p) e.currentTarget.style.color = "#8B949E";
+              }}
+              onMouseLeave={(e) => {
+                if (period !== p) e.currentTarget.style.color = "#4A5A6E";
+              }}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
       </div>
+
       {/* Legend */}
-      <div className="flex items-center gap-4 px-2" style={{ height: 22, borderBottom: "1px solid #1C2840" }}>
-        <div className="flex items-center gap-1">
-          <div style={{ width: 14, height: 2, background: "#00D9FF", borderRadius: 1 }} />
-          <span style={{ fontSize: 9, color: "#C9D1D9", fontWeight: 500 }}>Portfolio</span>
-          {latest && (
-            <span style={{ fontSize: 9, color: latest.portfolio >= 0 ? "#00E6A8" : "#FF4458", fontFamily: "JetBrains Mono, monospace", marginLeft: 2 }}>
-              {latest.portfolio >= 0 ? "+" : ""}{latest.portfolio.toFixed(2)}%
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-1">
-          <div style={{ width: 14, height: 0, borderTop: "2px dashed #F0883E" }} />
-          <span style={{ fontSize: 9, color: "#C9D1D9", fontWeight: 500 }}>VOO</span>
-          {latest && (
-            <span style={{ fontSize: 9, color: latest.voo >= 0 ? "#00E6A8" : "#FF4458", fontFamily: "JetBrains Mono, monospace", marginLeft: 2 }}>
-              {latest.voo >= 0 ? "+" : ""}{latest.voo.toFixed(2)}%
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-1">
-          <div style={{ width: 14, height: 0, borderTop: "2px dashed #A371F7" }} />
-          <span style={{ fontSize: 9, color: "#C9D1D9", fontWeight: 500 }}>QQQ</span>
-          {latest && (
-            <span style={{ fontSize: 9, color: latest.qqq >= 0 ? "#00E6A8" : "#FF4458", fontFamily: "JetBrains Mono, monospace", marginLeft: 2 }}>
-              {latest.qqq >= 0 ? "+" : ""}{latest.qqq.toFixed(2)}%
-            </span>
-          )}
-        </div>
+      <div
+        className="flex items-center gap-4 px-3"
+        style={{ height: 22, borderBottom: "1px solid #1C2840", flexShrink: 0 }}
+      >
+        {[
+          { key: "portfolio", label: "Portfolio", color: "#00D9FF", dash: false },
+          { key: "voo", label: "VOO", color: "#F0883E", dash: true },
+          { key: "qqq", label: "QQQ", color: "#A371F7", dash: true },
+        ].map(({ key, label, color, dash }) => {
+          const val = latest ? (latest as any)[key] as number : null;
+          return (
+            <div key={key} className="flex items-center gap-1">
+              {dash ? (
+                <div style={{ width: 14, height: 0, borderTop: `2px dashed ${color}` }} />
+              ) : (
+                <div style={{ width: 14, height: 2, background: color, borderRadius: 1 }} />
+              )}
+              <span style={{ fontSize: 9, color: "#C9D1D9" }}>{label}</span>
+              {val !== null && (
+                <span
+                  style={{
+                    fontSize: 9,
+                    color: val >= 0 ? "#00E6A8" : "#FF4458",
+                    fontFamily: "JetBrains Mono, monospace",
+                    fontWeight: 600,
+                    marginLeft: 2,
+                  }}
+                >
+                  {val >= 0 ? "+" : ""}
+                  {val.toFixed(2)}%
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
+
+      {/* Chart */}
       <div style={{ flex: 1, minHeight: 0 }}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 10, right: 8, bottom: 4, left: -8 }}>
@@ -152,10 +290,10 @@ export function PerformanceChart({ portfolioId }: PerformanceChartProps) {
               tick={{ fontSize: 9, fill: "#8B949E" }}
               axisLine={{ stroke: "#1C2840" }}
               tickLine={false}
-              tickFormatter={(v: number) => `${v >= 0 ? "+" : ""}${v}%`}
+              tickFormatter={(v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(0)}%`}
               domain={["auto", "auto"]}
             />
-            <ReferenceLine y={0} stroke="#1C2840" strokeWidth={1} />
+            <ReferenceLine y={0} stroke="#2A3A4C" strokeWidth={1} />
             <Tooltip content={<CustomTooltip />} />
             <Area
               type="monotone"

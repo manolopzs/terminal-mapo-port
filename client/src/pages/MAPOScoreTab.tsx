@@ -186,7 +186,7 @@ export function MAPOScoreTab() {
             disabled={analyze.isPending}
             style={{
               padding: "7px 18px",
-              fontSize: 8,
+              fontSize: 10,
               fontWeight: 700,
               letterSpacing: 1.5,
               textTransform: "uppercase",
@@ -232,7 +232,7 @@ export function MAPOScoreTab() {
 
             {history.length > 0 && (
               <div style={{ marginTop: 28 }}>
-                <div style={{ fontSize: 7, color: "#4A5A6E", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace", marginBottom: 10 }}>
+                <div style={{ fontSize: 9, color: "#4A5A6E", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace", marginBottom: 10 }}>
                   Recent
                 </div>
                 <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
@@ -250,7 +250,7 @@ export function MAPOScoreTab() {
             )}
 
             <div style={{ marginTop: 20 }}>
-              <div style={{ fontSize: 7, color: "#4A5A6E", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace", marginBottom: 10 }}>
+              <div style={{ fontSize: 9, color: "#4A5A6E", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace", marginBottom: 10 }}>
                 Quick picks
               </div>
               <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
@@ -302,7 +302,7 @@ export function MAPOScoreTab() {
                 key={t}
                 onClick={() => { setTicker(t); runAnalysis(t); }}
                 style={{
-                  padding: "3px 10px", fontSize: 8, fontFamily: "monospace",
+                  padding: "3px 10px", fontSize: 10, fontFamily: "monospace",
                   background: t === result.ticker ? "rgba(0,217,255,0.1)" : "transparent",
                   border: t === result.ticker ? "1px solid rgba(0,217,255,0.3)" : "1px solid #1C2840",
                   borderRadius: 3, color: t === result.ticker ? "#00D9FF" : "#8B949E", cursor: "pointer",
@@ -350,7 +350,7 @@ export function MAPOScoreTab() {
                   <div style={{ fontSize: 28, fontWeight: 700, color: scoreColor(result.score), fontFamily: "monospace", lineHeight: 1 }}>
                     {result.score}
                   </div>
-                  <div style={{ fontSize: 7, color: "#8B949E", letterSpacing: 1, textTransform: "uppercase" }}>
+                  <div style={{ fontSize: 9, color: "#8B949E", letterSpacing: 1, textTransform: "uppercase" }}>
                     /100
                   </div>
                 </div>
@@ -370,11 +370,69 @@ export function MAPOScoreTab() {
                       textTransform: "uppercase",
                       color: sig.color,
                       fontFamily: "monospace",
+                      marginBottom: 14,
                     }}
                   >
                     {result.signal}
                   </div>
                 )}
+
+                {/* Position sizing guidance */}
+                <div
+                  style={{
+                    borderTop: "1px solid #1C2840",
+                    paddingTop: 14,
+                    textAlign: "left",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 9,
+                      color: "#4A5A6E",
+                      letterSpacing: 1.5,
+                      textTransform: "uppercase",
+                      fontFamily: "monospace",
+                      marginBottom: 8,
+                    }}
+                  >
+                    MAPO Position Sizing
+                  </div>
+                  {(() => {
+                    const score = result.score;
+                    const tiers = [
+                      { min: 80, max: 100, label: "STRONG BUY", mult: 1.25, color: "#00E6A8", note: "1.25× equal-weight target" },
+                      { min: 65, max: 79, label: "BUY", mult: 1.0, color: "#00E6A8", note: "1.0× equal-weight target" },
+                      { min: 50, max: 64, label: "HOLD", mult: 0.75, color: "#F0883E", note: "0.75× equal-weight target" },
+                      { min: 0, max: 49, label: "AVOID", mult: 0, color: "#FF4458", note: "No position recommended" },
+                    ];
+                    const tier = tiers.find((t) => score >= t.min && score <= t.max)!;
+                    const baseN = 7; // MAPO default: 7 positions
+                    const baseAlloc = (1 / baseN) * 100;
+                    const suggestedAlloc = Math.min(baseAlloc * tier.mult, 25);
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ fontSize: 9, color: "#5A6B80", fontFamily: "monospace" }}>Sizing multiplier</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: tier.color, fontFamily: "monospace" }}>
+                            {tier.mult > 0 ? `${tier.mult}×` : "—"}
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ fontSize: 9, color: "#5A6B80", fontFamily: "monospace" }}>Suggested allocation</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: tier.color, fontFamily: "monospace" }}>
+                            {tier.mult > 0 ? `${suggestedAlloc.toFixed(1)}%` : "0%"}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 9, color: "#3A4A5C", fontFamily: "monospace", marginTop: 2, lineHeight: 1.5 }}>
+                          {tier.note}
+                        </div>
+                        <div style={{ fontSize: 9, color: "#2E3E52", fontFamily: "monospace", lineHeight: 1.4 }}>
+                          Max single position: 25% · Min: 5%
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
 
               {/* Factor breakdown */}
@@ -388,7 +446,7 @@ export function MAPOScoreTab() {
               >
                 <div
                   style={{
-                    fontSize: 8,
+                    fontSize: 10,
                     color: "#8B949E",
                     letterSpacing: 2,
                     textTransform: "uppercase",
@@ -415,7 +473,7 @@ export function MAPOScoreTab() {
                           {label}
                         </span>
                         <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <span style={{ fontSize: 7, color: "#4A5A6E", fontFamily: "monospace" }}>
+                          <span style={{ fontSize: 9, color: "#4A5A6E", fontFamily: "monospace" }}>
                             {weight}%
                           </span>
                           <span style={{ fontSize: 9, fontWeight: 700, color, fontFamily: "monospace" }}>
@@ -451,7 +509,7 @@ export function MAPOScoreTab() {
                   padding: 16,
                 }}
               >
-                <div style={{ fontSize: 8, color: "#00D9FF", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8, fontFamily: "monospace" }}>
+                <div style={{ fontSize: 10, color: "#00D9FF", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8, fontFamily: "monospace" }}>
                   Investment Thesis
                 </div>
                 <div style={{ fontSize: 10, color: "#C9D1D9", lineHeight: 1.7 }}>{result.thesis}</div>
@@ -467,11 +525,11 @@ export function MAPOScoreTab() {
                     padding: 16,
                   }}
                 >
-                  <div style={{ fontSize: 8, color: "#00E6A8", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8, fontFamily: "monospace" }}>
+                  <div style={{ fontSize: 10, color: "#00E6A8", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8, fontFamily: "monospace" }}>
                     Catalysts
                   </div>
                   {result.catalysts.map((c, i) => (
-                    <div key={i} style={{ fontSize: 9, color: "#8B949E", lineHeight: 1.7, display: "flex", gap: 6 }}>
+                    <div key={i} style={{ fontSize: 10, color: "#8B949E", lineHeight: 1.7, display: "flex", gap: 6 }}>
                       <span style={{ color: "#00E6A8", flexShrink: 0 }}>+</span>
                       {c}
                     </div>
@@ -485,11 +543,11 @@ export function MAPOScoreTab() {
                     padding: 16,
                   }}
                 >
-                  <div style={{ fontSize: 8, color: "#FF4458", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8, fontFamily: "monospace" }}>
+                  <div style={{ fontSize: 10, color: "#FF4458", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8, fontFamily: "monospace" }}>
                     Key Risks
                   </div>
                   {result.risks.map((r, i) => (
-                    <div key={i} style={{ fontSize: 9, color: "#8B949E", lineHeight: 1.7, display: "flex", gap: 6 }}>
+                    <div key={i} style={{ fontSize: 10, color: "#8B949E", lineHeight: 1.7, display: "flex", gap: 6 }}>
                       <span style={{ color: "#FF4458", flexShrink: 0 }}>−</span>
                       {r}
                     </div>
@@ -506,7 +564,7 @@ export function MAPOScoreTab() {
                   padding: 16,
                 }}
               >
-                <div style={{ fontSize: 8, color: "#F0883E", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8, fontFamily: "monospace" }}>
+                <div style={{ fontSize: 10, color: "#F0883E", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8, fontFamily: "monospace" }}>
                   Entry / Action Note
                 </div>
                 <div style={{ fontSize: 10, color: "#C9D1D9", lineHeight: 1.7 }}>{result.entryNote}</div>
@@ -538,7 +596,7 @@ export function MAPOScoreTab() {
           style={{
             padding: "8px 10px",
             borderBottom: "1px solid #1C2840",
-            fontSize: 7,
+            fontSize: 9,
             fontWeight: 700,
             letterSpacing: 2,
             textTransform: "uppercase",
@@ -583,10 +641,10 @@ export function MAPOScoreTab() {
                   </span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 7, color: sig.color, fontFamily: "monospace", letterSpacing: 0.5 }}>
+                  <span style={{ fontSize: 9, color: sig.color, fontFamily: "monospace", letterSpacing: 0.5 }}>
                     {h.signal}
                   </span>
-                  <span style={{ fontSize: 7, color: "#4A5A6E", fontFamily: "monospace" }}>
+                  <span style={{ fontSize: 9, color: "#4A5A6E", fontFamily: "monospace" }}>
                     {dateStr}
                   </span>
                 </div>
@@ -599,7 +657,7 @@ export function MAPOScoreTab() {
           onClick={clearScoreHistory}
           style={{
             padding: "7px 10px",
-            fontSize: 7,
+            fontSize: 9,
             letterSpacing: 1.2,
             textTransform: "uppercase",
             fontFamily: "monospace",

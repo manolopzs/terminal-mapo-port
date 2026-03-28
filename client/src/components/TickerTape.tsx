@@ -79,7 +79,7 @@ export function TickerTape() {
         style={{
           background: "rgba(0, 217, 255, 0.08)",
           color: "#00D9FF",
-          fontSize: 7,
+          fontSize: 10,
           fontWeight: 700,
           letterSpacing: 1.5,
           padding: "0 10px",
@@ -96,7 +96,7 @@ export function TickerTape() {
         <div className="animate-ticker flex items-center whitespace-nowrap">
           {doubled.map((t, i) => (
             <span key={i} className="inline-flex items-center gap-1" style={{ fontSize: 9, padding: "0 10px", borderRight: "1px solid rgba(28,40,64,0.6)" }}>
-              <span style={{ color: "#5A6B80", fontWeight: 700, letterSpacing: 1, fontFamily: "'JetBrains Mono', monospace", fontSize: 8 }}>
+              <span style={{ color: "#5A6B80", fontWeight: 700, letterSpacing: 1, fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }}>
                 {t.symbol}
               </span>
               <span className="font-mono tabular-nums" style={{ color: "#A0AABB" }}>

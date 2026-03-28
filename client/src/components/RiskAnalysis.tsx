@@ -85,13 +85,13 @@ export function RiskAnalysis({ holdings, analytics }: RiskAnalysisProps) {
               borderBottom: Math.floor(i / 2) < Math.floor((metrics.length - 1) / 2) ? "1px solid #1C2840" : "none",
             }}
           >
-            <div style={{ fontSize: 8, color: "#8B949E", letterSpacing: 1, textTransform: "uppercase", marginBottom: 2 }}>
+            <div style={{ fontSize: 10, color: "#8B949E", letterSpacing: 1, textTransform: "uppercase", marginBottom: 2 }}>
               {m.label}
             </div>
             <div className="font-mono tabular-nums" style={{ fontSize: 18, fontWeight: 700, color: m.color ?? "#FFFFFF", lineHeight: 1.2 }}>
               {m.value}
             </div>
-            <div style={{ fontSize: 8, color: "#8B949E", marginTop: 1 }}>{m.sub}</div>
+            <div style={{ fontSize: 10, color: "#8B949E", marginTop: 1 }}>{m.sub}</div>
           </div>
         ))}
       </div>

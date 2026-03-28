@@ -193,7 +193,7 @@ export function JournalTab() {
           onClick={() => setShowForm((v) => !v)}
           style={{
             padding: "5px 14px",
-            fontSize: 8,
+            fontSize: 10,
             fontWeight: 700,
             letterSpacing: 1.5,
             textTransform: "uppercase",
@@ -367,7 +367,7 @@ export function JournalTab() {
             data-journal="btn-submit-entry"
             style={{
               padding: "6px 18px",
-              fontSize: 8,
+              fontSize: 10,
               fontWeight: 700,
               letterSpacing: 1.5,
               textTransform: "uppercase",
@@ -397,7 +397,7 @@ export function JournalTab() {
           alignItems: "center",
         }}
       >
-        <span style={{ fontSize: 7, color: "#4A5A6E", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace" }}>
+        <span style={{ fontSize: 9, color: "#4A5A6E", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace" }}>
           Filter:
         </span>
         {(["ALL", "PENDING", "WIN", "LOSS", "NEUTRAL"] as const).map((o) => (
@@ -542,7 +542,7 @@ export function JournalTab() {
                       padding: "10px 12px",
                     }}
                   >
-                    <span style={{ fontSize: 7, color: "#4A5A6E", letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                    <span style={{ fontSize: 9, color: "#4A5A6E", letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
                       Full Thesis
                     </span>
                     {entry.thesis}
@@ -579,7 +579,7 @@ export function JournalTab() {
                       onClick={() => handleSaveEdit(entry.id)}
                       style={{
                         padding: "5px 14px",
-                        fontSize: 8,
+                        fontSize: 10,
                         fontWeight: 700,
                         letterSpacing: 1.2,
                         textTransform: "uppercase",
@@ -599,7 +599,7 @@ export function JournalTab() {
                       onClick={() => handleDelete(entry.id)}
                       style={{
                         padding: "5px 14px",
-                        fontSize: 8,
+                        fontSize: 10,
                         fontWeight: 700,
                         letterSpacing: 1.2,
                         textTransform: "uppercase",
@@ -650,7 +650,7 @@ function FieldGroup({
     <div style={{ display: "flex", flexDirection: "column", gap: 4, ...style }}>
       <span
         style={{
-          fontSize: 7,
+          fontSize: 9,
           color: "#4A5A6E",
           letterSpacing: 1.5,
           textTransform: "uppercase",
@@ -667,7 +667,7 @@ function FieldGroup({
 function StatItem({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <span style={{ fontSize: 7, color: "#4A5A6E", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace" }}>
+      <span style={{ fontSize: 9, color: "#4A5A6E", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace" }}>
         {label}
       </span>
       <span style={{ fontSize: 11, fontWeight: 700, color: valueColor ?? "#C9D1D9", fontFamily: "monospace" }}>
@@ -691,7 +691,7 @@ function FilterChip({
       onClick={onClick}
       style={{
         padding: "2px 8px",
-        fontSize: 7,
+        fontSize: 9,
         fontWeight: 700,
         letterSpacing: 1.2,
         textTransform: "uppercase",
@@ -724,7 +724,7 @@ function ActionBadge({ action }: { action: JournalEntry["action"] }) {
         border: `1px solid ${s.border}`,
         color: s.color,
         borderRadius: 2,
-        fontSize: 7,
+        fontSize: 9,
         fontWeight: 700,
         letterSpacing: 1,
         textTransform: "uppercase",
@@ -753,7 +753,7 @@ function OutcomeBadge({ outcome }: { outcome: JournalEntry["outcome"] }) {
         border: `1px solid ${s.border}`,
         color: s.color,
         borderRadius: 2,
-        fontSize: 7,
+        fontSize: 9,
         fontWeight: 700,
         letterSpacing: 1,
         textTransform: "uppercase",

@@ -31,7 +31,7 @@ export function NewsTicker({ holdings, liveNews }: NewsTickerProps) {
           className="flex-shrink-0 flex items-center justify-center"
           style={{ background: "rgba(139,148,158,0.08)", padding: "0 8px", height: "100%", borderRight: "1px solid #1C2840" }}
         >
-          <span style={{ fontSize: 8, fontWeight: 700, color: "#4A5A6E", letterSpacing: 1 }}>NEWS</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: "#4A5A6E", letterSpacing: 1 }}>NEWS</span>
         </div>
         <span style={{ fontSize: 9, color: "#2E3E52", padding: "0 12px", fontFamily: "monospace" }}>
           Awaiting live news feed...
@@ -61,7 +61,7 @@ export function NewsTicker({ holdings, liveNews }: NewsTickerProps) {
       >
         <span
           style={{
-            fontSize: 8,
+            fontSize: 10,
             fontWeight: 700,
             color: "#00D9FF",
             letterSpacing: 1,
@@ -84,7 +84,7 @@ export function NewsTicker({ holdings, liveNews }: NewsTickerProps) {
                 {h.source}
               </span>
               <span style={{ color: "#8B949E" }}>{h.text}</span>
-              <span style={{ color: "#4A5568", fontSize: 8 }}>{h.time}</span>
+              <span style={{ color: "#4A5568", fontSize: 10 }}>{h.time}</span>
             </span>
           ))}
         </div>

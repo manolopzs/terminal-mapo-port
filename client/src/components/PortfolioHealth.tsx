@@ -150,7 +150,7 @@ export function PortfolioHealth({ portfolioId }: { portfolioId: string }) {
           </span>
           <span
             style={{
-              fontSize: 8,
+              fontSize: 10,
               fontWeight: 600,
               color: scoreColor,
               textTransform: "uppercase",
@@ -199,7 +199,7 @@ export function PortfolioHealth({ portfolioId }: { portfolioId: string }) {
           >
             <span
               style={{
-                fontSize: 8,
+                fontSize: 10,
                 fontWeight: 600,
                 letterSpacing: 1,
                 textTransform: "uppercase",
@@ -226,7 +226,7 @@ export function PortfolioHealth({ portfolioId }: { portfolioId: string }) {
               </span>
               <span
                 style={{
-                  fontSize: 7,
+                  fontSize: 10,
                   fontWeight: 700,
                   letterSpacing: 0.5,
                   color: STATUS_COLORS[check.status],

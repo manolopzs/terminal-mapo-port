@@ -180,7 +180,7 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
           {/* Quick select from holdings (for SELL) */}
           {action === "SELL" && sellableHoldings.length > 0 && (
             <div>
-              <Label style={{ fontSize: 8, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>
+              <Label style={{ fontSize: 10, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>
                 Select Position
               </Label>
               <div className="flex flex-wrap gap-1 mt-1">
@@ -215,7 +215,7 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
           {/* Ticker + Shares + Price */}
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <Label style={{ fontSize: 8, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Ticker</Label>
+              <Label style={{ fontSize: 10, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Ticker</Label>
               <Input
                 value={ticker}
                 onChange={(e) => setTicker(e.target.value)}
@@ -226,7 +226,7 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
               />
             </div>
             <div>
-              <Label style={{ fontSize: 8, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>
+              <Label style={{ fontSize: 10, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>
                 Shares{action === "SELL" && maxShares > 0 ? ` (max ${maxShares})` : ""}
               </Label>
               <Input
@@ -241,7 +241,7 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
               />
             </div>
             <div>
-              <Label style={{ fontSize: 8, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Price</Label>
+              <Label style={{ fontSize: 10, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Price</Label>
               <Input
                 type="number"
                 step="any"
@@ -257,7 +257,7 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
 
           {/* Rationale */}
           <div>
-            <Label style={{ fontSize: 8, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Rationale (optional)</Label>
+            <Label style={{ fontSize: 10, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Rationale (optional)</Label>
             <Input
               value={rationale}
               onChange={(e) => setRationale(e.target.value)}
@@ -295,7 +295,7 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
                 </div>
               )}
               {isFullExit && (
-                <div style={{ fontSize: 8, color: "#F0883E", marginTop: 4 }}>
+                <div style={{ fontSize: 10, color: "#F0883E", marginTop: 4 }}>
                   FULL EXIT — position will be removed from holdings
                 </div>
               )}

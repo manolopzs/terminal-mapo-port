@@ -1,11 +1,9 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,8 +18,13 @@ import {
 import { useCreateHolding, usePortfolios } from "@/hooks/use-portfolio";
 import { useToast } from "@/hooks/use-toast";
 
-export function AddPositionDialog() {
-  const [open, setOpen] = useState(false);
+interface AddPositionDialogProps {
+  portfolioId?: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function AddPositionDialog({ portfolioId, open, onOpenChange }: AddPositionDialogProps) {
   const [ticker, setTicker] = useState("");
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -43,15 +46,16 @@ export function AddPositionDialog() {
     const gainLoss = value - cost;
     const gainLossPct = cost > 0 ? (gainLoss / cost) * 100 : 0;
 
-    const portfolioId = portfolios?.[0]?.id;
-    if (!portfolioId) {
+    const targetPortfolioId = portfolioId || portfolios?.[0]?.id;
+    if (!targetPortfolioId) {
       toast({ title: "Error", description: "No portfolio found", variant: "destructive" });
       return;
     }
+    const portfolioId_ = targetPortfolioId;
 
     createHolding.mutate(
       {
-        portfolioId,
+        portfolioId: portfolioId_,
         ticker: ticker.toUpperCase(),
         name,
         quantity: qty,
@@ -69,7 +73,7 @@ export function AddPositionDialog() {
       {
         onSuccess: () => {
           toast({ title: "Position added", description: `${ticker.toUpperCase()} added to portfolio` });
-          setOpen(false);
+          onOpenChange(false);
           resetForm();
         },
         onError: () => {
@@ -90,17 +94,7 @@ export function AddPositionDialog() {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          size="sm"
-          className="gap-1.5"
-          style={{ background: "hsl(var(--color-cyan))", color: "hsl(var(--background))" }}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Add Position
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="glass-card border" style={{ borderColor: "hsl(var(--border) / 0.5)" }}>
         <DialogHeader>
           <DialogTitle className="text-foreground uppercase tracking-wider text-sm">

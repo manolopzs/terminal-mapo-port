@@ -57,7 +57,7 @@ function QuoteCell({ data, label, symbol }: { data: any; label: string; symbol: 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: "#C9D1D9", fontFamily: "monospace" }}>{symbol}</div>
-            <div style={{ fontSize: 8, color: "#4A5A6E", textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</div>
+            <div style={{ fontSize: 10, color: "#4A5A6E", textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</div>
           </div>
           <div style={{ fontSize: 9, color: "#4A5A6E" }}>—</div>
         </div>
@@ -87,7 +87,7 @@ function QuoteCell({ data, label, symbol }: { data: any; label: string; symbol: 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#C9D1D9", fontFamily: "monospace" }}>{symbol}</div>
-          <div style={{ fontSize: 8, color: "#4A5A6E", textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</div>
+          <div style={{ fontSize: 10, color: "#4A5A6E", textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</div>
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#E8EDF2", fontFamily: "monospace" }}>
@@ -141,7 +141,7 @@ function SectionHeader({ title, badge }: { title: string; badge?: string }) {
       {badge && (
         <span
           style={{
-            fontSize: 7,
+            fontSize: 10,
             color: "#00D9FF",
             background: "rgba(0,217,255,0.1)",
             border: "1px solid rgba(0,217,255,0.2)",
@@ -158,7 +158,7 @@ function SectionHeader({ title, badge }: { title: string; badge?: string }) {
   );
 }
 
-export function MarketTab() {
+export function MarketTab({ portfolioHoldings }: { portfolioHoldings?: Array<{ ticker: string; name: string; gainLossPct: number; dayChangePct: number }> }) {
   const allSymbols = [...INDICES, ...SECTORS, ...WATCHLIST].map((s) => s.symbol);
   const { data: quotes, isLoading, dataUpdatedAt, refetch, isFetching } = useMarketData(allSymbols);
 
@@ -210,12 +210,12 @@ export function MarketTab() {
         {/* Market Notes — dynamic */}
         <div style={{ padding: "14px", borderTop: "2px solid #1C2840", marginTop: 4 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <div style={{ fontSize: 8, color: "#8B949E", letterSpacing: 1.5, textTransform: "uppercase" }}>
+            <div style={{ fontSize: 10, color: "#8B949E", letterSpacing: 1.5, textTransform: "uppercase" }}>
               Market Signals
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {lastUpdated && (
-                <span style={{ fontSize: 7, color: "#2E3E52", fontFamily: "monospace" }}>
+                <span style={{ fontSize: 10, color: "#2E3E52", fontFamily: "monospace" }}>
                   {lastUpdated}
                 </span>
               )}
@@ -286,7 +286,7 @@ export function MarketTab() {
                         <span style={{ fontSize: 10, fontWeight: 700, color: "#C9D1D9", fontFamily: "monospace" }}>
                           {sec.symbol}
                         </span>
-                        <span style={{ fontSize: 8, color: "#4A5A6E", marginLeft: 6 }}>{sec.label}</span>
+                        <span style={{ fontSize: 10, color: "#4A5A6E", marginLeft: 6 }}>{sec.label}</span>
                       </div>
                       <span
                         style={{
@@ -317,8 +317,47 @@ export function MarketTab() {
         )}
       </div>
 
-      {/* Col 3: Mega Cap Watchlist */}
+      {/* Col 3: Portfolio Holdings + Mega Cap Watchlist */}
       <div style={{ overflowY: "auto" }}>
+        {portfolioHoldings && portfolioHoldings.length > 0 && (
+          <>
+            <SectionHeader title="Your Holdings" badge="PORTFOLIO" />
+            {portfolioHoldings.map((h) => {
+              const pct = h.dayChangePct ?? 0;
+              const pnlPct = h.gainLossPct ?? 0;
+              const isPos = pct >= 0;
+              const color = Math.abs(pct) < 0.01 ? "#8B949E" : isPos ? "#00E6A8" : "#FF4458";
+              return (
+                <div
+                  key={h.ticker}
+                  style={{
+                    padding: "9px 14px",
+                    borderBottom: "1px solid #1C2840",
+                    cursor: "default",
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,217,255,0.03)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#00D9FF", fontFamily: "monospace" }}>{h.ticker}</div>
+                      <div style={{ fontSize: 10, color: "#4A5A6E" }}>{h.name.length > 18 ? h.name.slice(0, 18) + "…" : h.name}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 11, color, fontWeight: 700, fontFamily: "monospace" }}>
+                        {isPos ? "+" : ""}{pct.toFixed(2)}%
+                      </div>
+                      <div style={{ fontSize: 9, color: pnlPct >= 0 ? "#00E6A8" : "#FF4458", fontFamily: "monospace", opacity: 0.7 }}>
+                        P&L {pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(1)}%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
         <SectionHeader title="Mega Cap Watch" badge="LIVE" />
         {WATCHLIST.map((w) => (
           <QuoteCell
@@ -341,7 +380,7 @@ export function MarketTab() {
         >
           <div
             style={{
-              fontSize: 8,
+              fontSize: 10,
               color: "#00D9FF",
               letterSpacing: 1.5,
               textTransform: "uppercase",
@@ -351,7 +390,7 @@ export function MarketTab() {
           >
             MAPO Macro Checklist
           </div>
-          <div style={{ fontSize: 8, color: "#8B949E", lineHeight: 1.8, fontFamily: "monospace" }}>
+          <div style={{ fontSize: 10, color: "#8B949E", lineHeight: 1.8, fontFamily: "monospace" }}>
             □ VIX environment (below/above 20)<br />
             □ Fed policy direction<br />
             □ 10Y yield trend<br />

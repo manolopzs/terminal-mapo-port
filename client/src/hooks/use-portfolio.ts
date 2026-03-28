@@ -12,6 +12,7 @@ interface PortfolioSummary {
   totalGainLossPct: number;
   holdingsCount: number;
   totalCostBasis: number;
+  cash: number;
   bestPerformer: { ticker: string; gainLossPct: number } | null;
   worstPerformer: { ticker: string; gainLossPct: number } | null;
 }

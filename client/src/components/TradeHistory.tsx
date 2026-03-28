@@ -65,7 +65,7 @@ export function TradeHistory({ portfolioId }: { portfolioId: string }) {
                     key={h}
                     className="text-left px-2 py-1.5"
                     style={{
-                      fontSize: 8,
+                      fontSize: 10,
                       fontWeight: 600,
                       letterSpacing: 1,
                       textTransform: "uppercase",

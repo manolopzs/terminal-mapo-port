@@ -165,7 +165,7 @@ export function ScreenerTab() {
                 }}
                 style={{
                   padding: "4px 11px",
-                  fontSize: 8,
+                  fontSize: 10,
                   fontWeight: 700,
                   letterSpacing: 1.2,
                   textTransform: "uppercase",
@@ -218,7 +218,7 @@ export function ScreenerTab() {
             type="submit"
             style={{
               padding: "5px 14px",
-              fontSize: 8,
+              fontSize: 10,
               fontWeight: 700,
               letterSpacing: 1.2,
               textTransform: "uppercase",
@@ -237,7 +237,7 @@ export function ScreenerTab() {
           </button>
         </form>
         {/* Row count */}
-        <div style={{ fontSize: 8, color: "#3A4A5C", fontFamily: "'Inter', system-ui, sans-serif", flexShrink: 0, letterSpacing: 1.2 }}>
+        <div style={{ fontSize: 10, color: "#3A4A5C", fontFamily: "'Inter', system-ui, sans-serif", flexShrink: 0, letterSpacing: 1.2 }}>
           {rows.length} ticker{rows.length !== 1 ? "s" : ""}
         </div>
       </div>
@@ -246,7 +246,7 @@ export function ScreenerTab() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "80px 100px 80px 80px 80px 80px 100px 1fr",
+          gridTemplateColumns: "80px 100px 80px 80px 180px 100px 1fr",
           padding: "6px 16px",
           borderBottom: "1px solid #1C2840",
           background: "#0B0F1A",
@@ -259,8 +259,7 @@ export function ScreenerTab() {
             { label: "PRICE", key: "price" as SortKey },
             { label: "CHG", key: "change" as SortKey },
             { label: "CHG %", key: "changePct" as SortKey },
-            { label: "HIGH", key: "high" as SortKey },
-            { label: "LOW", key: "low" as SortKey },
+            { label: "DAY RANGE", key: null },
             { label: "SCORE", key: "score" as SortKey },
             { label: "SIGNAL", key: null },
           ] as { label: string; key: SortKey | null }[]
@@ -269,7 +268,7 @@ export function ScreenerTab() {
             key={label}
             onClick={() => key && handleSort(key)}
             style={{
-              fontSize: 7,
+              fontSize: 10,
               color: sortKey === key ? "#00D9FF" : "#4A5A6E",
               letterSpacing: 1.5,
               textTransform: "uppercase",
@@ -322,7 +321,7 @@ export function ScreenerTab() {
                 className="terminal-row"
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "80px 100px 80px 80px 80px 80px 100px 1fr",
+                  gridTemplateColumns: "80px 100px 80px 80px 180px 100px 1fr",
                   padding: "8px 16px",
                   borderBottom: "1px solid rgba(28,40,64,0.5)",
                   alignItems: "center",
@@ -382,11 +381,49 @@ export function ScreenerTab() {
                 >
                   {q ? `${isPos ? "+" : ""}${changePct.toFixed(2)}%` : "—"}
                 </div>
-                <div style={{ fontSize: 9, color: "#5A6B80", fontFamily: "'JetBrains Mono', monospace" }}>
-                  {high > 0 ? `$${high.toFixed(2)}` : "—"}
-                </div>
-                <div style={{ fontSize: 9, color: "#5A6B80", fontFamily: "'JetBrains Mono', monospace" }}>
-                  {low > 0 ? `$${low.toFixed(2)}` : "—"}
+                {/* Day Range bar */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 2, paddingRight: 8 }}>
+                  {q && high > 0 && low > 0 && price > 0 ? (
+                    <>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: 9, color: "#3A4A5C", fontFamily: "'JetBrains Mono', monospace" }}>
+                          ${low.toFixed(2)}
+                        </span>
+                        <span style={{ fontSize: 9, color: "#3A4A5C", fontFamily: "'JetBrains Mono', monospace" }}>
+                          ${high.toFixed(2)}
+                        </span>
+                      </div>
+                      <div style={{ position: "relative", height: 4, background: "#1A2436", borderRadius: 2 }}>
+                        <div
+                          style={{
+                            position: "absolute",
+                            height: "100%",
+                            left: 0,
+                            width: `${Math.min(Math.max(((price - low) / (high - low)) * 100, 2), 98)}%`,
+                            background: isPos ? "#00E6A8" : "#FF4458",
+                            borderRadius: 2,
+                            transition: "width 0.4s ease",
+                          }}
+                        />
+                        {/* Current price dot */}
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: -1,
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            background: isPos ? "#00E6A8" : "#FF4458",
+                            border: "1px solid #0A0E1A",
+                            left: `calc(${Math.min(Math.max(((price - low) / (high - low)) * 100, 2), 95)}% - 3px)`,
+                            boxShadow: `0 0 4px ${isPos ? "rgba(0,230,168,0.6)" : "rgba(255,68,88,0.6)"}`,
+                          }}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: 9, color: "#2E3E52" }}>—</span>
+                  )}
                 </div>
 
                 {/* MAPO Score */}
@@ -417,7 +454,7 @@ export function ScreenerTab() {
                   {isExcluded ? (
                     <span
                       style={{
-                        fontSize: 7,
+                        fontSize: 10,
                         padding: "2px 7px",
                         background: "rgba(255,68,88,0.08)",
                         border: "1px solid rgba(255,68,88,0.2)",
@@ -434,7 +471,7 @@ export function ScreenerTab() {
                   ) : q ? (
                     <span
                       style={{
-                        fontSize: 7,
+                        fontSize: 10,
                         padding: "2px 7px",
                         background: `${scoreColor(score)}12`,
                         border: `1px solid ${scoreColor(score)}35`,
@@ -449,7 +486,7 @@ export function ScreenerTab() {
                       {scoreLabel(score)}
                     </span>
                   ) : (
-                    <span style={{ fontSize: 8, color: "#2E3E52", fontFamily: "'Inter', system-ui, sans-serif" }}>—</span>
+                    <span style={{ fontSize: 10, color: "#2E3E52", fontFamily: "'Inter', system-ui, sans-serif" }}>—</span>
                   )}
                 </div>
               </div>
@@ -463,7 +500,7 @@ export function ScreenerTab() {
         style={{
           padding: "5px 16px",
           borderTop: "1px solid #1C2840",
-          fontSize: 7,
+          fontSize: 10,
           color: "#2E3E52",
           fontFamily: "'Inter', system-ui, sans-serif",
           flexShrink: 0,

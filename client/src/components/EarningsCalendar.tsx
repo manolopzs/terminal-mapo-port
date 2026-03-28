@@ -145,7 +145,7 @@ export function EarningsCalendar({ holdings, liveEarnings }: EarningsCalendarPro
                 >
                   {e.nextDate}
                   {e.time && (
-                    <span style={{ color: "#8B949E", fontSize: 8, marginLeft: 4 }}>
+                    <span style={{ color: "#8B949E", fontSize: 10, marginLeft: 4 }}>
                       {e.time}
                     </span>
                   )}
@@ -168,7 +168,7 @@ export function EarningsCalendar({ holdings, liveEarnings }: EarningsCalendarPro
         {/* Macro Events section */}
         {macroEvents && macroEvents.length > 0 && (
           <div style={{ borderTop: "2px solid #1A2332", marginTop: 4, paddingTop: 4 }}>
-            <div style={{ padding: "4px 6px 2px", fontSize: 7, fontWeight: 700, letterSpacing: 1.8, textTransform: "uppercase", color: "#484F58", fontFamily: "monospace" }}>
+            <div style={{ padding: "4px 6px 2px", fontSize: 10, fontWeight: 700, letterSpacing: 1.8, textTransform: "uppercase", color: "#484F58", fontFamily: "monospace" }}>
               Macro Events
             </div>
             {macroEvents.slice(0, 5).map((ev) => {
@@ -176,9 +176,9 @@ export function EarningsCalendar({ holdings, liveEarnings }: EarningsCalendarPro
               const urgency = ev.daysUntil <= 7 ? "#FF4D4D" : ev.daysUntil <= 14 ? "#FFB300" : "#484F58";
               return (
                 <div key={ev.date + ev.type} style={{ display: "flex", alignItems: "center", padding: "3px 6px", borderBottom: "1px solid rgba(26,35,50,0.4)" }}>
-                  <span style={{ fontSize: 8, fontWeight: 700, color: typeColor, fontFamily: "monospace", width: 36, flexShrink: 0 }}>{ev.type}</span>
-                  <span style={{ fontSize: 8, color: "#8B949E", flex: 1, fontFamily: "monospace" }}>{ev.label}</span>
-                  <span style={{ fontSize: 8, color: urgency, fontFamily: "monospace", flexShrink: 0 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: typeColor, fontFamily: "monospace", width: 36, flexShrink: 0 }}>{ev.type}</span>
+                  <span style={{ fontSize: 10, color: "#8B949E", flex: 1, fontFamily: "monospace" }}>{ev.label}</span>
+                  <span style={{ fontSize: 10, color: urgency, fontFamily: "monospace", flexShrink: 0 }}>
                     {ev.daysUntil === 0 ? "TODAY" : ev.daysUntil === 1 ? "TMRW" : `${ev.daysUntil}d`}
                   </span>
                 </div>

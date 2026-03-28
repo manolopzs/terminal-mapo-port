@@ -75,7 +75,7 @@ export function DrawdownMonitor({ portfolioId }: { portfolioId: string }) {
         </div>
         <span
           style={{
-            fontSize: 8,
+            fontSize: 10,
             fontWeight: 600,
             letterSpacing: 1,
             textTransform: "uppercase",
@@ -165,7 +165,7 @@ export function DrawdownMonitor({ portfolioId }: { portfolioId: string }) {
             {d.level !== "OK" && (
               <span
                 style={{
-                  fontSize: 7,
+                  fontSize: 10,
                   fontWeight: 700,
                   letterSpacing: 0.5,
                   textTransform: "uppercase",

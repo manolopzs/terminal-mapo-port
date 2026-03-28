@@ -2,6 +2,54 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "🏛 ARCHITECT Agent",
+      "type": "shell",
+      "command": "claude",
+      "args": [
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/client/src",
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/server",
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/api",
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/tasks"
+      ],
+      "options": {
+        "cwd": "/Users/manuelpozas/mapo-terminal",
+        "env": {
+          "MAPO_DOMAIN": "ARCHITECT"
+        }
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "group": "mapo-agents"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🗄 DATABASE Agent",
+      "type": "shell",
+      "command": "claude",
+      "args": [
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/server",
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/api"
+      ],
+      "options": {
+        "cwd": "/Users/manuelpozas/mapo-terminal",
+        "env": {
+          "MAPO_DOMAIN": "DATABASE"
+        }
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "group": "mapo-agents"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "🖥 FRONTEND Agent",
       "type": "shell",
       "command": "claude",
@@ -62,6 +110,128 @@
       "problemMatcher": []
     },
     {
+      "label": "🧪 QA/TESTING Agent",
+      "type": "shell",
+      "command": "claude",
+      "args": [
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/client/src",
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/server",
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/api"
+      ],
+      "options": {
+        "cwd": "/Users/manuelpozas/mapo-terminal",
+        "env": {
+          "MAPO_DOMAIN": "QA_TESTING"
+        }
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "group": "mapo-agents"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🔒 SECURITY Agent",
+      "type": "shell",
+      "command": "claude",
+      "args": [
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/client/src",
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/server",
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/api"
+      ],
+      "options": {
+        "cwd": "/Users/manuelpozas/mapo-terminal",
+        "env": {
+          "MAPO_DOMAIN": "SECURITY"
+        }
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "group": "mapo-agents"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "⚡ PERFORMANCE Agent",
+      "type": "shell",
+      "command": "claude",
+      "args": [
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/client/src",
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/server",
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/api"
+      ],
+      "options": {
+        "cwd": "/Users/manuelpozas/mapo-terminal",
+        "env": {
+          "MAPO_DOMAIN": "PERFORMANCE"
+        }
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "group": "mapo-agents"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "📚 DOCS Agent",
+      "type": "shell",
+      "command": "claude",
+      "args": [
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/client/src",
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/server",
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/api",
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/tasks"
+      ],
+      "options": {
+        "cwd": "/Users/manuelpozas/mapo-terminal",
+        "env": {
+          "MAPO_DOMAIN": "DOCS"
+        }
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "group": "mapo-agents"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🚢 SHIP REVIEW Agent",
+      "type": "shell",
+      "command": "claude",
+      "args": [
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/client/src",
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/server",
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/api",
+        "--add-dir", "/Users/manuelpozas/mapo-terminal/tasks"
+      ],
+      "options": {
+        "cwd": "/Users/manuelpozas/mapo-terminal",
+        "env": {
+          "MAPO_DOMAIN": "SHIP_REVIEW"
+        }
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "group": "mapo-agents"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "🚀 Dev Server",
       "type": "shell",
       "command": "export $(cat .env | xargs) && npm run dev",
@@ -83,6 +253,26 @@
         "⚙ BACKEND Agent",
         "🎨 UI-EXPERIENCE Agent",
         "🚀 Dev Server"
+      ],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    },
+    {
+      "label": "⚡ Phase 1 — Parallel Build Agents",
+      "dependsOn": [
+        "🗄 DATABASE Agent",
+        "🖥 FRONTEND Agent",
+        "⚙ BACKEND Agent",
+        "🎨 UI-EXPERIENCE Agent"
+      ],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    },
+    {
+      "label": "🔐 Phase 3 — Security + Performance",
+      "dependsOn": [
+        "🔒 SECURITY Agent",
+        "⚡ PERFORMANCE Agent"
       ],
       "dependsOrder": "parallel",
       "problemMatcher": []

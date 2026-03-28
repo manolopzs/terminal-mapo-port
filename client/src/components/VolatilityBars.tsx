@@ -45,13 +45,13 @@ export function VolatilityBars({ holdings, volatilityData }: VolatilityBarsProps
           const color = d.vol > 60 ? "#FF4458" : d.vol > 35 ? "#F0883E" : "#00D9FF";
           return (
             <div key={d.ticker} className="flex items-center gap-2" style={{ marginBottom: 2, height: 16 }}>
-              <span className="font-mono" style={{ fontSize: 8, fontWeight: 600, color: "#00D9FF", width: 36, textAlign: "right", flexShrink: 0 }}>
+              <span className="font-mono" style={{ fontSize: 10, fontWeight: 600, color: "#00D9FF", width: 36, textAlign: "right", flexShrink: 0 }}>
                 {d.ticker}
               </span>
               <div style={{ flex: 1, height: 8, background: "#1C2840", borderRadius: 1 }}>
                 <div style={{ width: `${pct}%`, height: "100%", background: `linear-gradient(90deg, ${color}44, ${color})`, borderRadius: 1 }} />
               </div>
-              <span className="font-mono tabular-nums" style={{ fontSize: 8, color: color, width: 30, textAlign: "right", flexShrink: 0 }}>
+              <span className="font-mono tabular-nums" style={{ fontSize: 10, color: color, width: 30, textAlign: "right", flexShrink: 0 }}>
                 {d.vol.toFixed(1)}%
               </span>
             </div>

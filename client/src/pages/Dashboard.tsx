@@ -48,6 +48,27 @@ export default function Dashboard() {
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>("PORTFOLIO");
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const TAB_KEYS: Record<string, TabId> = {
+      "1": "PORTFOLIO", "2": "MARKET", "3": "SCREENER",
+      "4": "MAPO", "5": "REBALANCE", "6": "JOURNAL",
+    };
+    function onKey(e: KeyboardEvent) {
+      // Skip if user is typing in an input/textarea
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (TAB_KEYS[e.key]) { setActiveTab(TAB_KEYS[e.key]); return; }
+      if (e.key === "a" || e.key === "A") { setAddPositionOpen(true); return; }
+      if (e.key === "t" || e.key === "T") { setLogTradeOpen(true); return; }
+      if (e.key === "/" || e.key === "q" || e.key === "Q") { setAnalystOpen(true); return; }
+      if (e.key === "Escape") { setAnalystOpen(false); return; }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // Safety timeout: if loading takes >8s, show dashboard anyway
   useEffect(() => {
     const timer = setTimeout(() => setLoadingTimeout(true), 8000);
@@ -116,7 +137,7 @@ export default function Dashboard() {
           </span>
           <span
             style={{
-              fontSize: 8,
+              fontSize: 10,
               color: "#2E3E52",
               textTransform: "uppercase",
               letterSpacing: 1.5,
@@ -153,6 +174,130 @@ export default function Dashboard() {
 
         {/* Markets ticker tape */}
         <TickerTape />
+
+        {/* Portfolio stats bar — always visible */}
+        {activePortfolioId && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              height: 26,
+              minHeight: 26,
+              background: "#060A11",
+              borderBottom: "1px solid #131E2E",
+              padding: "0 12px",
+              gap: 0,
+              overflow: "hidden",
+              flexShrink: 0,
+            }}
+          >
+            {[
+              {
+                label: "POS",
+                value: summary ? String(summary.holdingsCount) : "—",
+                color: "#8B949E",
+              },
+              {
+                label: "CASH",
+                value: summary
+                  ? `$${summary.cash.toLocaleString("en-US", { maximumFractionDigits: 0 })} · ${summary.totalValue > 0 ? ((summary.cash / summary.totalValue) * 100).toFixed(1) : "0"}%`
+                  : "—",
+                color: "#8B949E",
+              },
+              {
+                label: "β",
+                value: analytics?.beta != null ? analytics.beta.toFixed(2) : "—",
+                color: analytics?.beta != null
+                  ? analytics.beta > 1.3 ? "#F0883E" : analytics.beta < 0.7 ? "#A371F7" : "#8B949E"
+                  : "#3A4A5C",
+              },
+              {
+                label: "SHARPE",
+                value: analytics?.sharpe != null ? analytics.sharpe.toFixed(2) : "—",
+                color: analytics?.sharpe != null
+                  ? analytics.sharpe >= 1.5 ? "#00E6A8" : analytics.sharpe >= 0.5 ? "#8B949E" : "#FF4458"
+                  : "#3A4A5C",
+              },
+              {
+                label: "SORTINO",
+                value: analytics?.sortino != null ? analytics.sortino.toFixed(2) : "—",
+                color: "#8B949E",
+              },
+              {
+                label: "MAX DD",
+                value: analytics?.maxDrawdown != null ? `${analytics.maxDrawdown.toFixed(1)}%` : "—",
+                color: analytics?.maxDrawdown != null
+                  ? analytics.maxDrawdown < -20 ? "#FF4458" : analytics.maxDrawdown < -10 ? "#F0883E" : "#8B949E"
+                  : "#3A4A5C",
+              },
+              {
+                label: "ANN VOL",
+                value: analytics?.annualizedVol != null ? `${analytics.annualizedVol.toFixed(1)}%` : "—",
+                color: "#8B949E",
+              },
+              {
+                label: "BEST",
+                value: summary?.bestPerformer
+                  ? `${summary.bestPerformer.ticker} +${summary.bestPerformer.gainLossPct.toFixed(1)}%`
+                  : "—",
+                color: "#00E6A8",
+              },
+              {
+                label: "WORST",
+                value: summary?.worstPerformer
+                  ? `${summary.worstPerformer.ticker} ${summary.worstPerformer.gainLossPct.toFixed(1)}%`
+                  : "—",
+                color: "#FF4458",
+              },
+            ].map((stat, i) => (
+              <div
+                key={stat.label}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  padding: "0 10px",
+                  height: "100%",
+                  borderRight: "1px solid #0F1825",
+                  flexShrink: 0,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 9,
+                    color: "#3A4A5C",
+                    letterSpacing: 1.2,
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                    fontFamily: "'Inter', system-ui, sans-serif",
+                  }}
+                >
+                  {stat.label}
+                </span>
+                <span
+                  className="font-mono tabular-nums"
+                  style={{ fontSize: 10, color: stat.color, fontWeight: 600 }}
+                >
+                  {stat.value}
+                </span>
+              </div>
+            ))}
+            {/* Spacer + keyboard hint */}
+            <div style={{ flex: 1 }} />
+            <div
+              style={{
+                fontSize: 9,
+                color: "#2A3A4C",
+                letterSpacing: 0.8,
+                fontFamily: "'Inter', system-ui, sans-serif",
+                flexShrink: 0,
+                paddingRight: 4,
+              }}
+            >
+              1–6 tabs · A add · T trade · / analyst
+            </div>
+          </div>
+        )}
 
         {/* Bloomberg-style tab bar */}
         <div
@@ -206,7 +351,7 @@ export default function Dashboard() {
             onClick={() => { logout(); window.location.reload(); }}
             style={{
               padding: "8px 16px",
-              fontSize: 8,
+              fontSize: 10,
               letterSpacing: 1.2,
               textTransform: "uppercase",
               fontFamily: "'Inter', system-ui, sans-serif",
@@ -230,7 +375,14 @@ export default function Dashboard() {
         {/* Tab content */}
         {activeTab === "MARKET" && (
           <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
-            <MarketTab />
+            <MarketTab
+              portfolioHoldings={holdingsData.map((h) => ({
+                ticker: h.ticker,
+                name: h.name,
+                gainLossPct: h.gainLossPct ?? 0,
+                dayChangePct: h.dayChangePct ?? 0,
+              }))}
+            />
           </div>
         )}
         {activeTab === "SCREENER" && (
@@ -520,7 +672,7 @@ function AddPositionDialogControlled({
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label style={{ fontSize: 8, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Ticker</Label>
+              <Label style={{ fontSize: 10, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Ticker</Label>
               <Input
                 value={ticker}
                 onChange={(e) => setTicker(e.target.value)}
@@ -531,7 +683,7 @@ function AddPositionDialogControlled({
               />
             </div>
             <div>
-              <Label style={{ fontSize: 8, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Name</Label>
+              <Label style={{ fontSize: 10, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Name</Label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -544,7 +696,7 @@ function AddPositionDialogControlled({
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <Label style={{ fontSize: 8, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Quantity</Label>
+              <Label style={{ fontSize: 10, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Quantity</Label>
               <Input
                 type="number"
                 step="any"
@@ -557,7 +709,7 @@ function AddPositionDialogControlled({
               />
             </div>
             <div>
-              <Label style={{ fontSize: 8, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Total Cost</Label>
+              <Label style={{ fontSize: 10, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Total Cost</Label>
               <Input
                 type="number"
                 step="any"
@@ -570,7 +722,7 @@ function AddPositionDialogControlled({
               />
             </div>
             <div>
-              <Label style={{ fontSize: 8, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Current Price</Label>
+              <Label style={{ fontSize: 10, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Current Price</Label>
               <Input
                 type="number"
                 step="any"
@@ -584,7 +736,7 @@ function AddPositionDialogControlled({
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label style={{ fontSize: 8, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Type</Label>
+              <Label style={{ fontSize: 10, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Type</Label>
               <Select value={type} onValueChange={setType}>
                 <SelectTrigger className="mt-1" style={{ background: "#080C14", border: "1px solid #1C2840", color: "#C9D1D9", fontSize: 10 }}>
                   <SelectValue />
@@ -599,7 +751,7 @@ function AddPositionDialogControlled({
               </Select>
             </div>
             <div>
-              <Label style={{ fontSize: 8, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Sector</Label>
+              <Label style={{ fontSize: 10, color: "#8B949E", textTransform: "uppercase", letterSpacing: 0.8 }}>Sector</Label>
               <Select value={sector} onValueChange={setSector}>
                 <SelectTrigger className="mt-1" style={{ background: "#080C14", border: "1px solid #1C2840", color: "#C9D1D9", fontSize: 10 }}>
                   <SelectValue />

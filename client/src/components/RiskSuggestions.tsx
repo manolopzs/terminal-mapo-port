@@ -126,7 +126,7 @@ export function RiskSuggestions({ holdings }: RiskSuggestionsProps) {
             <div className="flex items-center gap-2 mb-1">
               <span
                 style={{
-                  fontSize: 7,
+                  fontSize: 10,
                   fontWeight: 700,
                   letterSpacing: 0.8,
                   padding: "1px 5px",

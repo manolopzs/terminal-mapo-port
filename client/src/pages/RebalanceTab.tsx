@@ -112,7 +112,7 @@ export function RebalanceTab({ portfolioId }: Props) {
       >
         <AlertTriangle size={18} />
         <span style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase" }}>Failed to load rebalance data.</span>
-        <button onClick={handleRecalculate} style={{ marginLeft: 8, background: "transparent", border: "1px solid #1C2840", color: "#C9D1D9", padding: "5px 14px", fontSize: 8, letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace", cursor: "pointer", borderRadius: 2 }}>
+        <button onClick={handleRecalculate} style={{ marginLeft: 8, background: "transparent", border: "1px solid #1C2840", color: "#C9D1D9", padding: "5px 14px", fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace", cursor: "pointer", borderRadius: 2 }}>
           Retry
         </button>
       </div>
@@ -177,7 +177,7 @@ export function RebalanceTab({ portfolioId }: Props) {
               color: "#00D9FF",
               borderRadius: 2,
               padding: "2px 7px",
-              fontSize: 7,
+              fontSize: 9,
               letterSpacing: 1.5,
               textTransform: "uppercase",
               fontFamily: "monospace",
@@ -205,7 +205,7 @@ export function RebalanceTab({ portfolioId }: Props) {
               border: "1px solid #1C2840",
               color: "#8B949E",
               padding: "5px 14px",
-              fontSize: 8,
+              fontSize: 10,
               letterSpacing: 1.5,
               textTransform: "uppercase",
               fontFamily: "monospace",
@@ -227,7 +227,7 @@ export function RebalanceTab({ portfolioId }: Props) {
               border: "1px solid #1C2840",
               color: "#8B949E",
               padding: "5px 14px",
-              fontSize: 8,
+              fontSize: 10,
               letterSpacing: 1.5,
               textTransform: "uppercase",
               fontFamily: "monospace",
@@ -282,13 +282,13 @@ export function RebalanceTab({ portfolioId }: Props) {
                   data-rebalance="table-head"
                   style={{ background: "#0B0F1A", position: "sticky", top: 0, zIndex: 1 }}
                 >
-                  <th style={{ textAlign: "left", padding: "4px 8px", textTransform: "uppercase", letterSpacing: 1.5, fontSize: 8, fontWeight: 700, color: "#4A5A6E", fontFamily: "monospace", borderBottom: "1px solid #1C2840" }}>Ticker</th>
-                  <th style={{ textAlign: "left", padding: "4px 8px", textTransform: "uppercase", letterSpacing: 1.5, fontSize: 8, fontWeight: 700, color: "#4A5A6E", fontFamily: "monospace", borderBottom: "1px solid #1C2840" }}>Name</th>
-                  <th style={{ textAlign: "right", padding: "4px 8px", textTransform: "uppercase", letterSpacing: 1.5, fontSize: 8, fontWeight: 700, color: "#4A5A6E", fontFamily: "monospace", borderBottom: "1px solid #1C2840" }}>Current %</th>
-                  <th style={{ textAlign: "right", padding: "4px 8px", textTransform: "uppercase", letterSpacing: 1.5, fontSize: 8, fontWeight: 700, color: "#4A5A6E", fontFamily: "monospace", borderBottom: "1px solid #1C2840" }}>Target %</th>
-                  <th style={{ textAlign: "right", padding: "4px 8px", textTransform: "uppercase", letterSpacing: 1.5, fontSize: 8, fontWeight: 700, color: "#4A5A6E", fontFamily: "monospace", borderBottom: "1px solid #1C2840" }}>Diff</th>
-                  <th style={{ textAlign: "center", padding: "4px 8px", textTransform: "uppercase", letterSpacing: 1.5, fontSize: 8, fontWeight: 700, color: "#4A5A6E", fontFamily: "monospace", borderBottom: "1px solid #1C2840" }}>Action</th>
-                  <th style={{ textAlign: "right", padding: "4px 8px", textTransform: "uppercase", letterSpacing: 1.5, fontSize: 8, fontWeight: 700, color: "#4A5A6E", fontFamily: "monospace", borderBottom: "1px solid #1C2840" }}>Amount</th>
+                  <th style={{ textAlign: "left", padding: "4px 8px", textTransform: "uppercase", letterSpacing: 1.5, fontSize: 9, fontWeight: 700, color: "#4A5A6E", fontFamily: "monospace", borderBottom: "1px solid #1C2840" }}>Ticker</th>
+                  <th style={{ textAlign: "left", padding: "4px 8px", textTransform: "uppercase", letterSpacing: 1.5, fontSize: 9, fontWeight: 700, color: "#4A5A6E", fontFamily: "monospace", borderBottom: "1px solid #1C2840" }}>Name</th>
+                  <th style={{ textAlign: "right", padding: "4px 8px", textTransform: "uppercase", letterSpacing: 1.5, fontSize: 9, fontWeight: 700, color: "#4A5A6E", fontFamily: "monospace", borderBottom: "1px solid #1C2840" }}>Current %</th>
+                  <th style={{ textAlign: "right", padding: "4px 8px", textTransform: "uppercase", letterSpacing: 1.5, fontSize: 9, fontWeight: 700, color: "#4A5A6E", fontFamily: "monospace", borderBottom: "1px solid #1C2840" }}>Target %</th>
+                  <th style={{ textAlign: "right", padding: "4px 8px", textTransform: "uppercase", letterSpacing: 1.5, fontSize: 9, fontWeight: 700, color: "#4A5A6E", fontFamily: "monospace", borderBottom: "1px solid #1C2840" }}>Diff</th>
+                  <th style={{ textAlign: "center", padding: "4px 8px", textTransform: "uppercase", letterSpacing: 1.5, fontSize: 9, fontWeight: 700, color: "#4A5A6E", fontFamily: "monospace", borderBottom: "1px solid #1C2840" }}>Action</th>
+                  <th style={{ textAlign: "right", padding: "4px 8px", textTransform: "uppercase", letterSpacing: 1.5, fontSize: 9, fontWeight: 700, color: "#4A5A6E", fontFamily: "monospace", borderBottom: "1px solid #1C2840" }}>Amount</th>
                 </tr>
               </thead>
               <tbody>
@@ -371,7 +371,7 @@ export function RebalanceTab({ portfolioId }: Props) {
                               color: "#00E6A8",
                               borderRadius: 2,
                               padding: "2px 7px",
-                              fontSize: 7,
+                              fontSize: 9,
                               letterSpacing: 1,
                               textTransform: "uppercase",
                               fontFamily: "monospace",
@@ -392,7 +392,7 @@ export function RebalanceTab({ portfolioId }: Props) {
                               color: "#FF4458",
                               borderRadius: 2,
                               padding: "2px 7px",
-                              fontSize: 7,
+                              fontSize: 9,
                               letterSpacing: 1,
                               textTransform: "uppercase",
                               fontFamily: "monospace",
@@ -413,7 +413,7 @@ export function RebalanceTab({ portfolioId }: Props) {
                               color: "#8B949E",
                               borderRadius: 2,
                               padding: "2px 7px",
-                              fontSize: 7,
+                              fontSize: 9,
                               letterSpacing: 1,
                               textTransform: "uppercase",
                               fontFamily: "monospace",
@@ -444,7 +444,7 @@ export function RebalanceTab({ portfolioId }: Props) {
               </tbody>
               <tfoot>
                 <tr style={{ borderTop: "2px solid #1C2840", background: "#0B0F1A" }}>
-                  <td colSpan={2} style={{ padding: "5px 8px", fontSize: 8, color: "#4A5A6E", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1 }}>
+                  <td colSpan={2} style={{ padding: "5px 8px", fontSize: 10, color: "#4A5A6E", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1 }}>
                     Targets total
                   </td>
                   <td style={{ padding: "5px 8px", textAlign: "right", fontFamily: "monospace", fontSize: 10, color: "#C9D1D9" }}>
@@ -452,7 +452,7 @@ export function RebalanceTab({ portfolioId }: Props) {
                   </td>
                   <td style={{ padding: "5px 8px", textAlign: "right", fontFamily: "monospace", fontSize: 10, fontWeight: 700, color: targetsSumOk ? "#00E6A8" : "#FF4458" }}>
                     {targetsSum.toFixed(1)}%
-                    {!targetsSumOk && <span style={{ fontSize: 7, marginLeft: 4, color: "#F0883E" }}>≠100</span>}
+                    {!targetsSumOk && <span style={{ fontSize: 9, marginLeft: 4, color: "#F0883E" }}>≠100</span>}
                   </td>
                   <td colSpan={3} />
                 </tr>
@@ -539,13 +539,13 @@ export function RebalanceTab({ portfolioId }: Props) {
           <div style={{ padding: "14px", borderBottom: "1px solid #1C2840" }}>
             <div style={{ display: "flex", gap: 16 }}>
               <div style={{ flex: 1, background: "rgba(0,200,83,0.05)", border: "1px solid rgba(0,200,83,0.2)", borderRadius: 4, padding: "10px 14px" }}>
-                <div style={{ fontSize: 7, color: "#00E6A8", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace", marginBottom: 6 }}>Total to Buy</div>
+                <div style={{ fontSize: 9, color: "#00E6A8", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace", marginBottom: 6 }}>Total to Buy</div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: "#00E6A8", fontFamily: "monospace" }}>
                   ${totalToBuy.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </div>
               </div>
               <div style={{ flex: 1, background: "rgba(255,77,77,0.05)", border: "1px solid rgba(255,77,77,0.2)", borderRadius: 4, padding: "10px 14px" }}>
-                <div style={{ fontSize: 7, color: "#FF4458", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace", marginBottom: 6 }}>Total to Sell</div>
+                <div style={{ fontSize: 9, color: "#FF4458", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace", marginBottom: 6 }}>Total to Sell</div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: "#FF4458", fontFamily: "monospace" }}>
                   ${totalToSell.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </div>
@@ -554,7 +554,7 @@ export function RebalanceTab({ portfolioId }: Props) {
             {!targetsSumOk && (
               <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6, background: "rgba(240,136,62,0.07)", border: "1px solid rgba(240,136,62,0.2)", borderRadius: 3, padding: "7px 12px" }}>
                 <AlertTriangle size={11} style={{ color: "#F0883E", flexShrink: 0 }} />
-                <span style={{ fontSize: 8, color: "#F0883E", fontFamily: "monospace" }}>
+                <span style={{ fontSize: 10, color: "#F0883E", fontFamily: "monospace" }}>
                   Targets sum to {targetsSum.toFixed(1)}% — adjust to reach 100% for accurate rebalancing
                 </span>
               </div>
@@ -593,7 +593,7 @@ export function RebalanceTab({ portfolioId }: Props) {
                   fontWeight: 700,
                   letterSpacing: 1.5,
                   textTransform: "uppercase",
-                  fontSize: 8,
+                  fontSize: 10,
                   marginBottom: 12,
                   color: "#00D9FF",
                   fontFamily: "monospace",
@@ -603,7 +603,7 @@ export function RebalanceTab({ portfolioId }: Props) {
               </div>
               <div data-rebalance="cash-row" style={{ display: "flex", alignItems: "flex-start", gap: 24 }}>
                 <div>
-                  <span style={{ color: "#4A5A6E", fontSize: 8, textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace" }}>Current</span>
+                  <span style={{ color: "#4A5A6E", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace" }}>Current</span>
                   <div
                     data-rebalance="cash-current-pct"
                     style={{ fontFamily: "monospace", marginTop: 4, fontSize: 18, fontWeight: 700, color: "#C9D1D9", letterSpacing: 1 }}
@@ -615,7 +615,7 @@ export function RebalanceTab({ portfolioId }: Props) {
                   </div>
                 </div>
                 <div>
-                  <span style={{ color: "#4A5A6E", fontSize: 8, textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace" }}>Target Range</span>
+                  <span style={{ color: "#4A5A6E", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace" }}>Target Range</span>
                   <div
                     data-rebalance="cash-target-pct"
                     style={{ fontFamily: "monospace", marginTop: 4, fontSize: 14, fontWeight: 700, color: "#8B949E" }}
@@ -625,7 +625,7 @@ export function RebalanceTab({ portfolioId }: Props) {
                   <div style={{ color: "#4A5A6E", fontSize: 9, fontFamily: "monospace", marginTop: 2 }}>5 – 20%</div>
                 </div>
                 <div>
-                  <span style={{ color: "#4A5A6E", fontSize: 8, textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace" }}>Action</span>
+                  <span style={{ color: "#4A5A6E", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace" }}>Action</span>
                   <div
                     data-rebalance="cash-action"
                     style={{ fontFamily: "monospace", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}
@@ -641,7 +641,7 @@ export function RebalanceTab({ portfolioId }: Props) {
                           color: "#F0883E",
                           borderRadius: 2,
                           padding: "2px 7px",
-                          fontSize: 7,
+                          fontSize: 9,
                           letterSpacing: 1,
                           textTransform: "uppercase",
                           fontFamily: "monospace",
@@ -662,7 +662,7 @@ export function RebalanceTab({ portfolioId }: Props) {
                           color: "#FF4458",
                           borderRadius: 2,
                           padding: "2px 7px",
-                          fontSize: 7,
+                          fontSize: 9,
                           letterSpacing: 1,
                           textTransform: "uppercase",
                           fontFamily: "monospace",
@@ -683,7 +683,7 @@ export function RebalanceTab({ portfolioId }: Props) {
                           color: "#00E6A8",
                           borderRadius: 2,
                           padding: "2px 7px",
-                          fontSize: 7,
+                          fontSize: 9,
                           letterSpacing: 1,
                           textTransform: "uppercase",
                           fontFamily: "monospace",

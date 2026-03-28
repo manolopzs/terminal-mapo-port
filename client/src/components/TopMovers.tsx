@@ -30,10 +30,10 @@ function Week52Bar({ ticker, currentPrice, extMap }: {
   return (
     <div style={{ marginTop: 6 }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-        <span style={{ fontSize: 6, color: "#484F58", fontFamily: "monospace" }}>
+        <span style={{ fontSize: 9, color: "#484F58", fontFamily: "monospace" }}>
           {hasReal ? `$${lo.toFixed(0)}` : "52W L"}
         </span>
-        <span style={{ fontSize: 6, color: "#484F58", fontFamily: "monospace" }}>
+        <span style={{ fontSize: 9, color: "#484F58", fontFamily: "monospace" }}>
           {hasReal ? `$${hi.toFixed(0)}` : "52W H"}
         </span>
       </div>
@@ -48,7 +48,7 @@ function Week52Bar({ ticker, currentPrice, extMap }: {
           left: `${pct}%`,
           top: "50%",
           transform: "translate(-50%, -60%)",
-          fontSize: 8,
+          fontSize: 10,
           color: "#00D9FF",
           lineHeight: 1,
           textShadow: "0 0 4px rgba(0,217,255,0.5)",
@@ -73,7 +73,7 @@ function MoverCard({ holding, type, extMap }: {
 
   return (
     <div style={{ background: "#0A0E18", border: "1px solid #1C2840", borderRadius: 2, padding: "6px 8px" }}>
-      <div style={{ fontSize: 8, color, fontWeight: 600, letterSpacing: 0.8, marginBottom: 2 }}>
+      <div style={{ fontSize: 10, color, fontWeight: 600, letterSpacing: 0.8, marginBottom: 2 }}>
         {arrow} {label}
       </div>
       <div className="flex items-center justify-between" style={{ marginBottom: 4 }}>
@@ -85,7 +85,7 @@ function MoverCard({ holding, type, extMap }: {
         </span>
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: 7, color: "#4A5A6E", letterSpacing: 1, textTransform: "uppercase", fontFamily: "monospace" }}>Total P&L</span>
+        <span style={{ fontSize: 10, color: "#4A5A6E", letterSpacing: 1, textTransform: "uppercase", fontFamily: "monospace" }}>Total P&L</span>
         <span className="font-mono tabular-nums" style={{ fontSize: 9, fontWeight: 600, color: totalColor }}>
           {totalPnlPct >= 0 ? "+" : ""}{totalPnlPct.toFixed(1)}%
         </span>

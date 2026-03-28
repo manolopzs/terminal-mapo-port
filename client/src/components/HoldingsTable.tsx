@@ -28,7 +28,17 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
         <span className="terminal-badge">{holdings.length} POSITIONS</span>
       </div>
       <div className="flex-1 overflow-auto" style={{ padding: 0 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: "28%" }} />
+            <col style={{ width: "18%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "2%" }} />
+          </colgroup>
           <thead>
             <tr
               style={{
@@ -39,19 +49,18 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                 borderBottom: "1px solid #1C2840",
               }}
             >
-              {["TICKER", "SHARES", "PRICE", "CHG", "CHG%", "ALLOC%", ""].map((h) => (
+              {["TICKER", "VALUE", "QTY", "PRICE", "DAY%", "P&L%", "ALLOC", ""].map((h) => (
                 <th
                   key={h || "actions"}
                   style={{
-                    fontSize: 8,
+                    fontSize: 9,
                     fontWeight: 600,
                     color: "#4A5A6E",
-                    letterSpacing: 1.5,
+                    letterSpacing: 1.3,
                     textTransform: "uppercase",
-                    padding: "4px 6px",
+                    padding: "5px 5px",
                     textAlign: h === "TICKER" ? "left" : "right",
                     fontFamily: "'Inter', system-ui, sans-serif",
-                    width: h === "" ? 24 : undefined,
                   }}
                 >
                   {h}
@@ -64,62 +73,162 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
               const alloc = totalValue > 0 ? ((h.value ?? 0) / totalValue) * 100 : 0;
               const chgPct = h.dayChangePct ?? 0;
               const chgColor = chgPct > 0 ? "#00E6A8" : chgPct < 0 ? "#FF4458" : "#8B949E";
+              const pnlPct = h.gainLossPct ?? 0;
+              const pnlColor = pnlPct >= 0 ? "#00E6A8" : "#FF4458";
+              const avgCost = (h.quantity ?? 0) > 0 ? (h.costBasis ?? 0) / (h.quantity ?? 1) : 0;
+              const shortName = h.name.length > 15 ? h.name.slice(0, 15) + "…" : h.name;
               return (
                 <tr
                   key={h.id}
                   className="group"
                   style={{
                     borderBottom: "1px solid rgba(28, 40, 64, 0.5)",
+                    transition: "background 0.1s",
                   }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,217,255,0.025)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 >
-                  <td
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 600,
-                      color: "#00D9FF",
-                      padding: "2px 6px",
-                      fontFamily: "'JetBrains Mono', monospace",
-                    }}
-                  >
-                    {h.ticker}
+                  {/* TICKER + name */}
+                  <td style={{ padding: "4px 5px" }}>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: "#00D9FF",
+                        fontFamily: "'JetBrains Mono', monospace",
+                        lineHeight: 1.15,
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      {h.ticker}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 9,
+                        color: "#3A4A5C",
+                        lineHeight: 1.1,
+                        marginTop: 1,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {shortName}
+                    </div>
                   </td>
+
+                  {/* VALUE + avg cost */}
+                  <td style={{ padding: "4px 5px", textAlign: "right" }}>
+                    <div
+                      className="font-mono tabular-nums"
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "#E8EDF2",
+                        lineHeight: 1.15,
+                      }}
+                    >
+                      ${(h.value ?? 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                    </div>
+                    <div
+                      className="font-mono tabular-nums"
+                      style={{
+                        fontSize: 9,
+                        color: "#3A4A5C",
+                        lineHeight: 1.1,
+                        marginTop: 1,
+                      }}
+                    >
+                      avg ${avgCost.toFixed(2)}
+                    </div>
+                  </td>
+
+                  {/* QTY */}
                   <td
                     className="font-mono tabular-nums"
-                    style={{ fontSize: 10, color: "#8B949E", padding: "2px 6px", textAlign: "right" }}
+                    style={{ fontSize: 10, color: "#6A7A8E", padding: "4px 5px", textAlign: "right" }}
                   >
                     {(h.quantity ?? 0) < 1
-                      ? (h.quantity ?? 0).toFixed(4)
+                      ? (h.quantity ?? 0).toFixed(3)
                       : (h.quantity ?? 0) % 1 === 0
                         ? (h.quantity ?? 0).toFixed(0)
                         : (h.quantity ?? 0).toFixed(2)}
                   </td>
+
+                  {/* PRICE */}
                   <td
                     className="font-mono tabular-nums"
-                    style={{ fontSize: 10, color: "#C9D1D9", padding: "2px 6px", textAlign: "right" }}
+                    style={{ fontSize: 10, color: "#C9D1D9", padding: "4px 5px", textAlign: "right" }}
                   >
-                    {(h.price ?? 0).toFixed(2)}
+                    ${(h.price ?? 0).toFixed(2)}
                   </td>
+
+                  {/* DAY% */}
                   <td
                     className="font-mono tabular-nums"
-                    style={{ fontSize: 10, color: chgColor, padding: "2px 6px", textAlign: "right" }}
-                  >
-                    {(h.dayChange ?? 0) >= 0 ? "+" : ""}
-                    {(h.dayChange ?? 0).toFixed(2)}
-                  </td>
-                  <td
-                    className="font-mono tabular-nums"
-                    style={{ fontSize: 10, color: chgColor, padding: "2px 6px", textAlign: "right" }}
+                    style={{
+                      fontSize: 10,
+                      color: chgColor,
+                      padding: "4px 5px",
+                      textAlign: "right",
+                      fontWeight: 600,
+                    }}
                   >
                     {chgPct >= 0 ? "+" : ""}
                     {chgPct.toFixed(2)}%
                   </td>
+
+                  {/* P&L% */}
                   <td
                     className="font-mono tabular-nums"
-                    style={{ fontSize: 10, color: "#5A6B80", padding: "2px 6px", textAlign: "right" }}
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: pnlColor,
+                      padding: "4px 5px",
+                      textAlign: "right",
+                    }}
                   >
-                    {alloc.toFixed(1)}%
+                    {pnlPct >= 0 ? "+" : ""}
+                    {pnlPct.toFixed(1)}%
                   </td>
-                  <td style={{ padding: "2px 4px", textAlign: "right" }}>
+
+                  {/* ALLOC% with mini bar */}
+                  <td style={{ padding: "4px 5px", textAlign: "right" }}>
+                    <div
+                      className="font-mono tabular-nums"
+                      style={{ fontSize: 9, color: "#5A6B80", lineHeight: 1.15 }}
+                    >
+                      {alloc.toFixed(1)}%
+                    </div>
+                    <div
+                      style={{
+                        height: 2,
+                        background: "#1A2436",
+                        borderRadius: 1,
+                        marginTop: 2,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${Math.min(alloc * 4, 100)}%`,
+                          background:
+                            alloc > 25
+                              ? "#F0883E"
+                              : alloc > 15
+                                ? "#00D9FF"
+                                : "#3A5A7C",
+                          borderRadius: 1,
+                          transition: "width 0.4s ease",
+                        }}
+                      />
+                    </div>
+                  </td>
+
+                  {/* DELETE */}
+                  <td style={{ padding: "4px 3px", textAlign: "right" }}>
                     <button
                       onClick={() => deleteHolding.mutate(h.id)}
                       disabled={deleteHolding.isPending}
@@ -128,21 +237,23 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                         border: "none",
                         cursor: "pointer",
                         color: "#8B949E",
-                        padding: 2,
-                        opacity: 0.4,
+                        padding: "1px 2px",
+                        opacity: 0.25,
                         transition: "opacity 100ms, color 100ms",
+                        display: "flex",
+                        alignItems: "center",
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.opacity = "1";
                         e.currentTarget.style.color = "#FF4458";
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.opacity = "0.4";
+                        e.currentTarget.style.opacity = "0.25";
                         e.currentTarget.style.color = "#8B949E";
                       }}
                       data-testid={`delete-holding-${h.id}`}
                     >
-                      <Trash2 size={10} />
+                      <Trash2 size={9} />
                     </button>
                   </td>
                 </tr>
@@ -152,14 +263,14 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
         </table>
       </div>
 
-      {/* Total P&L footer — always visible */}
+      {/* Footer — always visible */}
       {holdings.length > 0 && (
         <div
           style={{
             flexShrink: 0,
             borderTop: "1px solid #1C2840",
             background: "#070B14",
-            padding: "6px 10px",
+            padding: "5px 10px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -168,7 +279,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span
               style={{
-                fontSize: 8,
+                fontSize: 9,
                 fontWeight: 700,
                 letterSpacing: 1.5,
                 textTransform: "uppercase",
@@ -185,7 +296,11 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                 color: totals.pnl >= 0 ? "#00E6A8" : "#FF4458",
               }}
             >
-              {totals.pnl >= 0 ? "+" : ""}${Math.abs(totals.pnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {totals.pnl >= 0 ? "+" : ""}$
+              {Math.abs(totals.pnl).toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </span>
             <span
               className="font-mono tabular-nums"
@@ -196,13 +311,14 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                 opacity: 0.8,
               }}
             >
-              ({totals.pnlPct >= 0 ? "+" : ""}{totals.pnlPct.toFixed(2)}%)
+              ({totals.pnlPct >= 0 ? "+" : ""}
+              {totals.pnlPct.toFixed(2)}%)
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span
               style={{
-                fontSize: 8,
+                fontSize: 9,
                 fontWeight: 600,
                 letterSpacing: 1,
                 textTransform: "uppercase",
@@ -219,7 +335,11 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                 color: totals.totalDayChg >= 0 ? "#00E6A8" : "#FF4458",
               }}
             >
-              {totals.totalDayChg >= 0 ? "+" : ""}${Math.abs(totals.totalDayChg).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {totals.totalDayChg >= 0 ? "+" : ""}$
+              {Math.abs(totals.totalDayChg).toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </span>
           </div>
         </div>

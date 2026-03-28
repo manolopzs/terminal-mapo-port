@@ -205,7 +205,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
                     </span>
                     <span
                       style={{
-                        fontSize: 7,
+                        fontSize: 10,
                         color: "#3A4A5C",
                         letterSpacing: 0.8,
                         textTransform: "uppercase",
@@ -473,7 +473,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
 
           {/* Type to confirm */}
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 8, color: "#8B949E", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace", marginBottom: 6 }}>
+            <label style={{ display: "block", fontSize: 10, color: "#8B949E", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace", marginBottom: 6 }}>
               Type <span style={{ color: "#FF4458" }}>delete</span> to confirm
             </label>
             <input
@@ -505,7 +505,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
               style={{
                 flex: 1,
                 padding: "8px",
-                fontSize: 8,
+                fontSize: 10,
                 fontWeight: 700,
                 letterSpacing: 1.5,
                 textTransform: "uppercase",
@@ -525,7 +525,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
               style={{
                 flex: 1,
                 padding: "8px",
-                fontSize: 8,
+                fontSize: 10,
                 fontWeight: 700,
                 letterSpacing: 1.5,
                 textTransform: "uppercase",
