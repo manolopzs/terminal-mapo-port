@@ -3,16 +3,14 @@ import { Header } from "@/components/Header";
 import { TickerTape } from "@/components/TickerTape";
 import { HoldingsTable } from "@/components/HoldingsTable";
 import { PerformanceChart } from "@/components/PerformanceChart";
-import { AssetAllocation } from "@/components/AssetAllocation";
 import { RiskAnalysis } from "@/components/RiskAnalysis";
-import { RiskSuggestions } from "@/components/RiskSuggestions";
+import { MAPOSignals } from "@/components/MAPOSignals";
 import { PortfolioHealth } from "@/components/PortfolioHealth";
 import { DrawdownMonitor } from "@/components/DrawdownMonitor";
 import { EarningsCalendar } from "@/components/EarningsCalendar";
 import { CorrelationMatrix } from "@/components/CorrelationMatrix";
 import { VolatilityBars } from "@/components/VolatilityBars";
 import { TopMovers } from "@/components/TopMovers";
-import { GainLossTable } from "@/components/GainLossTable";
 import { NewsTicker } from "@/components/NewsTicker";
 import { TerminalSidebar } from "@/components/TerminalSidebar";
 import { TradeHistory } from "@/components/TradeHistory";
@@ -287,9 +285,9 @@ export default function Dashboard() {
               <div style={{ height: 280, flexShrink: 0, borderTop: "1px solid #1C2840" }}>
                 <PerformanceChart portfolioId={activePortfolioId} />
               </div>
-              {/* Asset allocation */}
-              <div style={{ height: 280, flexShrink: 0, borderTop: "1px solid #1C2840" }}>
-                <AssetAllocation holdings={holdingsData} />
+              {/* MAPO Signals */}
+              <div style={{ height: 320, flexShrink: 0, borderTop: "1px solid #1C2840" }}>
+                <MAPOSignals holdings={holdingsData} totalValue={totalValue} />
               </div>
               {/* Top Movers */}
               <div style={{ height: 240, flexShrink: 0, borderTop: "1px solid #1C2840" }}>
@@ -671,13 +669,13 @@ export default function Dashboard() {
             <RiskAnalysis holdings={holdingsData} analytics={analytics} />
           </div>
 
-          {/* Col 4, Row 1: Portfolio Health + Risk Suggestions */}
+          {/* Col 4, Row 1: Portfolio Health + MAPO Signals */}
           <div className="flex flex-col" style={{ overflow: "hidden" }}>
             <div style={{ flex: "0 0 auto", maxHeight: "45%", overflow: "auto" }}>
               <PortfolioHealth portfolioId={activePortfolioId} />
             </div>
-            <div style={{ flex: 1, overflow: "auto", borderTop: "1px solid #1C2840", minHeight: 0 }}>
-              <RiskSuggestions holdings={holdingsData} />
+            <div style={{ flex: 1, overflow: "hidden", borderTop: "1px solid #1C2840", minHeight: 0 }}>
+              <MAPOSignals holdings={holdingsData} totalValue={totalValue} />
             </div>
           </div>
 
@@ -691,12 +689,11 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Col 2, Row 2: Asset Allocation + Correlation Matrix */}
+          {/* Col 2, Row 2: Correlation Matrix */}
           <div
             className="flex flex-col"
             style={{ borderRight: "1px solid #1C2840", borderTop: "1px solid #1C2840", overflow: "auto" }}
           >
-            <AssetAllocation holdings={holdingsData} />
             <CorrelationMatrix holdings={holdingsData} correlationData={analytics?.correlation} top6Tickers={analytics?.top6Tickers} />
           </div>
 
@@ -710,14 +707,9 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Col 4, Row 2: Top Movers + Gain/Loss */}
+          {/* Col 4, Row 2: Top Movers */}
           <div className="flex flex-col" style={{ borderTop: "1px solid #1C2840", overflow: "hidden" }}>
-            <div style={{ flex: "0 0 auto", maxHeight: "45%", overflow: "hidden" }}>
-              <TopMovers holdings={holdingsData} portfolioId={activePortfolioId} />
-            </div>
-            <div style={{ flex: 1, overflow: "auto", borderTop: "1px solid #1C2840", minHeight: 0 }}>
-              <GainLossTable holdings={holdingsData} />
-            </div>
+            <TopMovers holdings={holdingsData} portfolioId={activePortfolioId} />
           </div>
         </div>
 
