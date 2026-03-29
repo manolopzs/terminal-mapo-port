@@ -116,6 +116,17 @@
     color: #C9D1D9;
     overflow: hidden;
   }
+
+  /* Mobile: allow scroll, prevent tap highlight */
+  @media (max-width: 767px) {
+    body {
+      overflow: auto;
+      -webkit-tap-highlight-color: transparent;
+    }
+    * {
+      -webkit-overflow-scrolling: touch;
+    }
+  }
 }
 
 /* Design tokens — single source of truth */
@@ -177,6 +188,15 @@
 .tabular-nums {
   font-variant-numeric: tabular-nums;
   font-family: var(--font-mono);
+}
+
+/* Mobile utility classes */
+@media (max-width: 767px) {
+  .mobile-hide { display: none !important; }
+  .mobile-full { width: 100% !important; }
+  .mobile-scroll-x { overflow-x: auto !important; white-space: nowrap !important; }
+  .mobile-stack { flex-direction: column !important; }
+  .mobile-p0 { padding: 0 !important; }
 }
 
 /* Scrollbar styling */

@@ -50,6 +50,13 @@ export async function fetchLiveQuotes(rawTickers: string[]): Promise<LiveQuote[]
     .map(t => t.replace(/[^A-Z0-9.\-]/gi, "").toUpperCase())
     .filter(t => t.length > 0 && t.length <= 10);
 
+  // Fetch real market status once, share across all quotes
+  const marketStatusResult = await Promise.allSettled([
+    finnhub("/stock/market-status?exchange=US"),
+  ]);
+  const statusData = marketStatusResult[0].status === "fulfilled" ? marketStatusResult[0].value : null;
+  const marketStatus = statusData?.isOpen === true ? "open" : statusData?.isOpen === false ? "closed" : "unknown";
+
   const cacheKey = `quotes:${[...tickers].sort().join(",")}`;
   return cachedAsync(cacheKey, 60_000, async () => {
     const results = await Promise.allSettled(
@@ -70,7 +77,7 @@ export async function fetchLiveQuotes(rawTickers: string[]): Promise<LiveQuote[]
             yearHigh: 0,
             volume: 0,
             marketCap: 0,
-            marketStatus: "open",
+            marketStatus,
           };
         } catch {
           return null;

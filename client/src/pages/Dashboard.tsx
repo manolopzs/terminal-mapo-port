@@ -25,8 +25,9 @@ import { MAPOScoreTab } from "@/pages/MAPOScoreTab";
 import { RebalanceTab } from "@/pages/RebalanceTab";
 import { JournalTab } from "@/pages/JournalTab";
 import { useHoldings, usePortfolios, useSummary, useLiveQuotes, useLiveEarnings, useLiveSentiment, useLiveNews, useAnalytics } from "@/hooks/use-portfolio";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { queryClient } from "@/lib/queryClient";
-import { Loader2, Bot, LogOut } from "lucide-react";
+import { Loader2, Bot, LogOut, Plus, ArrowRightLeft, BarChart2, Globe, Search, Star, RefreshCw, BookOpen } from "lucide-react";
 import { logout } from "@/lib/auth";
 
 type TabId = "PORTFOLIO" | "MARKET" | "SCREENER" | "MAPO" | "REBALANCE" | "JOURNAL";
@@ -102,6 +103,7 @@ export default function Dashboard() {
   const { data: liveSentiment } = useLiveSentiment();
   const { data: liveNews } = useLiveNews(activePortfolioId || undefined);
   const { data: analytics } = useAnalytics(activePortfolioId || undefined);
+  const isMobile = useIsMobile();
 
   // When live quotes arrive, refetch holdings & summary to get updated prices
   const liveUpdatedAt = liveQuotesData?.updatedAt;
@@ -153,6 +155,242 @@ export default function Dashboard() {
 
   const holdingsData = holdings ?? [];
   const totalValue = summary?.totalValue ?? 0;
+
+  // ─── MOBILE LAYOUT ───────────────────────────────────────────────────────────
+  if (isMobile) {
+    const MOBILE_TABS: { id: TabId; label: string; icon: typeof BarChart2 }[] = [
+      { id: "PORTFOLIO", label: "Portfolio", icon: BarChart2 },
+      { id: "MARKET", label: "Market", icon: Globe },
+      { id: "SCREENER", label: "Screen", icon: Search },
+      { id: "MAPO", label: "MAPO", icon: Star },
+      { id: "REBALANCE", label: "Rebalance", icon: RefreshCw },
+      { id: "JOURNAL", label: "Journal", icon: BookOpen },
+    ];
+
+    return (
+      <div style={{ background: "#040810", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+        {/* Mobile Header */}
+        <div
+          style={{
+            background: "#070B14",
+            borderBottom: "1px solid #1C2840",
+            padding: "10px 14px",
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div
+                style={{
+                  width: 26, height: 26, borderRadius: 4,
+                  background: "linear-gradient(135deg, #00D9FF 0%, #0088CC 100%)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 9, fontWeight: 700, color: "#040810",
+                  fontFamily: "'JetBrains Mono', monospace", letterSpacing: 1,
+                }}
+              >
+                MT
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#D6DFE8", letterSpacing: 2 }}>MAPO</div>
+                <div style={{ fontSize: 9, color: "#3A4A5C", letterSpacing: 1 }}>TERMINAL</div>
+              </div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div className="font-mono tabular-nums" style={{ fontSize: 18, fontWeight: 700, color: "#E8EDF2", lineHeight: 1 }}>
+                ${totalValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end", marginTop: 2 }}>
+                <span className="font-mono" style={{ fontSize: 11, fontWeight: 600, color: (summary?.dayChange ?? 0) >= 0 ? "#00E6A8" : "#FF4458" }}>
+                  {(summary?.dayChange ?? 0) >= 0 ? "+" : ""}${Math.abs(summary?.dayChange ?? 0).toFixed(2)} today
+                </span>
+                <span
+                  style={{
+                    fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 3,
+                    background: (liveSentiment?.marketStatus === "open") ? "rgba(0,230,168,0.1)" : "rgba(255,68,88,0.1)",
+                    color: (liveSentiment?.marketStatus === "open") ? "#00E6A8" : "#FF4458",
+                    border: `1px solid ${(liveSentiment?.marketStatus === "open") ? "rgba(0,230,168,0.2)" : "rgba(255,68,88,0.2)"}`,
+                  }}
+                >
+                  MKT {(liveSentiment?.marketStatus === "open") ? "OPEN" : "CLOSED"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Portfolio P/L row */}
+          <div style={{ display: "flex", gap: 16, marginTop: 10 }}>
+            {[
+              { label: "TOTAL P/L", value: `${(summary?.totalGainLossPct ?? 0) >= 0 ? "+" : ""}${(summary?.totalGainLossPct ?? 0).toFixed(2)}%`, color: (summary?.totalGainLossPct ?? 0) >= 0 ? "#00E6A8" : "#FF4458" },
+              { label: "POSITIONS", value: String(summary?.holdingsCount ?? 0), color: "#8B949E" },
+              { label: "CASH", value: `$${(summary?.cash ?? 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}`, color: "#8B949E" },
+              { label: "SENTIMENT", value: liveSentiment?.sentiment ?? "—", color: liveSentiment?.sentiment === "BULLISH" ? "#00E6A8" : liveSentiment?.sentiment === "BEARISH" ? "#FF4458" : "#F0883E" },
+            ].map((s) => (
+              <div key={s.label}>
+                <div style={{ fontSize: 8, color: "#4A5A6E", letterSpacing: 1, textTransform: "uppercase" }}>{s.label}</div>
+                <div className="font-mono tabular-nums" style={{ fontSize: 11, fontWeight: 700, color: s.color }}>{s.value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Mobile ticker tape */}
+        <TickerTape />
+
+        {/* Mobile tab bar — horizontally scrollable */}
+        <div
+          style={{
+            display: "flex",
+            background: "#070B14",
+            borderBottom: "1px solid #1C2840",
+            overflowX: "auto",
+            flexShrink: 0,
+            WebkitOverflowScrolling: "touch" as any,
+          }}
+        >
+          {MOBILE_TABS.map((tab) => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                  padding: "8px 16px", gap: 3, flexShrink: 0,
+                  background: active ? "rgba(0,217,255,0.06)" : "transparent",
+                  border: "none",
+                  borderBottom: active ? "2px solid #00D9FF" : "2px solid transparent",
+                  color: active ? "#00D9FF" : "#5A6B80",
+                  cursor: "pointer",
+                  minWidth: 64,
+                }}
+              >
+                <Icon size={14} />
+                <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Mobile tab content */}
+        <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+          {activeTab === "PORTFOLIO" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              {/* Holdings */}
+              <div style={{ height: 380, flexShrink: 0 }}>
+                <HoldingsTable holdings={holdingsData} totalValue={totalValue} />
+              </div>
+              {/* Performance */}
+              <div style={{ height: 280, flexShrink: 0, borderTop: "1px solid #1C2840" }}>
+                <PerformanceChart portfolioId={activePortfolioId} />
+              </div>
+              {/* Asset allocation */}
+              <div style={{ height: 280, flexShrink: 0, borderTop: "1px solid #1C2840" }}>
+                <AssetAllocation holdings={holdingsData} />
+              </div>
+              {/* Top Movers */}
+              <div style={{ height: 240, flexShrink: 0, borderTop: "1px solid #1C2840" }}>
+                <TopMovers holdings={holdingsData} portfolioId={activePortfolioId} />
+              </div>
+              {/* Trade History */}
+              <div style={{ height: 320, flexShrink: 0, borderTop: "1px solid #1C2840" }}>
+                <TradeHistory portfolioId={activePortfolioId} />
+              </div>
+            </div>
+          )}
+          {activeTab === "MARKET" && (
+            <div style={{ height: "calc(100vh - 200px)", minHeight: 500 }}>
+              <MarketTab portfolioHoldings={holdingsData.map((h) => ({ ticker: h.ticker, name: h.name, gainLossPct: h.gainLossPct ?? 0, dayChangePct: h.dayChangePct ?? 0 }))} />
+            </div>
+          )}
+          {activeTab === "SCREENER" && (
+            <div style={{ height: "calc(100vh - 200px)", minHeight: 500 }}>
+              <ScreenerTab />
+            </div>
+          )}
+          {activeTab === "MAPO" && (
+            <div style={{ height: "calc(100vh - 200px)", minHeight: 500 }}>
+              <MAPOScoreTab />
+            </div>
+          )}
+          {activeTab === "REBALANCE" && (
+            <div style={{ height: "calc(100vh - 200px)", minHeight: 500 }}>
+              <RebalanceTab portfolioId={activePortfolioId} />
+            </div>
+          )}
+          {activeTab === "JOURNAL" && (
+            <div style={{ height: "calc(100vh - 200px)", minHeight: 500 }}>
+              <JournalTab />
+            </div>
+          )}
+        </div>
+
+        {/* Mobile bottom action bar */}
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            background: "#070B14",
+            borderTop: "1px solid #1C2840",
+            display: "flex",
+            padding: "8px 12px",
+            paddingBottom: "calc(8px + env(safe-area-inset-bottom))",
+            gap: 8,
+            zIndex: 50,
+          }}
+        >
+          <button
+            onClick={() => setAddPositionOpen(true)}
+            style={{
+              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              padding: "10px", borderRadius: 6, border: "1px solid rgba(0,217,255,0.25)",
+              background: "rgba(0,217,255,0.08)", color: "#00D9FF",
+              fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: "pointer",
+            }}
+          >
+            <Plus size={13} />
+            ADD
+          </button>
+          <button
+            onClick={() => setLogTradeOpen(true)}
+            style={{
+              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              padding: "10px", borderRadius: 6, border: "1px solid rgba(255,68,88,0.2)",
+              background: "rgba(255,68,88,0.07)", color: "#FF4458",
+              fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: "pointer",
+            }}
+          >
+            <ArrowRightLeft size={13} />
+            TRADE
+          </button>
+          <button
+            onClick={() => setAnalystOpen(true)}
+            style={{
+              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              padding: "10px", borderRadius: 6, border: "none",
+              background: "linear-gradient(135deg, #00C4E8 0%, #0055DD 100%)", color: "#fff",
+              fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: "pointer",
+              boxShadow: "0 2px 12px rgba(0,180,255,0.25)",
+            }}
+          >
+            <Bot size={13} />
+            ANALYST
+          </button>
+        </div>
+
+        {/* Dialogs — shared with desktop */}
+        <AIAnalyst portfolioId={activePortfolioId} open={analystOpen} onClose={() => setAnalystOpen(false)} />
+        <AddPositionDialogControlled open={addPositionOpen} onOpenChange={setAddPositionOpen} activePortfolioId={activePortfolioId} />
+        <LogTradeDialog open={logTradeOpen} onOpenChange={setLogTradeOpen} portfolioId={activePortfolioId} />
+      </div>
+    );
+  }
+  // ─── END MOBILE LAYOUT ───────────────────────────────────────────────────────
 
   return (
     <div
