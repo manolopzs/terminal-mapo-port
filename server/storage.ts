@@ -212,6 +212,21 @@ export class MemStorage implements IStorage {
       rationale: insertTrade.rationale ?? null,
     };
     this.trades.set(id, trade);
+
+    // Update portfolio cash balance when a trade is logged
+    if (insertTrade.portfolioId) {
+      const meta = this.portfolioMeta.get(insertTrade.portfolioId);
+      if (meta) {
+        const total = insertTrade.total ?? (insertTrade.shares * insertTrade.price);
+        if (insertTrade.action === "SELL") {
+          meta.cash += total;
+        } else if (insertTrade.action === "BUY") {
+          meta.cash = Math.max(0, meta.cash - total);
+        }
+        this.portfolioMeta.set(insertTrade.portfolioId, meta);
+      }
+    }
+
     return trade;
   }
 
