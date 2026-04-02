@@ -307,7 +307,14 @@ export class MemStorage implements IStorage {
   }
 }
 
+import { SupabaseStorage } from "./lib/supabaseStorage.js";
+import { isSupabaseEnabled } from "./lib/supabase.js";
+
 function createStorage(): IStorage {
+  if (isSupabaseEnabled) {
+    console.log("[storage] Using Supabase persistent storage");
+    return new SupabaseStorage() as unknown as IStorage;
+  }
   if (process.env.DATABASE_URL) {
     console.log("[storage] Using PostgreSQL database storage");
     return new DatabaseStorage();

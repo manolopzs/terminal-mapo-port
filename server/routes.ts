@@ -11,6 +11,7 @@ import * as fmp from "./lib/fmp.js";
 import { getDailyPrices, getRSI } from "./lib/alphavantage.js";
 import { calcMomentum, calcGoldenCross, calcSUE, calcRevisions, calcBeta, calcValueFactor, calcDonchian, buildSignalSummary } from "./lib/quantSignals.js";
 import { isExcluded, RULES } from "./lib/constants.js";
+import { isSupabaseEnabled } from "./lib/supabase.js";
 
 const anthropic = new Anthropic();
 const openai = process.env.OPENAI_API_KEY ? new OpenAI() : null;
@@ -979,6 +980,31 @@ Return ONLY valid JSON, no markdown, no backticks, no explanation:
         return res.status(500).json({ error: "Failed to parse AI response", raw: text.slice(0, 300) });
       }
 
+      // Save score to Supabase score_history (fire and forget)
+      if (isSupabaseEnabled && parsed.score) {
+        import("./lib/supabaseStorage.js").then(({ SupabaseStorage }) => {
+          const sb = new SupabaseStorage();
+          sb.saveScore({
+            ticker: sym,
+            compositeScore: parsed.score,
+            financialHealth: parsed.factors?.financialHealth,
+            valuation: parsed.factors?.valuation,
+            growth: parsed.factors?.growth,
+            technical: parsed.factors?.technical,
+            sentiment: parsed.factors?.sentiment,
+            macroFit: parsed.factors?.macroFit,
+            quantSignals: quantSignals,
+            rating: parsed.signal,
+            thesis: parsed.thesis,
+            risks: parsed.risks,
+            catalysts: parsed.catalysts,
+            factorNotes: parsed.factorNotes,
+            agiAlignment: parsed.agiAlignment,
+            dataSource: "fmp+alphavantage+claude",
+          }).catch(() => {});
+        }).catch(() => {});
+      }
+
       return res.json({
         ...parsed,
         quantSignals: { ...quantSignals, signalSummary: signalSummary },
@@ -1021,6 +1047,18 @@ Return ONLY valid JSON, no markdown, no backticks, no explanation:
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
+  });
+
+  // Score history
+  app.get("/api/score-history", async (req, res) => {
+    const ticker = req.query.ticker as string | undefined;
+    if (isSupabaseEnabled) {
+      const { SupabaseStorage } = await import("./lib/supabaseStorage.js");
+      const sb = new SupabaseStorage();
+      const history = await sb.getScoreHistory(ticker);
+      return res.json(history);
+    }
+    res.json([]);
   });
 
   // Rebalance analysis
