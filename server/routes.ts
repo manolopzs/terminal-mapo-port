@@ -50,6 +50,25 @@ export async function registerRoutes(
   app.get("/api/cron/earnings", cronEarningsRoute);
   app.post("/api/portfolio/update", portfolioUpdateRoute);
 
+  // Auth
+  app.post("/api/auth/login", (req, res) => {
+    const { email, password } = req.body ?? {};
+    const validEmail = process.env.AUTH_EMAIL ?? "";
+    const validPass = process.env.AUTH_PASS ?? "";
+    if (!validEmail || !validPass) {
+      res.status(500).json({ error: "Auth not configured" });
+      return;
+    }
+    if (
+      typeof email === "string" && typeof password === "string" &&
+      email.toLowerCase() === validEmail.toLowerCase() && password === validPass
+    ) {
+      res.json({ ok: true });
+    } else {
+      res.status(401).json({ error: "Invalid credentials" });
+    }
+  });
+
   // Portfolios
   app.get("/api/portfolios", async (_req, res) => {
     const portfolios = await storage.getPortfolios();

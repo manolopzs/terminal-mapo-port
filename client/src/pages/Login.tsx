@@ -11,18 +11,17 @@ export default function Login({ onSuccess }: LoginProps) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
-    setTimeout(() => {
-      if (login(email, password)) {
-        onSuccess();
-      } else {
-        setError("Invalid credentials");
-        setLoading(false);
-      }
-    }, 600);
+    const ok = await login(email, password);
+    if (ok) {
+      onSuccess();
+    } else {
+      setError("Invalid credentials");
+      setLoading(false);
+    }
   }
 
   return (
