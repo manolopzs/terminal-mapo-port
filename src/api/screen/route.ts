@@ -1,84 +1,149 @@
 /**
- * POST /api/screen { sector?, maxMarketCap?, minMarketCap? }
- * Screens MAPO curated universe using FMP profile data
+ * POST /api/screen/v2
+ * Full MAPO screen: AGI engine + broad engine + geopolitical overlay + catalyst filter + scoring
  */
 import type { Request, Response } from "express";
-import * as fmp from "../../../server/lib/fmp.js";
-import { isExcluded } from "../../lib/constants/exclusion-list.js";
-import { RULES } from "../../lib/constants/rules.js";
+import { runComputeScout } from "../../lib/agents/agi-engine/compute-scout.js";
+import { runPowerAnalyst } from "../../lib/agents/agi-engine/power-analyst.js";
+import { runSemiSpecialist } from "../../lib/agents/agi-engine/semi-specialist.js";
+import { runDefenseAnalyst } from "../../lib/agents/agi-engine/defense-analyst.js";
+import { applyGeopoliticalOverlay } from "../../lib/agents/agi-engine/geopolitical-risk.js";
+import { runSectorRotation } from "../../lib/agents/broad-engine/sector-rotation.js";
+import { runValueDiscovery } from "../../lib/agents/broad-engine/value-discovery.js";
+import { runGrowthScout } from "../../lib/agents/broad-engine/growth-scout.js";
+import { runCatalystHunter } from "../../lib/agents/broad-engine/catalyst-hunter.js";
+import { checkExclusion } from "../../lib/agents/risk/exclusion-guard.js";
+import { analyzeStock } from "../../lib/agents/scoring/composite-scorer.js";
+import type { CandidateTicker } from "../../lib/fmp/types.js";
 
-// MAPO curated universe by thesis category
-const MAPO_UNIVERSE: Record<string, string[]> = {
-  "AI Infrastructure": ["VRT", "CIEN", "SMCI", "CRDO", "ANET", "COHR", "PSTG", "NTAP", "EME", "PWR"],
-  "Power Grid": ["VST", "CEG", "ETR", "NRG", "AES", "WTRG", "MGEE", "OTTR", "ATO", "NI"],
-  "Semiconductors": ["MRVL", "ON", "MPWR", "WOLF", "SILN", "PI", "FORM", "ACLS", "POWI", "DIOD"],
-  "Defense AI": ["PLTR", "LDOS", "SAIC", "CACI", "BAH", "DRS", "KTOS", "RCAT", "AVAV", "HII"],
-  "Enterprise AI": ["DDOG", "ZS", "SNOW", "MDB", "HUBS", "BILL", "CFLT", "GTLB", "NET", "TOST"],
-  "Healthcare": ["HIMS", "RXRX", "NVCR", "PRAX", "INSM", "FOLD", "PTGX", "ROIV", "RARE", "BEAM"],
-  "Financials": ["LPLA", "MKTX", "IBKR", "HOOD", "SOFI", "AFRM", "SQ", "NU", "DAVE", "OPEN"],
-  "Industrials": ["STRL", "VELO", "AWK", "GXO", "RXO", "GNRC", "HAYW", "ASTE", "SITE", "MLM"],
-};
+async function batchScore(tickers: string[], batchSize = 5): Promise<Map<string, any>> {
+  const results = new Map<string, any>();
+  for (let i = 0; i < tickers.length; i += batchSize) {
+    const batch = tickers.slice(i, i + batchSize);
+    const settled = await Promise.allSettled(batch.map(t => analyzeStock(t)));
+    settled.forEach((r, idx) => {
+      if (r.status === "fulfilled") results.set(batch[idx], r.value);
+    });
+    // Respect FMP rate limit between batches
+    if (i + batchSize < tickers.length) await new Promise(r => setTimeout(r, 500));
+  }
+  return results;
+}
 
 export async function screenRoute(req: Request, res: Response): Promise<void> {
   try {
-    const {
-      sector,
-      maxMarketCap = RULES.MID_CAP_MAX,
-      minMarketCap = 500_000_000,
-    } = req.body as { sector?: string; maxMarketCap?: number; minMarketCap?: number };
+    console.log("[/api/screen/v2] Starting full MAPO screen...");
 
-    // Pick candidates from universe
-    let candidates: string[] = sector
-      ? (MAPO_UNIVERSE[sector] ?? [])
-      : Object.values(MAPO_UNIVERSE).flat();
+    // AGI engine + broad engine in parallel
+    const [
+      agiComputeResult, agiPowerResult, agiSemiResult, agiDefenseResult,
+      broadSectorResult, broadValueResult, broadGrowthResult,
+    ] = await Promise.allSettled([
+      runComputeScout(),
+      runPowerAnalyst(),
+      runSemiSpecialist(),
+      runDefenseAnalyst(),
+      runSectorRotation().then(r => r.topSectorCandidates),
+      runValueDiscovery(),
+      runGrowthScout(),
+    ]);
 
-    // Remove exclusion list
-    candidates = candidates.filter(t => !isExcluded(t).excluded);
+    const val = <T>(r: PromiseSettledResult<T>): T | null =>
+      r.status === "fulfilled" ? r.value : null;
 
-    // Batch fetch profiles (10 at a time to avoid rate limits)
-    const batchSize = 10;
-    const profiles: any[] = [];
-    for (let i = 0; i < candidates.length && i < 80; i += batchSize) {
-      const batch = candidates.slice(i, i + batchSize);
-      const results = await Promise.allSettled(batch.map(t => fmp.getProfile(t)));
-      results.forEach(r => {
-        if (r.status === "fulfilled" && Array.isArray(r.value) && r.value[0]) {
-          profiles.push(r.value[0]);
-        }
-      });
+    const agiCandidates: CandidateTicker[] = [
+      ...(val(agiComputeResult) ?? []),
+      ...(val(agiPowerResult) ?? []),
+      ...(val(agiSemiResult) ?? []),
+      ...(val(agiDefenseResult) ?? []),
+    ];
+
+    const broadCandidates: CandidateTicker[] = [
+      ...(val(broadSectorResult) ?? []),
+      ...(val(broadValueResult) ?? []),
+      ...(val(broadGrowthResult) ?? []),
+    ];
+
+    console.log(`[/api/screen/v2] AGI: ${agiCandidates.length}, Broad: ${broadCandidates.length}`);
+
+    // Apply overlays in parallel
+    const [overlaidAgi, filteredBroad] = await Promise.all([
+      applyGeopoliticalOverlay(agiCandidates),
+      runCatalystHunter(broadCandidates),
+    ]);
+
+    // Merge + deduplicate — track how many engines found each ticker
+    const tickerCount = new Map<string, number>();
+    const tickerMeta = new Map<string, CandidateTicker>();
+
+    for (const c of [...overlaidAgi, ...filteredBroad]) {
+      const t = c.ticker.toUpperCase();
+      tickerCount.set(t, (tickerCount.get(t) ?? 0) + 1);
+      if (!tickerMeta.has(t)) tickerMeta.set(t, c);
+      else {
+        // Merge: keep higher AGI score, accumulate notes
+        const existing = tickerMeta.get(t)!;
+        tickerMeta.set(t, {
+          ...existing,
+          agiAlignmentScore: Math.max(existing.agiAlignmentScore, c.agiAlignmentScore),
+          screeningNotes: [existing.screeningNotes, c.screeningNotes].filter(Boolean).join(" + "),
+          screenType: [existing.screenType, c.screenType].filter(Boolean).join("+"),
+        });
+      }
     }
 
-    // Filter by market cap
-    const filtered = profiles
-      .filter(p => {
-        const cap = p.marketCap ?? p.mktCap ?? 0;
-        return cap >= minMarketCap && cap <= maxMarketCap;
-      })
-      .sort((a, b) => ((b.marketCap ?? b.mktCap ?? 0) - (a.marketCap ?? a.mktCap ?? 0)))
-      .slice(0, 40)
-      .map(p => {
-        const cap = p.marketCap ?? p.mktCap ?? 0;
-        return {
-          ticker: p.symbol,
-          name: p.companyName,
-          sector: p.sector,
-          industry: p.industry,
-          marketCapB: cap ? `$${(cap / 1e9).toFixed(1)}B` : "?",
-          price: p.price,
-          change: p.changes,
-          changePct: p.changesPercentage ?? (p.price > 0 ? (p.changes / (p.price - p.changes)) * 100 : 0),
-          beta: p.beta,
-          volume: p.volAvg,
-          high52w: p.range?.split("-")?.[1] ?? null,
-          low52w: p.range?.split("-")?.[0] ?? null,
-          exchange: p.exchangeShortName,
-          description: (p.description ?? "").slice(0, 120),
-        };
-      });
+    // Exclusion filter
+    const exclusionResults = await Promise.allSettled(
+      Array.from(tickerMeta.keys()).map(async t => ({ t, ok: (await checkExclusion(t)).passed }))
+    );
+    const allowed = new Set(
+      exclusionResults
+        .filter(r => r.status === "fulfilled" && r.value.ok)
+        .map(r => (r as PromiseFulfilledResult<any>).value.t)
+    );
 
-    res.json(filtered);
+    // Sort by signal count (multi-engine hits first), take top 30
+    const top30 = Array.from(tickerMeta.entries())
+      .filter(([t]) => allowed.has(t))
+      .sort(([a], [b]) => (tickerCount.get(b) ?? 0) - (tickerCount.get(a) ?? 0))
+      .slice(0, 30)
+      .map(([, meta]) => meta);
+
+    console.log(`[/api/screen/v2] Scoring ${top30.length} candidates...`);
+
+    // Batch score top 30 in groups of 5
+    const scores = await batchScore(top30.map(c => c.ticker));
+
+    // Compose final results
+    const finalResults = top30.map(candidate => {
+      const analysis = scores.get(candidate.ticker);
+      const signalCount = tickerCount.get(candidate.ticker) ?? 1;
+      return {
+        ticker: candidate.ticker,
+        name: candidate.companyName,
+        sector: candidate.sector,
+        industry: candidate.industry,
+        marketCap: candidate.marketCap,
+        marketCapB: candidate.marketCap ? `$${(candidate.marketCap / 1e9).toFixed(1)}B` : "?",
+        agiAlignmentScore: candidate.agiAlignmentScore,
+        screenType: candidate.screenType,
+        screeningNotes: candidate.screeningNotes,
+        signalCount,
+        price: analysis?.profile?.price ?? null,
+        changePct: 0,
+        score: analysis?.scoring?.compositeScore ?? null,
+        rating: analysis?.scoring?.rating ?? null,
+        rejected: analysis?.rejected ?? false,
+        rejectReason: analysis?.rejectReason ?? null,
+        quantSignals: analysis?.quantSignals ?? null,
+      };
+    }).filter(r => !r.rejected)
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+
+    console.log(`[/api/screen/v2] Done. ${finalResults.length} scored candidates.`);
+    res.json(finalResults);
   } catch (err: any) {
-    console.error("[/api/screen]", err);
+    console.error("[/api/screen/v2]", err);
     res.status(500).json({ error: err.message });
   }
 }

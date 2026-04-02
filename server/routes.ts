@@ -10,6 +10,7 @@ import { rebalanceRoute } from "../src/api/rebalance/route.js";
 import { cronMorningRoute } from "../src/api/cron/morning/route.js";
 import { cronDrawdownRoute } from "../src/api/cron/drawdown/route.js";
 import { cronEarningsRoute } from "../src/api/cron/earnings/route.js";
+import { portfolioUpdateRoute } from "../src/api/portfolio/update/route.js";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { readFileSync } from "fs";
@@ -47,6 +48,7 @@ export async function registerRoutes(
   app.get("/api/cron/morning", cronMorningRoute);
   app.get("/api/cron/drawdown", cronDrawdownRoute);
   app.get("/api/cron/earnings", cronEarningsRoute);
+  app.post("/api/portfolio/update", portfolioUpdateRoute);
 
   // Portfolios
   app.get("/api/portfolios", async (_req, res) => {

@@ -1,91 +1,102 @@
 /**
  * Cron: GET /api/cron/earnings
- * Schedule: 0 12 * * 0 (weekly Sunday, noon UTC)
- * Checks earnings within BLACKOUT_DAYS, dispatches calendar alert
+ * Schedule: 0 12 * * 0 (weekly Sunday noon UTC)
  */
 import type { Request, Response } from "express";
-import { createClient } from "@supabase/supabase-js";
 import { getHoldings } from "../../../lib/portfolio/state.js";
 import { getEarnings } from "../../../../server/lib/fmp.js";
+import { runEarningsMonitor } from "../../../lib/agents/intelligence/earnings-monitor.js";
+import { sendAlert } from "../../../lib/alerts/send.js";
+import { supabase, isSupabaseEnabled } from "../../../lib/supabase.js";
 import { RULES } from "../../../lib/constants/rules.js";
 
-function getSupabase() {
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!, {
-    auth: { persistSession: false },
-  });
+function verifyCron(req: Request): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return true;
+  const auth = req.headers["x-cron-secret"] ?? req.headers["authorization"];
+  return auth === `Bearer ${secret}` || auth === secret;
 }
 
 export async function cronEarningsRoute(req: Request, res: Response): Promise<void> {
-  const auth = req.headers["x-cron-secret"] ?? req.headers["authorization"];
-  const secret = process.env.CRON_SECRET;
-  if (secret && auth !== `Bearer ${secret}` && auth !== secret) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
+  if (!verifyCron(req)) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   try {
     const holdings = await getHoldings();
-    const today = new Date();
-    const todayStr = today.toISOString().split("T")[0];
-    const sb = getSupabase();
-    const earningsAlerts: Array<{ ticker: string; date: string; daysUntil: number; epsEst?: number }> = [];
+    if (holdings.length === 0) { res.json({ earningsAlerts: [], checked: 0 }); return; }
 
-    const results = await Promise.allSettled(holdings.map(h => getEarnings(h.ticker)));
+    const today = new Date().toISOString().split("T")[0];
 
-    holdings.forEach((holding, i) => {
-      const r = results[i];
-      if (r.status !== "fulfilled" || !Array.isArray(r.value)) return;
-
-      // Find next scheduled earnings (date > today, no actual result yet)
-      const upcoming = r.value.find(
-        (e: any) => e.date > todayStr && e.epsActual == null
-      );
-      if (!upcoming) return;
-
-      const earningsDate = new Date(upcoming.date);
-      const daysUntil = Math.ceil((earningsDate.getTime() - today.getTime()) / 86_400_000);
-
-      if (daysUntil <= RULES.EARNINGS_BLACKOUT_DAYS * 7) {
-        earningsAlerts.push({
-          ticker: holding.ticker,
-          date: upcoming.date,
-          daysUntil,
-          epsEst: upcoming.epsEstimated,
-        });
-      }
+    // Fetch earnings for all holdings in parallel
+    const earningsResults = await Promise.allSettled(holdings.map(h => getEarnings(h.ticker)));
+    const earningsMap: Record<string, any[]> = {};
+    holdings.forEach((h, i) => {
+      const r = earningsResults[i];
+      if (r.status === "fulfilled" && Array.isArray(r.value)) earningsMap[h.ticker] = r.value;
     });
 
-    // Persist and alert on blackout violations (<= 3 days)
-    const blackoutViolations = earningsAlerts.filter(e => e.daysUntil <= RULES.EARNINGS_BLACKOUT_DAYS);
-    for (const alert of blackoutViolations) {
-      try {
-        await sb.from("alerts").insert({
-          alert_type: "EARNINGS_NEAR",
-          ticker: alert.ticker,
-          message: `${alert.ticker} earnings in ${alert.daysUntil} day(s) on ${alert.date}. EPS est: ${alert.epsEst ?? "?"}. BLACKOUT: no new positions.`,
-          severity: "WARNING",
-        });
-      } catch { /* non-fatal */ }
+    // Find upcoming earnings within 14 days
+    const upcomingAlerts: Array<{ ticker: string; date: string; daysUntil: number; epsEst?: number }> = [];
+    for (const holding of holdings) {
+      const earningsData = earningsMap[holding.ticker] ?? [];
+      const upcoming = earningsData.find((e: any) => e.date > today && e.epsActual == null);
+      if (!upcoming) continue;
+      const daysUntil = Math.ceil((new Date(upcoming.date).getTime() - Date.now()) / 86_400_000);
+      if (daysUntil <= 14) {
+        upcomingAlerts.push({ ticker: holding.ticker, date: upcoming.date, daysUntil, epsEst: upcoming.epsEstimated });
+      }
     }
 
-    // Dispatch full calendar via webhook
-    const webhook = process.env.ALERT_WEBHOOK_URL;
-    if (earningsAlerts.length > 0 && webhook) {
-      const lines = earningsAlerts
+    // Run earnings monitor for SUE analysis on recent results
+    const monitorResult = await runEarningsMonitor(
+      holdings.map(h => ({ ticker: h.ticker, entryPrice: h.entryPrice }))
+    ).catch(() => ({ upcomingEarnings: [], recentResults: [], alerts: [] }));
+
+    // Send alerts for blackout violations
+    const blackoutViolations = upcomingAlerts.filter(e => e.daysUntil <= RULES.EARNINGS_BLACKOUT_DAYS);
+    for (const violation of blackoutViolations) {
+      const msg = `EARNINGS BLACKOUT: ${violation.ticker} reports in ${violation.daysUntil} day(s) on ${violation.date}. EPS est: ${violation.epsEst ?? "?"}. No new positions allowed.`;
+      await sendAlert(msg, "WARNING");
+      if (isSupabaseEnabled) {
+        try {
+          await supabase.from("alerts").insert({
+            alert_type: "EARNINGS_NEAR",
+            ticker: violation.ticker,
+            message: msg,
+            severity: "WARNING",
+          });
+        } catch { /* non-fatal */ }
+      }
+    }
+
+    // Send alerts for SUE misses
+    for (const result of monitorResult.recentResults) {
+      if (result.flag === "MANDATORY_RESCORE") {
+        await sendAlert(
+          `SUE MISS: ${result.ticker} reported ${(result.surprisePct * 100).toFixed(1)}% earnings miss. Mandatory re-score within 24 hours.`,
+          "WARNING"
+        );
+      }
+    }
+
+    // Weekly calendar summary
+    if (upcomingAlerts.length > 0) {
+      const lines = upcomingAlerts
         .sort((a, b) => a.daysUntil - b.daysUntil)
         .map(e => `${e.ticker}: ${e.date} (${e.daysUntil}d) | EPS est: ${e.epsEst ?? "?"}`)
         .join("\n");
-      await fetch(webhook, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: `*MAPO Earnings Calendar*\n\n${lines}` }),
-      }).catch(e => console.error("[cron/earnings] Webhook failed:", e));
+      await sendAlert(`MAPO Earnings Calendar\n\n${lines}`, "INFO");
     }
 
-    console.log(`[cron/earnings] ${earningsAlerts.length} upcoming earnings found, ${blackoutViolations.length} in blackout`);
-    res.json({ earningsAlerts, blackoutViolations, checked: holdings.length });
+    console.log(`[cron/earnings] ${upcomingAlerts.length} upcoming, ${blackoutViolations.length} blackouts, ${monitorResult.recentResults.length} recent`);
+    res.json({
+      upcomingAlerts,
+      blackoutViolations,
+      recentResults: monitorResult.recentResults,
+      checked: holdings.length,
+    });
   } catch (err: any) {
     console.error("[cron/earnings]", err);
+    await sendAlert(`MAPO Earnings Cron FAILED: ${err.message}`, "CRITICAL").catch(() => {});
     res.status(500).json({ error: err.message });
   }
 }

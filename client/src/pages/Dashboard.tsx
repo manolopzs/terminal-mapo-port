@@ -21,6 +21,12 @@ import { MarketTab } from "@/pages/MarketTab";
 import { ScreenerTab } from "@/pages/ScreenerTab";
 import { MAPOScoreTab } from "@/pages/MAPOScoreTab";
 import { RebalanceTab } from "@/pages/RebalanceTab";
+import { PortfolioOverview } from "@/components/dashboard/PortfolioOverview";
+import { DrawdownAlerts } from "@/components/dashboard/DrawdownAlerts";
+import { MorningBriefing } from "@/components/dashboard/MorningBriefing";
+import { StockAnalysis } from "@/components/analysis/StockAnalysis";
+import { ScreeningView } from "@/components/screening/ScreeningView";
+import { RebalanceView } from "@/components/dashboard/RebalanceView";
 import { JournalTab } from "@/pages/JournalTab";
 import { useHoldings, usePortfolios, useSummary, useLiveQuotes, useLiveEarnings, useLiveSentiment, useLiveNews, useAnalytics } from "@/hooks/use-portfolio";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -297,6 +303,14 @@ export default function Dashboard() {
               <div style={{ height: 320, flexShrink: 0, borderTop: "1px solid #1C2840" }}>
                 <TradeHistory portfolioId={activePortfolioId} />
               </div>
+              {/* Drawdown Alerts */}
+              <div style={{ padding: "12px 16px", flexShrink: 0, borderTop: "1px solid #1C2840" }}>
+                <DrawdownAlerts />
+              </div>
+              {/* Morning Briefing */}
+              <div style={{ padding: "12px 16px", flexShrink: 0, borderTop: "1px solid #1C2840" }}>
+                <MorningBriefing />
+              </div>
             </div>
           )}
           {activeTab === "MARKET" && (
@@ -306,17 +320,17 @@ export default function Dashboard() {
           )}
           {activeTab === "SCREENER" && (
             <div style={{ height: "calc(100vh - 200px)", minHeight: 500 }}>
-              <ScreenerTab />
+              <ScreeningView />
             </div>
           )}
           {activeTab === "MAPO" && (
             <div style={{ height: "calc(100vh - 200px)", minHeight: 500 }}>
-              <MAPOScoreTab />
+              <StockAnalysis />
             </div>
           )}
           {activeTab === "REBALANCE" && (
             <div style={{ height: "calc(100vh - 200px)", minHeight: 500 }}>
-              <RebalanceTab portfolioId={activePortfolioId} />
+              <RebalanceView />
             </div>
           )}
           {activeTab === "JOURNAL" && (
@@ -623,17 +637,17 @@ export default function Dashboard() {
         )}
         {activeTab === "SCREENER" && (
           <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
-            <ScreenerTab />
+            <ScreeningView />
           </div>
         )}
         {activeTab === "MAPO" && (
           <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
-            <MAPOScoreTab />
+            <StockAnalysis />
           </div>
         )}
         {activeTab === "REBALANCE" && (
           <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
-            <RebalanceTab portfolioId={activePortfolioId} />
+            <RebalanceView />
           </div>
         )}
         {activeTab === "JOURNAL" && (
