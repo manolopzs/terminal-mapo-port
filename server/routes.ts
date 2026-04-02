@@ -1,6 +1,12 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { analyzeRoute } from "../src/api/analyze/route.js";
+import { portfolioStatusRoute } from "../src/api/portfolio/status/route.js";
+import { portfolioValidateRoute } from "../src/api/portfolio/validate/route.js";
+import { briefingRoute } from "../src/api/briefing/route.js";
+import { screenRoute } from "../src/api/screen/route.js";
+import { rebalanceRoute } from "../src/api/rebalance/route.js";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { readFileSync } from "fs";
@@ -28,6 +34,14 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Wave 2 MAPO routes
+  app.post("/api/analyze", analyzeRoute);
+  app.get("/api/portfolio/status", portfolioStatusRoute);
+  app.post("/api/portfolio/validate", portfolioValidateRoute);
+  app.get("/api/briefing", briefingRoute);
+  app.post("/api/screen/v2", screenRoute);
+  app.post("/api/rebalance", rebalanceRoute);
+
   // Portfolios
   app.get("/api/portfolios", async (_req, res) => {
     const portfolios = await storage.getPortfolios();
