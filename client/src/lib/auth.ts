@@ -2,7 +2,7 @@ const AUTH_KEY = "mapo_auth";
 
 export async function login(email: string, password: string): Promise<boolean> {
   try {
-    const res = await fetch("/api/auth/login", {
+    const res = await fetch("/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
