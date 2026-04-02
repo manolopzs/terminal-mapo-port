@@ -8,51 +8,76 @@ function getSupabase() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-export async function getHoldings(): Promise<Holding[]> {
-  const sb = getSupabase();
-  const { data, error } = await sb.from("holdings").select("*").order("created_at");
-  if (error) throw error;
-  return (data ?? []).map(row => ({
+/**
+ * Maps a Supabase holdings row to a Holding.
+ * Supports both old schema (quantity/cost_basis/name) and new schema (shares/entry_price/company_name).
+ */
+function mapHolding(row: any): Holding {
+  const shares = row.shares != null ? Number(row.shares)
+    : row.quantity != null ? Number(row.quantity) : 0;
+  const entryPrice = row.entry_price != null ? Number(row.entry_price)
+    : row.cost_basis != null ? Number(row.cost_basis) : 0;
+  const companyName = row.company_name ?? row.name ?? "";
+  return {
     id: row.id,
     ticker: row.ticker,
-    companyName: row.company_name ?? "",
-    shares: Number(row.shares),
-    entryPrice: Number(row.entry_price),
-    entryDate: row.entry_date,
-    entryScore: Number(row.entry_score),
+    companyName,
+    shares,
+    entryPrice,
+    entryDate: row.entry_date ?? row.created_at?.split("T")[0] ?? "",
+    entryScore: Number(row.entry_score ?? 65),
     sector: row.sector ?? "Unknown",
     marketCapAtEntry: Number(row.market_cap_at_entry ?? 0),
     trancheNumber: Number(row.tranche_number ?? 1),
     notes: row.notes ?? undefined,
-  }));
+  };
+}
+
+/** Get the first available portfolio ID (needed for old schema inserts). */
+async function getDefaultPortfolioId(): Promise<string | null> {
+  const sb = getSupabase();
+  const { data } = await sb
+    .from("portfolios")
+    .select("id")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
+export async function getHoldings(): Promise<Holding[]> {
+  const sb = getSupabase();
+  const { data, error } = await sb.from("holdings").select("*").order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(mapHolding);
 }
 
 export async function addHolding(holding: Omit<Holding, "id">): Promise<Holding> {
   const sb = getSupabase();
-  const { data, error } = await sb
-    .from("holdings")
-    .insert({
-      ticker: holding.ticker,
-      company_name: holding.companyName,
-      shares: holding.shares,
-      entry_price: holding.entryPrice,
-      entry_date: holding.entryDate,
-      entry_score: holding.entryScore,
-      sector: holding.sector,
-      market_cap_at_entry: holding.marketCapAtEntry,
-      tranche_number: holding.trancheNumber,
-      notes: holding.notes,
-    })
-    .select()
-    .single();
-  if (error) throw error;
+  const portfolioId = await getDefaultPortfolioId();
+  const today = holding.entryDate || new Date().toISOString().split("T")[0];
+  const row: any = {
+    ticker: holding.ticker,
+    name: holding.companyName,
+    quantity: holding.shares,
+    cost_basis: holding.entryPrice,
+    price: holding.entryPrice,
+    value: holding.shares * holding.entryPrice,
+    sector: holding.sector,
+    type: "Stock",
+    source: "mapo",
+  };
+  if (portfolioId) row.portfolio_id = portfolioId;
+
+  const { data, error } = await sb.from("holdings").insert(row).select().single();
+  if (error) throw new Error(error.message);
   return { ...holding, id: data.id };
 }
 
 export async function removeHolding(id: string): Promise<void> {
   const sb = getSupabase();
   const { error } = await sb.from("holdings").delete().eq("id", id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function getCash(): Promise<number> {
@@ -68,16 +93,39 @@ export async function getCash(): Promise<number> {
 
 export async function logTrade(trade: Omit<Trade, "id">): Promise<void> {
   const sb = getSupabase();
-  await sb.from("trade_log").insert({
+  const portfolioId = await getDefaultPortfolioId();
+  const row: any = {
     ticker: trade.ticker,
     action: trade.action,
     shares: trade.shares,
     price: trade.price,
-    total_value: trade.totalValue,
-    score_at_trade: trade.scoreAtTrade,
+    total: trade.totalValue,
+    name: trade.ticker,
     rationale: trade.rationale,
+    date: trade.tradeDate,
+    // Extended MAPO fields (stored if columns exist)
+    total_value: trade.totalValue,
+    score_at_trade: trade.scoreAtTrade ?? null,
     trade_date: trade.tradeDate,
-  });
+  };
+  if (portfolioId) row.portfolio_id = portfolioId;
+  // Try new trade_log table first, fallback to trades
+  const { error: logError } = await sb.from("trade_log").insert(row);
+  if (logError) {
+    // Fallback: write to trades table (old schema)
+    const tradeRow: any = {
+      ticker: trade.ticker,
+      action: trade.action,
+      shares: trade.shares,
+      price: trade.price,
+      total: trade.totalValue,
+      name: trade.ticker,
+      rationale: trade.rationale ?? "",
+      date: trade.tradeDate,
+    };
+    if (portfolioId) tradeRow.portfolio_id = portfolioId;
+    await sb.from("trades").insert(tradeRow).then(() => {}); // non-fatal
+  }
 }
 
 export async function saveSnapshot(snapshot: Omit<PortfolioSnapshot, "id">): Promise<void> {

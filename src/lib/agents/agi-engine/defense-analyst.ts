@@ -46,7 +46,7 @@ export async function runDefenseAnalyst(): Promise<CandidateTicker[]> {
       if (exclusion.excluded) continue;
 
       const price: number = profile.price ?? 0;
-      const volAvg: number = profile.volAvg ?? 0;
+      const volAvg: number = profile.averageVolume ?? 0;
       const marketCap: number = profile.marketCap ?? profile.mktCap ?? 0;
 
       if (!price || price <= 0) continue;

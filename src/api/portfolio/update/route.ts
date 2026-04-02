@@ -1,6 +1,13 @@
 import type { Request, Response } from "express";
-import { supabase } from "../../../lib/supabase.js";
+import { createClient } from "@supabase/supabase-js";
+import { randomUUID } from "crypto";
 import { getHoldings } from "../../../lib/portfolio/state.js";
+
+function getSb() {
+  const url = process.env.SUPABASE_URL!;
+  const key = process.env.SUPABASE_ANON_KEY!;
+  return createClient(url, key, { auth: { persistSession: false } });
+}
 
 interface UpdatePortfolioBody {
   action: "BUY" | "SELL" | "TRIM";
@@ -13,130 +20,159 @@ interface UpdatePortfolioBody {
   entryScore?: number;
 }
 
-async function logToTradeLog(
+async function getPortfolioId(): Promise<string | null> {
+  const { data } = await getSb()
+    .from("portfolios")
+    .select("id")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
+async function logTrade(
   ticker: string,
   action: "BUY" | "SELL" | "TRIM",
   shares: number,
   price: number,
   rationale: string,
+  portfolioId: string | null,
   entryScore?: number
 ): Promise<void> {
-  const totalValue = shares * price;
+  const sb = getSb();
   const today = new Date().toISOString().split("T")[0];
-  await supabase.from("trade_log").insert({
+  const row: any = {
+    id: randomUUID(),
     ticker,
     action,
     shares,
     price,
-    total_value: totalValue,
-    score_at_trade: entryScore ?? null,
-    rationale,
-    trade_date: today,
-  });
+    total: shares * price,
+    name: ticker,
+    rationale: rationale ?? "",
+    date: today,
+  };
+  if (portfolioId) row.portfolio_id = portfolioId;
+  const tradeRow = { ...row }; // for fallback
+
+  // Try trade_log first, fallback to trades
+  const { error: logError } = await sb.from("trade_log").insert(row);
+  if (logError) {
+    await sb.from("trades").insert(row); // non-fatal
+  }
 }
 
-async function handleBuy(body: UpdatePortfolioBody): Promise<void> {
+async function handleBuy(body: UpdatePortfolioBody, portfolioId: string | null): Promise<void> {
+  const sb = getSb();
   const { ticker, shares, price, companyName, sector, entryScore, rationale } = body;
+  const upper = ticker.toUpperCase();
   const today = new Date().toISOString().split("T")[0];
   const scoreToUse = entryScore ?? 65;
 
   // Check if holding already exists
-  const { data: existing, error: fetchError } = await supabase
+  const { data: existing, error: fetchError } = await sb
     .from("holdings")
     .select("*")
-    .eq("ticker", ticker.toUpperCase())
+    .eq("ticker", upper)
     .maybeSingle();
 
-  if (fetchError) throw fetchError;
+  if (fetchError) throw new Error(fetchError.message);
 
   if (existing) {
-    // Update: weighted average entry price and add shares
-    const existingShares = Number(existing.shares);
-    const existingPrice = Number(existing.entry_price);
+    // Weighted average entry price
+    const existingShares = Number(existing.shares ?? existing.quantity ?? 0);
+    const existingPrice = Number(existing.entry_price ?? existing.cost_basis ?? 0);
     const totalShares = existingShares + shares;
-    const weightedAvgPrice =
-      (existingShares * existingPrice + shares * price) / totalShares;
+    const weightedAvgPrice = totalShares > 0
+      ? (existingShares * existingPrice + shares * price) / totalShares
+      : price;
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await sb
       .from("holdings")
       .update({
-        shares: totalShares,
-        entry_price: Math.round(weightedAvgPrice * 10000) / 10000,
+        quantity: totalShares,
+        cost_basis: Math.round(weightedAvgPrice * 10000) / 10000,
+        value: totalShares * price,
+        price,
       })
-      .eq("ticker", ticker.toUpperCase());
+      .eq("ticker", upper);
 
-    if (updateError) throw updateError;
+    if (updateError) throw new Error(updateError.message);
   } else {
-    // Insert new holding
-    const { error: insertError } = await supabase.from("holdings").insert({
-      ticker: ticker.toUpperCase(),
-      company_name: companyName ?? ticker.toUpperCase(),
-      shares,
-      entry_price: price,
-      entry_date: today,
-      entry_score: scoreToUse,
+    if (!portfolioId) throw new Error("No portfolio found. Create a portfolio first.");
+    const row: any = {
+      id: randomUUID(),
+      portfolio_id: portfolioId,
+      ticker: upper,
+      name: companyName ?? upper,
+      quantity: shares,
+      cost_basis: price,
+      price,
+      value: shares * price,
       sector: sector ?? "Unknown",
-      market_cap_at_entry: 0,
-      tranche_number: 1,
-    });
+      type: "Stock",
+      source: "mapo",
+    };
 
-    if (insertError) throw insertError;
+    const { error: insertError } = await sb.from("holdings").insert(row);
+    if (insertError) throw new Error(insertError.message);
   }
 
-  await logToTradeLog(ticker, "BUY", shares, price, rationale, scoreToUse);
+  await logTrade(upper, "BUY", shares, price, rationale, portfolioId, scoreToUse);
 }
 
-async function handleSell(body: UpdatePortfolioBody): Promise<void> {
+async function handleSell(body: UpdatePortfolioBody, portfolioId: string | null): Promise<void> {
+  const sb = getSb();
   const { ticker, shares, price, rationale, entryScore } = body;
+  const upper = ticker.toUpperCase();
 
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await sb
     .from("holdings")
     .delete()
-    .eq("ticker", ticker.toUpperCase());
+    .eq("ticker", upper);
 
-  if (deleteError) throw deleteError;
-
-  await logToTradeLog(ticker, "SELL", shares, price, rationale, entryScore);
+  if (deleteError) throw new Error(deleteError.message);
+  await logTrade(upper, "SELL", shares, price, rationale, portfolioId, entryScore);
 }
 
-async function handleTrim(body: UpdatePortfolioBody): Promise<void> {
+async function handleTrim(body: UpdatePortfolioBody, portfolioId: string | null): Promise<void> {
+  const sb = getSb();
   const { ticker, shares: trimShares, price, rationale, entryScore } = body;
+  const upper = ticker.toUpperCase();
 
-  const { data: existing, error: fetchError } = await supabase
+  const { data: existing, error: fetchError } = await sb
     .from("holdings")
     .select("*")
-    .eq("ticker", ticker.toUpperCase())
+    .eq("ticker", upper)
     .maybeSingle();
 
-  if (fetchError) throw fetchError;
-  if (!existing) throw new Error(`No holding found for ticker ${ticker}`);
+  if (fetchError) throw new Error(fetchError.message);
+  if (!existing) throw new Error(`No holding found for ticker ${upper}`);
 
-  const remainingShares = Number(existing.shares) - trimShares;
+  const currentShares = Number(existing.shares ?? existing.quantity ?? 0);
+  const remainingShares = currentShares - trimShares;
 
   if (remainingShares <= 0) {
-    // Delete the position entirely
-    const { error: deleteError } = await supabase
-      .from("holdings")
-      .delete()
-      .eq("ticker", ticker.toUpperCase());
-
-    if (deleteError) throw deleteError;
+    const { error } = await sb.from("holdings").delete().eq("ticker", upper);
+    if (error) throw new Error(error.message);
   } else {
-    const { error: updateError } = await supabase
+    const { error } = await sb
       .from("holdings")
-      .update({ shares: remainingShares })
-      .eq("ticker", ticker.toUpperCase());
-
-    if (updateError) throw updateError;
+      .update({
+        quantity: remainingShares,
+        value: remainingShares * price,
+        price,
+      })
+      .eq("ticker", upper);
+    if (error) throw new Error(error.message);
   }
 
-  await logToTradeLog(ticker, "TRIM", trimShares, price, rationale, entryScore);
+  await logTrade(upper, "TRIM", trimShares, price, rationale, portfolioId, entryScore);
 }
 
 export async function portfolioUpdateRoute(req: Request, res: Response): Promise<void> {
   const body = req.body as UpdatePortfolioBody;
 
-  // Validate required fields
   if (!body.action || !body.ticker || body.shares == null || body.price == null || !body.rationale) {
     res.status(400).json({
       error: "Missing required fields: action, ticker, shares, price, rationale",
@@ -155,19 +191,14 @@ export async function portfolioUpdateRoute(req: Request, res: Response): Promise
   }
 
   try {
+    const portfolioId = await getPortfolioId();
+
     switch (body.action) {
-      case "BUY":
-        await handleBuy(body);
-        break;
-      case "SELL":
-        await handleSell(body);
-        break;
-      case "TRIM":
-        await handleTrim(body);
-        break;
+      case "BUY":  await handleBuy(body, portfolioId); break;
+      case "SELL": await handleSell(body, portfolioId); break;
+      case "TRIM": await handleTrim(body, portfolioId); break;
     }
 
-    // Return updated portfolio state
     const holdings = await getHoldings();
     res.status(200).json({
       success: true,
@@ -175,9 +206,8 @@ export async function portfolioUpdateRoute(req: Request, res: Response): Promise
       ticker: body.ticker.toUpperCase(),
       holdings,
     });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(`[portfolioUpdateRoute] Error processing ${body.action} for ${body.ticker}:`, message);
-    res.status(500).json({ error: message });
+  } catch (err: any) {
+    console.error(`[portfolioUpdateRoute] ${body.action} ${body.ticker}:`, err.message ?? err);
+    res.status(500).json({ error: err.message ?? String(err) });
   }
 }
