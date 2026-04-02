@@ -11,5 +11,19 @@
   ],
   "env": {
     "NODE_ENV": "production"
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/morning",
+      "schedule": "30 13 * * 1-5"
+    },
+    {
+      "path": "/api/cron/drawdown",
+      "schedule": "0 * * * 1-5"
+    },
+    {
+      "path": "/api/cron/earnings",
+      "schedule": "0 12 * * 0"
+    }
+  ]
 }

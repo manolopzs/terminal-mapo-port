@@ -7,6 +7,9 @@ import { portfolioValidateRoute } from "../src/api/portfolio/validate/route.js";
 import { briefingRoute } from "../src/api/briefing/route.js";
 import { screenRoute } from "../src/api/screen/route.js";
 import { rebalanceRoute } from "../src/api/rebalance/route.js";
+import { cronMorningRoute } from "../src/api/cron/morning/route.js";
+import { cronDrawdownRoute } from "../src/api/cron/drawdown/route.js";
+import { cronEarningsRoute } from "../src/api/cron/earnings/route.js";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { readFileSync } from "fs";
@@ -41,6 +44,9 @@ export async function registerRoutes(
   app.get("/api/briefing", briefingRoute);
   app.post("/api/screen/v2", screenRoute);
   app.post("/api/rebalance", rebalanceRoute);
+  app.get("/api/cron/morning", cronMorningRoute);
+  app.get("/api/cron/drawdown", cronDrawdownRoute);
+  app.get("/api/cron/earnings", cronEarningsRoute);
 
   // Portfolios
   app.get("/api/portfolios", async (_req, res) => {
