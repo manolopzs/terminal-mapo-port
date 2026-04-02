@@ -33,18 +33,18 @@
       "sector": "Technology"
     },
     {
-      "ticker": "DLO",
-      "name": "DLocal Limited",
-      "quantity": 280,
-      "costBasis": 3547.6,
-      "price": 12.02,
-      "value": 3365.6,
+      "ticker": "SNOW",
+      "name": "Snowflake Inc",
+      "quantity": 25,
+      "costBasis": 3728.88,
+      "price": 149.16,
+      "value": 3729.0,
       "dayChange": 0,
       "dayChangePct": 0,
-      "gainLoss": -182.0,
-      "gainLossPct": -5.13,
+      "gainLoss": 0.12,
+      "gainLossPct": 0.0,
       "type": "Stock",
-      "sector": "Financials"
+      "sector": "Technology"
     },
     {
       "ticker": "SMCI",
@@ -287,6 +287,27 @@
       "price": 31.77,
       "total": 3177.0,
       "rationale": "New position - AI server infrastructure"
+    },
+    {
+      "date": "2026-03-30",
+      "action": "SELL",
+      "ticker": "DLO",
+      "name": "DLocal Limited",
+      "shares": 280,
+      "price": 12.3884,
+      "total": 3468.75,
+      "pnl": -78.85,
+      "rationale": "Full exit - thesis broken, EM payments headwinds"
+    },
+    {
+      "date": "2026-03-31",
+      "action": "BUY",
+      "ticker": "SNOW",
+      "name": "Snowflake Inc",
+      "shares": 25,
+      "price": 149.155,
+      "total": 3728.88,
+      "rationale": "New position - cloud data platform, AI workload growth"
     }
   ],
   "exitedPositions": [
@@ -349,7 +370,19 @@
       "pnlPct": -6.45,
       "exitDate": "2026-03-03",
       "reason": "Macro headwinds"
+    },
+    {
+      "ticker": "DLO",
+      "name": "DLocal Limited",
+      "sector": "Financials",
+      "shares": 280,
+      "buyPrice": 12.67,
+      "sellPrice": 12.3884,
+      "pnl": -78.85,
+      "pnlPct": -2.22,
+      "exitDate": "2026-03-30",
+      "reason": "Thesis broken - EM payments headwinds"
     }
   ],
-  "cash": 277.0
+  "cash": 32.31
 }

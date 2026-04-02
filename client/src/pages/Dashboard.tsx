@@ -4,12 +4,9 @@ import { TickerTape } from "@/components/TickerTape";
 import { HoldingsTable } from "@/components/HoldingsTable";
 import { PerformanceChart } from "@/components/PerformanceChart";
 import { RiskAnalysis } from "@/components/RiskAnalysis";
-import { MAPOSignals } from "@/components/MAPOSignals";
-import { PortfolioHealth } from "@/components/PortfolioHealth";
-import { DrawdownMonitor } from "@/components/DrawdownMonitor";
+import { SectorAllocation } from "@/components/SectorAllocation";
 import { EarningsCalendar } from "@/components/EarningsCalendar";
-import { CorrelationMatrix } from "@/components/CorrelationMatrix";
-import { VolatilityBars } from "@/components/VolatilityBars";
+import { PositionAttribution } from "@/components/PositionAttribution";
 import { TopMovers } from "@/components/TopMovers";
 import { NewsTicker } from "@/components/NewsTicker";
 import { TerminalSidebar } from "@/components/TerminalSidebar";
@@ -24,9 +21,11 @@ import { RebalanceTab } from "@/pages/RebalanceTab";
 import { PortfolioOverview } from "@/components/dashboard/PortfolioOverview";
 import { DrawdownAlerts } from "@/components/dashboard/DrawdownAlerts";
 import { MorningBriefing } from "@/components/dashboard/MorningBriefing";
-import { StockAnalysis } from "@/components/analysis/StockAnalysis";
-import { ScreeningView } from "@/components/screening/ScreeningView";
-import { RebalanceView } from "@/components/dashboard/RebalanceView";
+import { AnalyzePage } from "@/components/pages/AnalyzePage";
+import { ScreenPage } from "@/components/pages/ScreenPage";
+import { RebalancePage } from "@/components/pages/RebalancePage";
+import { TradeLogPage } from "@/components/pages/TradeLogPage";
+import { BriefingPanel } from "@/components/panels/BriefingPanel";
 import { JournalTab } from "@/pages/JournalTab";
 import { useHoldings, usePortfolios, useSummary, useLiveQuotes, useLiveEarnings, useLiveSentiment, useLiveNews, useAnalytics } from "@/hooks/use-portfolio";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -34,7 +33,7 @@ import { queryClient } from "@/lib/queryClient";
 import { Loader2, Bot, LogOut, Plus, ArrowRightLeft, BarChart2, Globe, Search, Star, RefreshCw, BookOpen } from "lucide-react";
 import { logout } from "@/lib/auth";
 
-type TabId = "PORTFOLIO" | "MARKET" | "SCREENER" | "MAPO" | "REBALANCE" | "JOURNAL";
+type TabId = "PORTFOLIO" | "MARKET" | "SCREENER" | "MAPO" | "REBALANCE" | "JOURNAL" | "TRADES";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "PORTFOLIO", label: "PORTFOLIO" },
@@ -42,6 +41,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "SCREENER", label: "SCREENER" },
   { id: "MAPO", label: "MAPO SCORE" },
   { id: "REBALANCE", label: "REBALANCE" },
+  { id: "TRADES", label: "TRADE LOG" },
   { id: "JOURNAL", label: "JOURNAL" },
 ];
 
@@ -50,6 +50,7 @@ export default function Dashboard() {
   const [addPositionOpen, setAddPositionOpen] = useState(false);
   const [logTradeOpen, setLogTradeOpen] = useState(false);
   const [analystOpen, setAnalystOpen] = useState(false);
+  const [briefingOpen, setBriefingOpen] = useState(false);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>("PORTFOLIO");
 
@@ -57,7 +58,7 @@ export default function Dashboard() {
   useEffect(() => {
     const TAB_KEYS: Record<string, TabId> = {
       "1": "PORTFOLIO", "2": "MARKET", "3": "SCREENER",
-      "4": "MAPO", "5": "REBALANCE", "6": "JOURNAL",
+      "4": "MAPO", "5": "REBALANCE", "6": "TRADES", "7": "JOURNAL",
     };
     function onKey(e: KeyboardEvent) {
       // Skip if user is typing in an input/textarea
@@ -67,8 +68,9 @@ export default function Dashboard() {
       if (TAB_KEYS[e.key]) { setActiveTab(TAB_KEYS[e.key]); return; }
       if (e.key === "a" || e.key === "A") { setAddPositionOpen(true); return; }
       if (e.key === "t" || e.key === "T") { setLogTradeOpen(true); return; }
+      if (e.key === "b" || e.key === "B") { setBriefingOpen(true); return; }
       if (e.key === "/" || e.key === "q" || e.key === "Q") { setAnalystOpen(true); return; }
-      if (e.key === "Escape") { setAnalystOpen(false); return; }
+      if (e.key === "Escape") { setAnalystOpen(false); setBriefingOpen(false); return; }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -168,6 +170,7 @@ export default function Dashboard() {
       { id: "SCREENER", label: "Screen", icon: Search },
       { id: "MAPO", label: "MAPO", icon: Star },
       { id: "REBALANCE", label: "Rebalance", icon: RefreshCw },
+      { id: "TRADES", label: "Trades", icon: ArrowRightLeft },
       { id: "JOURNAL", label: "Journal", icon: BookOpen },
     ];
 
@@ -291,9 +294,9 @@ export default function Dashboard() {
               <div style={{ height: 280, flexShrink: 0, borderTop: "1px solid #1C2840" }}>
                 <PerformanceChart portfolioId={activePortfolioId} />
               </div>
-              {/* MAPO Signals */}
+              {/* Sector Allocation */}
               <div style={{ height: 320, flexShrink: 0, borderTop: "1px solid #1C2840" }}>
-                <MAPOSignals holdings={holdingsData} totalValue={totalValue} />
+                <SectorAllocation holdings={holdingsData} totalValue={totalValue} />
               </div>
               {/* Top Movers */}
               <div style={{ height: 240, flexShrink: 0, borderTop: "1px solid #1C2840" }}>
@@ -319,18 +322,23 @@ export default function Dashboard() {
             </div>
           )}
           {activeTab === "SCREENER" && (
-            <div style={{ height: "calc(100vh - 200px)", minHeight: 500 }}>
-              <ScreeningView />
+            <div style={{ minHeight: 500 }}>
+              <ScreenPage />
             </div>
           )}
           {activeTab === "MAPO" && (
-            <div style={{ height: "calc(100vh - 200px)", minHeight: 500 }}>
-              <StockAnalysis />
+            <div style={{ minHeight: 500 }}>
+              <AnalyzePage />
             </div>
           )}
           {activeTab === "REBALANCE" && (
-            <div style={{ height: "calc(100vh - 200px)", minHeight: 500 }}>
-              <RebalanceView />
+            <div style={{ minHeight: 500 }}>
+              <RebalancePage />
+            </div>
+          )}
+          {activeTab === "TRADES" && (
+            <div style={{ minHeight: 500 }}>
+              <TradeLogPage />
             </div>
           )}
           {activeTab === "JOURNAL" && (
@@ -399,6 +407,7 @@ export default function Dashboard() {
         <AIAnalyst portfolioId={activePortfolioId} open={analystOpen} onClose={() => setAnalystOpen(false)} />
         <AddPositionDialogControlled open={addPositionOpen} onOpenChange={setAddPositionOpen} activePortfolioId={activePortfolioId} />
         <LogTradeDialog open={logTradeOpen} onOpenChange={setLogTradeOpen} portfolioId={activePortfolioId} />
+        <BriefingPanel open={briefingOpen} onClose={() => setBriefingOpen(false)} />
       </div>
     );
   }
@@ -431,8 +440,8 @@ export default function Dashboard() {
             style={{
               display: "flex",
               alignItems: "center",
-              height: 26,
-              minHeight: 26,
+              height: 34,
+              minHeight: 34,
               background: "#060A11",
               borderBottom: "1px solid #131E2E",
               padding: "0 12px",
@@ -514,7 +523,7 @@ export default function Dashboard() {
               >
                 <span
                   style={{
-                    fontSize: 9,
+                    fontSize: 10,
                     color: "#3A4A5C",
                     letterSpacing: 1.2,
                     textTransform: "uppercase",
@@ -526,7 +535,7 @@ export default function Dashboard() {
                 </span>
                 <span
                   className="font-mono tabular-nums"
-                  style={{ fontSize: 10, color: stat.color, fontWeight: 600 }}
+                  style={{ fontSize: 11, color: stat.color, fontWeight: 600 }}
                 >
                   {stat.value}
                 </span>
@@ -536,7 +545,7 @@ export default function Dashboard() {
             <div style={{ flex: 1 }} />
             <div
               style={{
-                fontSize: 9,
+                fontSize: 10,
                 color: "#2A3A4C",
                 letterSpacing: 0.8,
                 fontFamily: "'Inter', system-ui, sans-serif",
@@ -544,7 +553,7 @@ export default function Dashboard() {
                 paddingRight: 4,
               }}
             >
-              1–6 tabs · A add · T trade · / analyst
+              1–7 tabs · A add · T trade · B briefing · / analyst
             </div>
           </div>
         )}
@@ -564,8 +573,8 @@ export default function Dashboard() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               style={{
-                padding: "8px 20px",
-                fontSize: 9,
+                padding: "9px 20px",
+                fontSize: 10,
                 fontWeight: 700,
                 letterSpacing: 1.8,
                 textTransform: "uppercase",
@@ -595,8 +604,31 @@ export default function Dashboard() {
               {tab.label}
             </button>
           ))}
-          {/* Spacer + logout */}
+          {/* Spacer + briefing + logout */}
           <div style={{ flex: 1 }} />
+          <button
+            onClick={() => setBriefingOpen(true)}
+            style={{
+              padding: "8px 16px",
+              fontSize: 10,
+              letterSpacing: 1.2,
+              textTransform: "uppercase",
+              fontFamily: "'Inter', system-ui, sans-serif",
+              background: "transparent",
+              border: "none",
+              color: "#3A4A5C",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              transition: "color 0.15s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#00D9FF")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "#3A4A5C")}
+          >
+            <BookOpen size={10} />
+            Briefing
+          </button>
           <button
             onClick={() => { logout(); window.location.reload(); }}
             style={{
@@ -636,18 +668,23 @@ export default function Dashboard() {
           </div>
         )}
         {activeTab === "SCREENER" && (
-          <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
-            <ScreeningView />
+          <div className="flex-1 overflow-auto" style={{ minHeight: 0 }}>
+            <ScreenPage />
           </div>
         )}
         {activeTab === "MAPO" && (
-          <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
-            <StockAnalysis />
+          <div className="flex-1 overflow-auto" style={{ minHeight: 0 }}>
+            <AnalyzePage />
           </div>
         )}
         {activeTab === "REBALANCE" && (
-          <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
-            <RebalanceView />
+          <div className="flex-1 overflow-auto" style={{ minHeight: 0 }}>
+            <RebalancePage />
+          </div>
+        )}
+        {activeTab === "TRADES" && (
+          <div className="flex-1 overflow-auto" style={{ minHeight: 0 }}>
+            <TradeLogPage />
           </div>
         )}
         {activeTab === "JOURNAL" && (
@@ -656,74 +693,46 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Portfolio tab — 4-column grid */}
+        {/* Portfolio tab — 3-column × 2-row, 6 panels */}
         <div
           className="flex-1 overflow-hidden"
           style={{
             display: activeTab === "PORTFOLIO" ? "grid" : "none",
-            gridTemplateColumns: "1.1fr 1.4fr 1fr 1fr",
+            gridTemplateColumns: "1fr 1.7fr 1fr",
             gridTemplateRows: "1fr 1fr",
             gap: 0,
             minHeight: 0,
             background: "#0A0E1A",
           }}
         >
-          {/* Col 1, Row 1: Holdings */}
-          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", overflow: "auto" }}>
+          {/* Row 1, Col 1: Holdings */}
+          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", borderBottom: "1px solid #1C2840", overflow: "auto" }}>
             <HoldingsTable holdings={holdingsData} totalValue={totalValue} />
           </div>
 
-          {/* Col 2, Row 1: Performance Chart */}
-          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", overflow: "hidden" }}>
+          {/* Row 1, Col 2: Performance Chart */}
+          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", borderBottom: "1px solid #1C2840", overflow: "hidden" }}>
             <PerformanceChart portfolioId={activePortfolioId} />
           </div>
 
-          {/* Col 3, Row 1: Risk Analysis */}
+          {/* Row 1, Col 3: Sector Allocation */}
+          <div className="flex flex-col" style={{ borderBottom: "1px solid #1C2840", overflow: "hidden" }}>
+            <SectorAllocation holdings={holdingsData} totalValue={totalValue} />
+          </div>
+
+          {/* Row 2, Col 1: Position Attribution */}
+          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", overflow: "hidden" }}>
+            <PositionAttribution holdings={holdingsData} totalValue={totalValue} />
+          </div>
+
+          {/* Row 2, Col 2: Risk Analysis */}
           <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", overflow: "auto" }}>
             <RiskAnalysis holdings={holdingsData} analytics={analytics} />
           </div>
 
-          {/* Col 4, Row 1: Portfolio Health + MAPO Signals */}
-          <div className="flex flex-col" style={{ overflow: "hidden" }}>
-            <div style={{ flex: "0 0 auto", maxHeight: "45%", overflow: "auto" }}>
-              <PortfolioHealth portfolioId={activePortfolioId} />
-            </div>
-            <div style={{ flex: 1, overflow: "hidden", borderTop: "1px solid #1C2840", minHeight: 0 }}>
-              <MAPOSignals holdings={holdingsData} totalValue={totalValue} />
-            </div>
-          </div>
-
-          {/* Col 1, Row 2: Trade History + Drawdown Monitor */}
-          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", borderTop: "1px solid #1C2840", overflow: "hidden" }}>
-            <div style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
-              <TradeHistory portfolioId={activePortfolioId} />
-            </div>
-            <div style={{ flex: "0 0 auto", maxHeight: "45%", overflow: "auto", borderTop: "1px solid #1C2840" }}>
-              <DrawdownMonitor portfolioId={activePortfolioId} />
-            </div>
-          </div>
-
-          {/* Col 2, Row 2: Correlation Matrix */}
-          <div
-            className="flex flex-col"
-            style={{ borderRight: "1px solid #1C2840", borderTop: "1px solid #1C2840", overflow: "auto" }}
-          >
-            <CorrelationMatrix holdings={holdingsData} correlationData={analytics?.correlation} top6Tickers={analytics?.top6Tickers} />
-          </div>
-
-          {/* Col 3, Row 2: Volatility + Earnings Calendar */}
-          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", borderTop: "1px solid #1C2840", overflow: "hidden" }}>
-            <div className="flex-1" style={{ minHeight: 0, overflow: "auto" }}>
-              <VolatilityBars holdings={holdingsData} volatilityData={analytics?.volatility} />
-            </div>
-            <div className="flex-1" style={{ borderTop: "1px solid #1C2840", minHeight: 0, overflow: "auto" }}>
-              <EarningsCalendar holdings={holdingsData} liveEarnings={liveEarnings} />
-            </div>
-          </div>
-
-          {/* Col 4, Row 2: Top Movers */}
-          <div className="flex flex-col" style={{ borderTop: "1px solid #1C2840", overflow: "hidden" }}>
-            <TopMovers holdings={holdingsData} portfolioId={activePortfolioId} />
+          {/* Row 2, Col 3: Earnings Calendar */}
+          <div className="flex flex-col" style={{ overflow: "auto" }}>
+            <EarningsCalendar holdings={holdingsData} liveEarnings={liveEarnings} />
           </div>
         </div>
 
@@ -791,6 +800,9 @@ export default function Dashboard() {
         onOpenChange={setLogTradeOpen}
         portfolioId={activePortfolioId}
       />
+
+      {/* Morning Briefing Panel */}
+      <BriefingPanel open={briefingOpen} onClose={() => setBriefingOpen(false)} />
     </div>
   );
 }

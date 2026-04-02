@@ -459,6 +459,39 @@ RESPONSE INSTRUCTIONS:
           });
         }
 
+        // Append live "today" data point so chart always shows current performance
+        const today = new Date().toISOString().split("T")[0];
+        const lastDate = performanceData[performanceData.length - 1]?.date;
+        if (lastDate && lastDate < today) {
+          try {
+            const currentHoldings = await storage.getHoldings(portfolioId);
+            let liveHoldingsValue = 0;
+            for (const [ticker, shares] of Object.entries(positions)) {
+              const h = currentHoldings.find((x: any) => x.ticker === ticker);
+              const livePrice = h?.price ?? prices[ticker]?.[lastDate] ?? 0;
+              liveHoldingsValue += (shares as number) * livePrice;
+            }
+            const todayTotalValue = cash + liveHoldingsValue;
+            const todayPctReturn = ((todayTotalValue - startingCapital) / startingCapital) * 100;
+
+            const [vooQuote, qqqQuote] = await Promise.all([
+              fmp.getFMPQuote("VOO"),
+              fmp.getFMPQuote("QQQ"),
+            ]);
+            const liveVooPrice = vooQuote?.[0]?.price ?? vooQuote?.price ?? prices.VOO?.[lastDate] ?? vooBase;
+            const liveQqqPrice = qqqQuote?.[0]?.price ?? qqqQuote?.price ?? prices.QQQ?.[lastDate] ?? qqqBase;
+            const todayVooReturn = ((liveVooPrice - vooBase) / vooBase) * 100;
+            const todayQqqReturn = ((liveQqqPrice - qqqBase) / qqqBase) * 100;
+
+            performanceData.push({
+              date: today,
+              portfolio: Math.round(todayPctReturn * 100) / 100,
+              voo: Math.round(todayVooReturn * 100) / 100,
+              qqq: Math.round(todayQqqReturn * 100) / 100,
+            });
+          } catch { /* non-fatal — chart still works without today point */ }
+        }
+
         return res.json(performanceData);
       }
 
@@ -481,10 +514,11 @@ RESPONSE INSTRUCTIONS:
         weight: totalCurrentValue > 0 ? h.value / totalCurrentValue : 0,
       }));
 
-      // Get base prices for each holding on the first date
+      // Use actual cost basis per share as entry price — matches summary totalGainLossPct
       const holdingBasePrices: Record<string, number> = {};
       for (const h of holdings) {
-        holdingBasePrices[h.ticker] = prices[h.ticker]?.[firstDate] || h.price;
+        const entryPrice = h.quantity > 0 ? h.costBasis / h.quantity : h.price;
+        holdingBasePrices[h.ticker] = entryPrice;
       }
 
       const performanceData = allDates.map(date => {
@@ -509,6 +543,36 @@ RESPONSE INSTRUCTIONS:
           qqq: Math.round(qqqReturn * 100) / 100,
         };
       });
+
+      // Append live "today" data point
+      const todayDate = new Date().toISOString().split("T")[0];
+      const lastHistDate = performanceData[performanceData.length - 1]?.date;
+      if (lastHistDate && lastHistDate < todayDate) {
+        try {
+          const [vooQ, qqqQ] = await Promise.all([fmp.getFMPQuote("VOO"), fmp.getFMPQuote("QQQ")]);
+          const liveVoo = vooQ?.[0]?.price ?? vooQ?.price ?? null;
+          const liveQqq = qqqQ?.[0]?.price ?? qqqQ?.price ?? null;
+          if (liveVoo && liveQqq) {
+            const todayVooReturn = ((liveVoo - vooBase) / vooBase) * 100;
+            const todayQqqReturn = ((liveQqq - qqqBase) / qqqBase) * 100;
+            let todayPortfolioReturn = 0;
+            for (const hw of holdingWeights) {
+              const entryPrice = holdingBasePrices[hw.ticker];
+              const h = holdings.find((x: any) => x.ticker === hw.ticker);
+              const livePrice = h?.price;
+              if (entryPrice && livePrice) {
+                todayPortfolioReturn += ((livePrice - entryPrice) / entryPrice) * 100 * hw.weight;
+              }
+            }
+            performanceData.push({
+              date: todayDate,
+              portfolio: Math.round(todayPortfolioReturn * 100) / 100,
+              voo: Math.round(todayVooReturn * 100) / 100,
+              qqq: Math.round(todayQqqReturn * 100) / 100,
+            });
+          }
+        } catch { /* non-fatal */ }
+      }
 
       return res.json(performanceData);
     } catch (error) {

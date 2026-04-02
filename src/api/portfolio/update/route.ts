@@ -18,6 +18,7 @@ interface UpdatePortfolioBody {
   companyName?: string;
   sector?: string;
   entryScore?: number;
+  date?: string; // optional trade date (YYYY-MM-DD), defaults to today
 }
 
 async function getPortfolioId(): Promise<string | null> {
@@ -37,10 +38,11 @@ async function logTrade(
   price: number,
   rationale: string,
   portfolioId: string | null,
-  entryScore?: number
+  entryScore?: number,
+  tradeDate?: string
 ): Promise<void> {
   const sb = getSb();
-  const today = new Date().toISOString().split("T")[0];
+  const today = tradeDate ?? new Date().toISOString().split("T")[0];
   const row: any = {
     id: randomUUID(),
     ticker,
@@ -91,7 +93,7 @@ async function handleBuy(body: UpdatePortfolioBody, portfolioId: string | null):
       .from("holdings")
       .update({
         quantity: totalShares,
-        cost_basis: Math.round(weightedAvgPrice * 10000) / 10000,
+        cost_basis: Math.round(weightedAvgPrice * totalShares * 10000) / 10000,
         value: totalShares * price,
         price,
       })
@@ -106,7 +108,7 @@ async function handleBuy(body: UpdatePortfolioBody, portfolioId: string | null):
       ticker: upper,
       name: companyName ?? upper,
       quantity: shares,
-      cost_basis: price,
+      cost_basis: price * shares,
       price,
       value: shares * price,
       sector: sector ?? "Unknown",
@@ -118,7 +120,7 @@ async function handleBuy(body: UpdatePortfolioBody, portfolioId: string | null):
     if (insertError) throw new Error(insertError.message);
   }
 
-  await logTrade(upper, "BUY", shares, price, rationale, portfolioId, scoreToUse);
+  await logTrade(upper, "BUY", shares, price, rationale, portfolioId, scoreToUse, body.date);
 }
 
 async function handleSell(body: UpdatePortfolioBody, portfolioId: string | null): Promise<void> {
@@ -132,7 +134,7 @@ async function handleSell(body: UpdatePortfolioBody, portfolioId: string | null)
     .eq("ticker", upper);
 
   if (deleteError) throw new Error(deleteError.message);
-  await logTrade(upper, "SELL", shares, price, rationale, portfolioId, entryScore);
+  await logTrade(upper, "SELL", shares, price, rationale, portfolioId, entryScore, body.date);
 }
 
 async function handleTrim(body: UpdatePortfolioBody, portfolioId: string | null): Promise<void> {
@@ -167,7 +169,7 @@ async function handleTrim(body: UpdatePortfolioBody, portfolioId: string | null)
     if (error) throw new Error(error.message);
   }
 
-  await logTrade(upper, "TRIM", trimShares, price, rationale, portfolioId, entryScore);
+  await logTrade(upper, "TRIM", trimShares, price, rationale, portfolioId, entryScore, body.date);
 }
 
 export async function portfolioUpdateRoute(req: Request, res: Response): Promise<void> {
@@ -197,6 +199,23 @@ export async function portfolioUpdateRoute(req: Request, res: Response): Promise
       case "BUY":  await handleBuy(body, portfolioId); break;
       case "SELL": await handleSell(body, portfolioId); break;
       case "TRIM": await handleTrim(body, portfolioId); break;
+    }
+
+    // Update portfolio_meta.cash so /api/summary stays in sync
+    if (portfolioId) {
+      const sb = getSb();
+      const { data: meta } = await sb
+        .from("portfolio_meta")
+        .select("cash")
+        .eq("portfolio_id", portfolioId)
+        .maybeSingle();
+      if (meta != null) {
+        const tradeTotal = body.shares * body.price;
+        const newCash = (body.action === "SELL" || body.action === "TRIM")
+          ? Number(meta.cash) + tradeTotal
+          : Math.max(0, Number(meta.cash) - tradeTotal);
+        await sb.from("portfolio_meta").update({ cash: newCash }).eq("portfolio_id", portfolioId);
+      }
     }
 
     const holdings = await getHoldings();

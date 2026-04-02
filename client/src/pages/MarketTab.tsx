@@ -368,38 +368,6 @@ export function MarketTab({ portfolioHoldings }: { portfolioHoldings?: Array<{ t
           />
         ))}
 
-        {/* MAPO macro notes */}
-        <div
-          style={{
-            margin: 14,
-            padding: 12,
-            background: "#0B0F1A",
-            border: "1px solid #1C2840",
-            borderRadius: 3,
-          }}
-        >
-          <div
-            style={{
-              fontSize: 10,
-              color: "#00D9FF",
-              letterSpacing: 1.5,
-              textTransform: "uppercase",
-              marginBottom: 8,
-              fontFamily: "monospace",
-            }}
-          >
-            MAPO Macro Checklist
-          </div>
-          <div style={{ fontSize: 10, color: "#8B949E", lineHeight: 1.8, fontFamily: "monospace" }}>
-            □ VIX environment (below/above 20)<br />
-            □ Fed policy direction<br />
-            □ 10Y yield trend<br />
-            □ Dollar strength<br />
-            □ Earnings season phase<br />
-            □ Sector rotation signal<br />
-            □ AGI thesis intact (NVDA/MSFT/META)
-          </div>
-        </div>
       </div>
     </div>
   );

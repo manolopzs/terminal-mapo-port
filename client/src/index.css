@@ -41,9 +41,9 @@
   --sidebar-accent: 220 10% 92%;
   --sidebar-accent-foreground: 220 20% 10%;
   --sidebar-ring: 187 90% 35%;
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-sans: 'DM Sans', system-ui, sans-serif;
   --font-serif: Georgia, serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-mono: 'IBM Plex Mono', monospace;
   --radius: 0.5rem;
   --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.05);
   --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.05);
@@ -159,15 +159,15 @@
 }
 
 .animate-ticker {
-  animation: ticker-scroll 60s linear infinite;
+  animation: ticker-scroll 100s linear infinite;
 }
 
 .animate-ticker-slow {
-  animation: ticker-scroll 45s linear infinite;
+  animation: ticker-scroll 80s linear infinite;
 }
 
 .animate-marquee {
-  animation: ticker-scroll 45s linear infinite;
+  animation: ticker-scroll 90s linear infinite;
 }
 
 /* Pulse animation for live badge */
@@ -355,3 +355,27 @@
 .terminal-row:hover {
   background: rgba(0, 217, 255, 0.03) !important;
 }
+
+body { background-color: #07080c; }
+
+/* Page transition animation */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page-enter {
+  animation: fadeSlideIn 200ms ease forwards;
+}
+/* Number flash animations */
+@keyframes flashGreen {
+  0% { background-color: transparent; }
+  20% { background-color: #00e59a33; }
+  100% { background-color: transparent; }
+}
+@keyframes flashRed {
+  0% { background-color: transparent; }
+  20% { background-color: #ef444433; }
+  100% { background-color: transparent; }
+}
+.flash-green { animation: flashGreen 200ms ease; }
+.flash-red { animation: flashRed 200ms ease; }

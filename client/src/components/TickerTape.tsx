@@ -68,8 +68,8 @@ export function TickerTape() {
     <div
       className="flex items-center overflow-hidden flex-shrink-0"
       style={{
-        height: 24,
-        minHeight: 24,
+        height: 30,
+        minHeight: 30,
         background: "#060A12",
         borderBottom: "1px solid #1C2840",
       }}
@@ -79,7 +79,7 @@ export function TickerTape() {
         style={{
           background: "rgba(0, 217, 255, 0.08)",
           color: "#00D9FF",
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 700,
           letterSpacing: 1.5,
           padding: "0 10px",
@@ -95,16 +95,16 @@ export function TickerTape() {
       <div className="overflow-hidden flex-1">
         <div className="animate-ticker flex items-center whitespace-nowrap">
           {doubled.map((t, i) => (
-            <span key={i} className="inline-flex items-center gap-1" style={{ fontSize: 9, padding: "0 10px", borderRight: "1px solid rgba(28,40,64,0.6)" }}>
-              <span style={{ color: "#5A6B80", fontWeight: 700, letterSpacing: 1, fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }}>
+            <span key={i} className="inline-flex items-center gap-1" style={{ fontSize: 10, padding: "0 10px", borderRight: "1px solid rgba(28,40,64,0.6)" }}>
+              <span style={{ color: "#5A6B80", fontWeight: 700, letterSpacing: 1, fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>
                 {t.symbol}
               </span>
-              <span className="font-mono tabular-nums" style={{ color: "#A0AABB" }}>
+              <span className="font-mono tabular-nums" style={{ color: "#A0AABB", fontSize: 11 }}>
                 {t.price}
               </span>
               <span
                 className="font-mono tabular-nums"
-                style={{ color: t.change >= 0 ? "#00E6A8" : "#FF4458", fontWeight: 600 }}
+                style={{ color: t.change >= 0 ? "#00E6A8" : "#FF4458", fontWeight: 600, fontSize: 11 }}
               >
                 {t.change >= 0 ? "+" : ""}
                 {t.change.toFixed(2)}%

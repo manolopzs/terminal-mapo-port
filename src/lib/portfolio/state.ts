@@ -16,6 +16,7 @@ function mapHolding(row: any): Holding {
   const shares = row.shares != null ? Number(row.shares)
     : row.quantity != null ? Number(row.quantity) : 0;
   const entryPrice = row.entry_price != null ? Number(row.entry_price)
+    : row.cost_basis != null && shares > 0 ? Number(row.cost_basis) / shares
     : row.cost_basis != null ? Number(row.cost_basis) : 0;
   const companyName = row.company_name ?? row.name ?? "";
   return {

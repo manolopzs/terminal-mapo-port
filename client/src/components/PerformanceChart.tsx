@@ -105,7 +105,8 @@ export function PerformanceChart({ portfolioId }: PerformanceChartProps) {
   const { data: rawData, isLoading } = useQuery<PerformancePoint[]>({
     queryKey: [`/api/performance?portfolioId=${portfolioId}`],
     queryFn: getQueryFn({ on401: "throw" }),
-    staleTime: Infinity,
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
   });
 
   const { data, alpha } = useMemo(() => {
