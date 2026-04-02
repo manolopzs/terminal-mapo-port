@@ -1,6 +1,6 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+import type { IncomingMessage, ServerResponse } from "http";
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
+export default function handler(req: IncomingMessage & { body?: any; method?: string }, res: ServerResponse & { status: (n: number) => any; json: (b: any) => void; end: () => void }) {
   if (req.method !== "POST") {
     res.status(405).end();
     return;
