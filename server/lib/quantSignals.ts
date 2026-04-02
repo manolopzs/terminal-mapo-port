@@ -34,11 +34,18 @@ export function calcGoldenCross(bars: DailyBar[]): { confirmed: boolean; sma50: 
 }
 
 // Signal 3: SUE (Standardized Unexpected Earnings)
-export function calcSUE(surprises: any[]): { confirmed: boolean; score: number; latestSurprisePct: number } {
-  if (!surprises || surprises.length < 4) return { confirmed: false, score: 0, latestSurprisePct: 0 };
-  const diffs = surprises.slice(0, 8).map((s: any) => {
-    const actual = s.actualEarningResult ?? s.actual ?? 0;
-    const estimated = s.estimatedEarning ?? s.estimated ?? 0;
+// Accepts FMP /earnings format: { epsActual, epsEstimated } or legacy { actualEarningResult, estimatedEarning }
+export function calcSUE(earnings: any[]): { confirmed: boolean; score: number; latestSurprisePct: number } {
+  if (!earnings || earnings.length < 4) return { confirmed: false, score: 0, latestSurprisePct: 0 };
+  // Filter to quarters with both actual and estimated (skip future earnings)
+  const historical = earnings.filter((e: any) =>
+    (e.epsActual ?? e.actualEarningResult) != null &&
+    (e.epsEstimated ?? e.estimatedEarning) != null
+  ).slice(0, 8);
+  if (historical.length < 4) return { confirmed: false, score: 0, latestSurprisePct: 0 };
+  const diffs = historical.map((s: any) => {
+    const actual = s.epsActual ?? s.actualEarningResult ?? 0;
+    const estimated = s.epsEstimated ?? s.estimatedEarning ?? 0;
     return actual - estimated;
   });
   const mean = diffs.reduce((a, b) => a + b, 0) / diffs.length;
@@ -46,9 +53,10 @@ export function calcSUE(surprises: any[]): { confirmed: boolean; score: number; 
   const std = Math.sqrt(variance);
   if (std === 0) return { confirmed: false, score: 0, latestSurprisePct: 0 };
   const sue = diffs[0] / std;
-  const latest = surprises[0];
-  const estimated = latest?.estimatedEarning ?? latest?.estimated ?? 0;
-  const latestSurprisePct = estimated !== 0 ? ((latest?.actualEarningResult ?? 0) - estimated) / Math.abs(estimated) : 0;
+  const latest = historical[0];
+  const estimated = latest?.epsEstimated ?? latest?.estimatedEarning ?? 0;
+  const actual = latest?.epsActual ?? latest?.actualEarningResult ?? 0;
+  const latestSurprisePct = estimated !== 0 ? (actual - estimated) / Math.abs(estimated) : 0;
   return { confirmed: sue > 1, score: Math.round(sue * 10) / 10, latestSurprisePct };
 }
 

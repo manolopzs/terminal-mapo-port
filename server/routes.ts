@@ -782,15 +782,14 @@ RESPONSE INSTRUCTIONS:
       // Fetch all data in parallel from FMP + Alpha Vantage
       const [
         profileR, incomeR, balanceR, cashflowR, ratiosR, metricsR,
-        growthR, surprisesR, estimatesR, recommendationsR, insiderR,
-        newsR, fmpQuoteR, barsR, rsiR,
+        growthR, earningsR, upgradesR, insiderR,
+        fmpQuoteR, barsR, rsiR,
       ] = await Promise.allSettled([
         fmp.getProfile(sym), fmp.getIncomeStatement(sym), fmp.getBalanceSheet(sym),
         fmp.getCashFlow(sym), fmp.getKeyRatios(sym), fmp.getKeyMetrics(sym),
-        fmp.getFinancialGrowth(sym), fmp.getEarningsSurprises(sym),
-        fmp.getAnalystEstimates(sym), fmp.getAnalystRecommendations(sym),
-        fmp.getInsiderTrading(sym), fmp.getStockNews(sym), fmp.getFMPQuote(sym),
-        getDailyPrices(sym, "full"), getRSI(sym, 14),
+        fmp.getFinancialGrowth(sym), fmp.getEarnings(sym),
+        fmp.getUpgradesDowngrades(sym), fmp.getInsiderTrading(sym),
+        fmp.getFMPQuote(sym), getDailyPrices(sym, "full"), getRSI(sym, 14),
       ]);
 
       const ok = <T>(r: PromiseSettledResult<T>): T | null => r.status === "fulfilled" ? r.value : null;
@@ -802,11 +801,14 @@ RESPONSE INSTRUCTIONS:
       const ratiosData = ok(ratiosR) ?? [];
       const metricsData = ok(metricsR) ?? [];
       const growthData = ok(growthR) ?? [];
-      const surprisesData = ok(surprisesR) ?? [];
-      const estimatesData = ok(estimatesR) ?? [];
-      const recommendationsData = ok(recommendationsR) ?? [];
+      const earningsData = ok(earningsR) ?? [];
+      const upgradesData = ok(upgradesR) ?? [];
       const insiderData = ok(insiderR) ?? [];
-      const newsData = ok(newsR) ?? [];
+      // Fetch news from Finnhub
+      let newsData: any[] = [];
+      try {
+        newsData = await fetchPortfolioNews([sym]);
+      } catch { /* ignore */ }
       const fmpQuoteData = ok(fmpQuoteR)?.[0] ?? null;
       const bars = ok(barsR) ?? [];
       const rsiValue = ok(rsiR);
@@ -821,8 +823,8 @@ RESPONSE INSTRUCTIONS:
       // Compute all 7 quant signals (pure math)
       const momentum = calcMomentum(bars);
       const goldenCross = calcGoldenCross(bars);
-      const sue = calcSUE(surprisesData);
-      const revisions = calcRevisions(estimatesData);
+      const sue = calcSUE(earningsData);
+      const revisions = calcRevisions(earningsData);
       const betaValue = calcBeta(bars, spBars);
       const valueFactor = calcValueFactor(metricsData);
       const donchian = calcDonchian(bars, currentPrice);
@@ -900,21 +902,21 @@ RESPONSE INSTRUCTIONS:
         quantSignals: signalSummary,
         quantSignalCount: `${quantSignals.compositeCount}/5 signals confirmed`,
         earnings: {
-          surprises: surprisesData.slice(0, 4).map((s: any) => ({
-            date: s?.date, actual: s?.actualEarningResult, estimated: s?.estimatedEarning,
+          surprises: earningsData.filter((e: any) => e.epsActual != null).slice(0, 4).map((s: any) => ({
+            date: s?.date, actual: s?.epsActual ?? s?.actualEarningResult, estimated: s?.epsEstimated ?? s?.estimatedEarning,
             surprise: s?.estimatedEarning ? `${(((s?.actualEarningResult ?? 0) - s?.estimatedEarning) / Math.abs(s?.estimatedEarning) * 100).toFixed(1)}%` : null,
           })),
           sueScore: sue.score,
           revisionPct: `${(revisions.revisionPct * 100).toFixed(1)}%`,
         },
         sentiment: {
-          analysts: recommendationsData.slice(0, 4).map((r: any) => ({ date: r?.date, action: r?.action, analyst: r?.analyst, target: r?.priceTarget })),
+          analysts: upgradesData.slice(0, 4).map((r: any) => ({ date: r?.publishedDate ?? r?.date, action: r?.action, analyst: r?.gradingCompany ?? r?.analyst, fromGrade: r?.previousGrade, toGrade: r?.newGrade })),
           insider: insiderData.slice(0, 5).map((t: any) => ({ date: t?.transactionDate, name: t?.reportingName, type: t?.transactionType, shares: t?.securitiesTransacted })),
-          news: newsData.slice(0, 5).map((n: any) => ({ title: (n?.title ?? "").slice(0, 100), date: n?.publishedDate })),
+          news: newsData.slice(0, 5).map((n: any) => ({ title: (n?.headline ?? n?.title ?? "").slice(0, 100), time: n?.time })),
         },
       };
 
-      const scoringPrompt = `You are the MAPO Portfolio Analyst v4.0. Score ${sym} using the 6-factor MAPO methodology. REAL financial data is below. Cite specific numbers from the data in your notes. Do not hallucinate metrics.
+      const scoringPrompt = `You are the MAPO Portfolio Analyst v4.0. Score ${sym} using the 6-factor MAPO methodology. Real financial data from FMP and Alpha Vantage is provided below. You MUST cite specific numbers from this data in your factorNotes. Do not use generic statements — reference actual figures (e.g. "ROE 24.3%", "EV/EBITDA 18.2x vs 5yr avg 22.1x", "revenue grew 27.7% YoY").
 
 QUANT SIGNALS ALREADY COMPUTED (mathematical, non-negotiable):
 ${signalSummary}
@@ -1019,30 +1021,75 @@ Return ONLY valid JSON, no markdown, no backticks, no explanation:
   });
 
   // ====== STOCK SCREENER ======
+  // Uses MAPO curated universe (AGI thesis + broad market small/mid cap)
+  // enriched with live FMP profile data, filtered by sector/cap params
   app.post("/api/screen", async (req, res) => {
     try {
-      const { sector, maxMarketCap, minMarketCap } = req.body;
-      const results = await fmp.screenStocks({
-        marketCapMoreThan: minMarketCap ?? 1_000_000_000,
-        marketCapLessThan: maxMarketCap ?? 50_000_000_000,
-        volumeMoreThan: 500_000,
-        sector,
-      });
-      if (!results || !Array.isArray(results)) return res.json([]);
-      const filtered = (results as any[])
-        .filter((s: any) => !isExcluded(s.symbol).excluded)
-        .slice(0, 50)
-        .map((s: any) => ({
-          ticker: s.symbol,
-          name: s.companyName,
-          sector: s.sector,
-          marketCapB: s.marketCap ? `$${(s.marketCap / 1e9).toFixed(1)}B` : "?",
-          price: s.price,
-          volume: s.volume,
-          beta: s.beta,
-          peRatio: s.pe,
-          change: s.changesPercentage,
-        }));
+      const { sector, maxMarketCap = 50_000_000_000, minMarketCap = 500_000_000 } = req.body;
+
+      // MAPO universe: AGI thesis + broad small/mid cap, all <$50B, exclusion-list clean
+      const MAPO_UNIVERSE: Record<string, string[]> = {
+        "Technology": ["COHR","SMCI","CRDO","CIEN","LITE","AAOI","VIAV","IIVI","FORM","ACMR","ONTO","AEHR","ICHR","AEIS","MKSI","NTAP","PSTG","ESTC","GTLB","MXCHIP"],
+        "Industrials": ["STRL","ATKR","POWL","NVEE","GVA","IESC","TPIC","MYR","EME","PWR","PCOR","ESAB","GTLS","TDW","MYRG","HLIO"],
+        "Utilities": ["VST","NRG","CEG","OGE","CLNE","NRUC","MGEE","AVA","IDACORP","NWE","PNM","SPWR"],
+        "Energy": ["TALO","NOG","CIVI","OVV","SM","MTDR","CHRD","GPOR","VTLE","MGY"],
+        "Financials": ["DLO","RELY","STEP","LPLA","COOP","KNSL","RYAN","HIMS","AFRM","UPST"],
+        "Health Care": ["HIMS","ACAD","CRVS","RXRX","RCKT","ARWR","TMDX","IRTC","OMCL","TDOC"],
+        "Consumer Discretionary": ["ELF","BOOT","SHAK","TXRH","WING","CAVA","KRUS","PTLO","FAT"],
+        "Communication Services": ["DV","MGNI","IAS","TTD","PUBM","APPS","VNET","CLFD"],
+        "Materials": ["IOSP","TREX","AZEK","IBP","UFP","PGTI"],
+        "Real Estate": ["REXR","IIPR","STAG","COLD","EXR","LSI"],
+      };
+
+      // If sector specified, use that universe; otherwise flatten all
+      let candidates: string[];
+      if (sector && MAPO_UNIVERSE[sector]) {
+        candidates = MAPO_UNIVERSE[sector];
+      } else {
+        candidates = Object.values(MAPO_UNIVERSE).flat();
+      }
+
+      // Remove exclusion list tickers
+      candidates = candidates.filter(t => !isExcluded(t).excluded);
+
+      // Fetch profiles in batches of 10
+      const batchSize = 10;
+      const profiles: any[] = [];
+      for (let i = 0; i < candidates.length && i < 80; i += batchSize) {
+        const batch = candidates.slice(i, i + batchSize);
+        const batchProfiles = await Promise.allSettled(batch.map(t => fmp.getProfile(t)));
+        batchProfiles.forEach(r => {
+          if (r.status === "fulfilled" && r.value?.[0]) profiles.push(r.value[0]);
+        });
+      }
+
+      const filtered = profiles
+        .filter(p => {
+          const cap = p.marketCap ?? p.mktCap ?? 0;
+          return cap >= minMarketCap && cap <= maxMarketCap;
+        })
+        .sort((a, b) => ((b.marketCap ?? b.mktCap ?? 0) - (a.marketCap ?? a.mktCap ?? 0)))
+        .slice(0, 40)
+        .map(p => {
+          const cap = p.marketCap ?? p.mktCap ?? 0;
+          return {
+          ticker: p.symbol,
+          name: p.companyName,
+          sector: p.sector,
+          industry: p.industry,
+          marketCapB: cap ? `$${(cap / 1e9).toFixed(1)}B` : "?",
+          price: p.price,
+          change: p.changes,
+          changePct: p.changesPercentage ?? ((p.changes / (p.price - p.changes)) * 100),
+          beta: p.beta,
+          volume: p.volAvg,
+          high52w: p.range?.split("-")?.[1] ?? null,
+          low52w: p.range?.split("-")?.[0] ?? null,
+          exchange: p.exchangeShortName,
+          description: (p.description ?? "").slice(0, 120),
+        };
+        });
+
       res.json(filtered);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
