@@ -7,6 +7,10 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { fetchLiveQuotes, fetchEarningsSchedule, fetchMarketSentiment, fetchPortfolioNews, fetchExtendedQuotes } from "./liveData";
 import { insertHoldingSchema, insertTradeSchema } from "@shared/schema";
+import * as fmp from "./lib/fmp.js";
+import { getDailyPrices, getRSI } from "./lib/alphavantage.js";
+import { calcMomentum, calcGoldenCross, calcSUE, calcRevisions, calcBeta, calcValueFactor, calcDonchian, buildSignalSummary } from "./lib/quantSignals.js";
+import { isExcluded, RULES } from "./lib/constants.js";
 
 const anthropic = new Anthropic();
 const openai = process.env.OPENAI_API_KEY ? new OpenAI() : null;
@@ -758,59 +762,264 @@ RESPONSE INSTRUCTIONS:
       }
       const sym = ticker.toUpperCase().trim();
 
-      // Fetch a live quote for context
-      const quotes = await fetchLiveQuotes([sym]);
-      const q = quotes[0];
-      const priceCtx = q
-        ? `Current price: $${q.price.toFixed(2)}, Day change: ${q.changesPercentage >= 0 ? "+" : ""}${q.changesPercentage.toFixed(2)}%`
-        : "Live price not available";
+      // Gate 1: Exclusion List - instant reject
+      const exclusionCheck = isExcluded(sym);
+      if (exclusionCheck.excluded) {
+        return res.json({
+          ticker: sym, score: 15, signal: "AVOID", rejected: true,
+          rejectReason: `EXCLUDED: ${exclusionCheck.reason}`,
+          factors: { financialHealth: 15, valuation: 15, growth: 15, technical: 15, sentiment: 15, macroFit: 15 },
+          factorNotes: { financialHealth: "Excluded", valuation: "Excluded", growth: "Excluded", technical: "Excluded", sentiment: "Excluded", macroFit: "Excluded" },
+          thesis: `${sym} is on the MAPO permanent exclusion list: ${exclusionCheck.reason}. Do not buy.`,
+          risks: ["On permanent exclusion list"], catalysts: [],
+          entryNote: "DO NOT BUY - Exclusion List",
+          quantSignals: null, dataSource: "exclusion-list",
+          analyzedAt: new Date().toISOString(),
+        });
+      }
 
-      const mapoPrompt = `You are the MAPO Portfolio Analyst v4.0. Analyze ${sym} using the MAPO 6-Factor scoring framework and return ONLY valid JSON matching this exact schema:
+      // Fetch all data in parallel from FMP + Alpha Vantage
+      const [
+        profileR, incomeR, balanceR, cashflowR, ratiosR, metricsR,
+        growthR, surprisesR, estimatesR, recommendationsR, insiderR,
+        newsR, fmpQuoteR, barsR, rsiR,
+      ] = await Promise.allSettled([
+        fmp.getProfile(sym), fmp.getIncomeStatement(sym), fmp.getBalanceSheet(sym),
+        fmp.getCashFlow(sym), fmp.getKeyRatios(sym), fmp.getKeyMetrics(sym),
+        fmp.getFinancialGrowth(sym), fmp.getEarningsSurprises(sym),
+        fmp.getAnalystEstimates(sym), fmp.getAnalystRecommendations(sym),
+        fmp.getInsiderTrading(sym), fmp.getStockNews(sym), fmp.getFMPQuote(sym),
+        getDailyPrices(sym, "full"), getRSI(sym, 14),
+      ]);
 
+      const ok = <T>(r: PromiseSettledResult<T>): T | null => r.status === "fulfilled" ? r.value : null;
+
+      const profileData = ok(profileR)?.[0] ?? null;
+      const incomeData = ok(incomeR) ?? [];
+      const balanceData = ok(balanceR) ?? [];
+      const cashflowData = ok(cashflowR) ?? [];
+      const ratiosData = ok(ratiosR) ?? [];
+      const metricsData = ok(metricsR) ?? [];
+      const growthData = ok(growthR) ?? [];
+      const surprisesData = ok(surprisesR) ?? [];
+      const estimatesData = ok(estimatesR) ?? [];
+      const recommendationsData = ok(recommendationsR) ?? [];
+      const insiderData = ok(insiderR) ?? [];
+      const newsData = ok(newsR) ?? [];
+      const fmpQuoteData = ok(fmpQuoteR)?.[0] ?? null;
+      const bars = ok(barsR) ?? [];
+      const rsiValue = ok(rsiR);
+
+      const currentPrice = fmpQuoteData?.price ?? profileData?.price ?? 0;
+      const marketCap = profileData?.mktCap ?? fmpQuoteData?.marketCap ?? 0;
+
+      // Fetch SPY for beta calculation
+      let spBars: typeof bars = [];
+      try { spBars = await getDailyPrices("SPY", "compact"); } catch { /* ignore */ }
+
+      // Compute all 7 quant signals (pure math)
+      const momentum = calcMomentum(bars);
+      const goldenCross = calcGoldenCross(bars);
+      const sue = calcSUE(surprisesData);
+      const revisions = calcRevisions(estimatesData);
+      const betaValue = calcBeta(bars, spBars);
+      const valueFactor = calcValueFactor(metricsData);
+      const donchian = calcDonchian(bars, currentPrice);
+
+      const quantSignals = {
+        momentum, goldenCross, sue, revisions,
+        beta: { value: betaValue, lowVol: betaValue < 1.2, highVol: betaValue > RULES.HIGH_BETA_THRESHOLD },
+        valueFactor, donchian,
+        compositeCount: [momentum.confirmed, goldenCross.confirmed, sue.confirmed, revisions.confirmed, valueFactor.confirmed].filter(Boolean).length,
+      };
+
+      const signalSummary = buildSignalSummary(quantSignals);
+
+      // Gate 2: Donchian reject
+      if (donchian.reject) {
+        return res.json({
+          ticker: sym, score: 30, signal: "AVOID", rejected: true,
+          rejectReason: `DONCHIAN REJECT: ${sym} at ${(donchian.position * 100).toFixed(0)}% of 52-week range. Too close to 52-week high.`,
+          factors: { financialHealth: 50, valuation: 30, growth: 50, technical: 30, sentiment: 50, macroFit: 50 },
+          factorNotes: { financialHealth: "N/A", valuation: "N/A - near 52wk high", growth: "N/A", technical: "Donchian reject", sentiment: "N/A", macroFit: "N/A" },
+          thesis: `${sym} is near its 52-week high ($${donchian.high52w}). MAPO requires waiting for a better entry point.`,
+          risks: ["Near 52-week high - poor risk/reward"],
+          catalysts: [], entryNote: `Wait for pullback below $${(donchian.high52w * 0.90).toFixed(2)}`,
+          quantSignals: { ...quantSignals, signalSummary: signalSummary },
+          dataSource: "donchian-reject", analyzedAt: new Date().toISOString(),
+        });
+      }
+
+      // Build rich data package for Claude
+      const dataPackage = {
+        company: {
+          ticker: sym,
+          name: profileData?.companyName ?? sym,
+          sector: profileData?.sector ?? "Unknown",
+          industry: profileData?.industry ?? "Unknown",
+          marketCapB: marketCap ? `$${(marketCap / 1e9).toFixed(1)}B` : "Unknown",
+          price: `$${currentPrice.toFixed(2)}`,
+          exchange: profileData?.exchangeShortName ?? "Unknown",
+          description: (profileData?.description ?? "").slice(0, 400),
+        },
+        fundamentals: {
+          ratios: ratiosData.slice(0, 3).map((r: any) => ({
+            // stable API field names (post Aug 2025)
+            roe: r?.returnOnEquity, roa: r?.returnOnAssets,
+            debtToEquity: r?.debtToEquityRatio, currentRatio: r?.currentRatio,
+            peRatio: r?.priceToEarningsRatio, pbRatio: r?.priceToBookRatio,
+            psRatio: r?.priceToSalesRatio, pegRatio: r?.priceToEarningsGrowthRatio,
+            netMargin: r?.netProfitMargin, grossMargin: r?.grossProfitMargin,
+            evToEbitda: r?.enterpriseValueMultiple ?? r?.evToEBITDA,
+          })),
+          metrics: metricsData.slice(0, 3).map((m: any) => ({
+            fcfPerShare: m?.freeCashFlowPerShare, evToEbitda: m?.evToEBITDA, evToSales: m?.evToSales,
+          })),
+          growth: growthData.slice(0, 3).map((g: any) => ({
+            date: g?.date, revenueGrowth: g?.revenueGrowth, netIncomeGrowth: g?.netIncomeGrowth,
+            epsGrowth: g?.epsgrowth ?? g?.epsGrowth, fcfGrowth: g?.freeCashFlowGrowth,
+          })),
+          income: incomeData.slice(0, 4).map((i: any) => ({
+            date: i?.date, revenue: i?.revenue, grossProfit: i?.grossProfit,
+            netIncome: i?.netIncome, eps: i?.eps ?? i?.netIncomePerShare, ebitda: i?.ebitda,
+          })),
+          cashflow: cashflowData.slice(0, 3).map((c: any) => ({
+            date: c?.date, operatingCF: c?.operatingCashFlow ?? c?.netCashProvidedByOperatingActivities,
+            freeCF: c?.freeCashFlow, capex: c?.capitalExpenditure,
+          })),
+        },
+        technicals: {
+          currentPrice, rsi: rsiValue ? Math.round(rsiValue) : null,
+          sma50: goldenCross.sma50, sma200: goldenCross.sma200,
+          goldenCross: goldenCross.confirmed,
+          high52w: donchian.high52w, low52w: donchian.low52w,
+          donchianPct: `${(donchian.position * 100).toFixed(0)}% of 52wk range`,
+          beta: betaValue,
+        },
+        quantSignals: signalSummary,
+        quantSignalCount: `${quantSignals.compositeCount}/5 signals confirmed`,
+        earnings: {
+          surprises: surprisesData.slice(0, 4).map((s: any) => ({
+            date: s?.date, actual: s?.actualEarningResult, estimated: s?.estimatedEarning,
+            surprise: s?.estimatedEarning ? `${(((s?.actualEarningResult ?? 0) - s?.estimatedEarning) / Math.abs(s?.estimatedEarning) * 100).toFixed(1)}%` : null,
+          })),
+          sueScore: sue.score,
+          revisionPct: `${(revisions.revisionPct * 100).toFixed(1)}%`,
+        },
+        sentiment: {
+          analysts: recommendationsData.slice(0, 4).map((r: any) => ({ date: r?.date, action: r?.action, analyst: r?.analyst, target: r?.priceTarget })),
+          insider: insiderData.slice(0, 5).map((t: any) => ({ date: t?.transactionDate, name: t?.reportingName, type: t?.transactionType, shares: t?.securitiesTransacted })),
+          news: newsData.slice(0, 5).map((n: any) => ({ title: (n?.title ?? "").slice(0, 100), date: n?.publishedDate })),
+        },
+      };
+
+      const scoringPrompt = `You are the MAPO Portfolio Analyst v4.0. Score ${sym} using the 6-factor MAPO methodology. REAL financial data is below. Cite specific numbers from the data in your notes. Do not hallucinate metrics.
+
+QUANT SIGNALS ALREADY COMPUTED (mathematical, non-negotiable):
+${signalSummary}
+Confirmed signals: ${quantSignals.compositeCount}/5
+
+REAL DATA:
+${JSON.stringify(dataPackage, null, 2)}
+
+SCORING INSTRUCTIONS:
+- Financial Health (25%): Score actual ROE, ROA, debt ratios, FCF margins, current ratio from data. High ROE >15%, strong FCF, low debt = high score.
+- Valuation (20%): Score actual P/E, P/B, EV/EBITDA vs historical. Value signal confirmed = +3pts. Low valuations vs history = higher score.
+- Growth (20%): Score actual revenue/EPS/FCF growth rates. SUE confirmed = +5pts to base. Revisions confirmed = +4pts to base.
+- Technical (15%): Score price vs MAs, RSI (>70 overbought, <30 oversold), Donchian. Golden Cross = base met. Death Cross = -5pts. Momentum = +5pts. Beta >1.8 = -3pts.
+- Sentiment (10%): Score analyst actions (upgrades vs downgrades), insider buying vs selling, news tone.
+- Macro Fit (10%): AGI thesis alignment. Core AI infra = 85-100. Non-mega semis = 70-95. Defense AI = 75-90. Enterprise AI (real revenue) = 60-85. Neutral = 50-69. Consumer/CRE disruption risk = 20-49. China revenue >30% = -5 to -10pts.
+
+Weighted composite = Financial*0.25 + Valuation*0.20 + Growth*0.20 + Technical*0.15 + Sentiment*0.10 + MacroFit*0.10
+
+Return ONLY valid JSON, no markdown, no backticks, no explanation:
 {
   "ticker": "${sym}",
-  "score": <integer 0-100>,
+  "score": <weighted composite 0-100>,
   "factors": {
-    "financialHealth": <integer 0-100>,
-    "valuation": <integer 0-100>,
-    "growth": <integer 0-100>,
-    "technical": <integer 0-100>,
-    "sentiment": <integer 0-100>,
-    "macroFit": <integer 0-100>
+    "financialHealth": <0-100>,
+    "valuation": <0-100>,
+    "growth": <0-100>,
+    "technical": <0-100>,
+    "sentiment": <0-100>,
+    "macroFit": <0-100>
+  },
+  "factorNotes": {
+    "financialHealth": "<cite specific ROE/ROA/debt numbers>",
+    "valuation": "<cite P/E, EV/EBITDA vs history>",
+    "growth": "<cite revenue/EPS growth rates, SUE/revision adjustments>",
+    "technical": "<MA status, RSI, Donchian, quant adjustments applied>",
+    "sentiment": "<analyst actions, insider activity summary>",
+    "macroFit": "<AGI thesis assessment with specific alignment category>"
   },
   "signal": "<STRONG BUY | BUY | HOLD | AVOID>",
-  "thesis": "<2-3 sentence investment thesis>",
-  "risks": ["<risk 1>", "<risk 2>", "<risk 3>"],
-  "catalysts": ["<catalyst 1>", "<catalyst 2>", "<catalyst 3>"],
-  "entryNote": "<specific entry/action note with price levels if applicable>"
-}
+  "thesis": "<2-3 sentences citing real data points>",
+  "risks": ["<specific risk 1>", "<specific risk 2>", "<specific risk 3>"],
+  "catalysts": ["<specific catalyst 1>", "<specific catalyst 2>", "<specific catalyst 3>"],
+  "entryNote": "<specific entry/action note with price levels>",
+  "rejected": false,
+  "rejectReason": "",
+  "agiAlignment": "<Core Infra | Secondary Beneficiary | Neutral | Disruption Risk | High Disruption>"
+}`;
 
-Factor weights: Financial Health (25%), Valuation (20%), Growth (20%), Technical (15%), Sentiment (10%), Macro Fit (10%).
-Overall score = weighted average of factors.
-Signals: 80-100 = STRONG BUY, 65-79 = BUY, 50-64 = HOLD, <50 = AVOID.
-
-Market context: ${priceCtx}
-
-EXCLUSION LIST (auto score <30): BMNR, UP, MP, CLSK, NBIS, AMD, TE, IREN, IBIT
-
-Return ONLY the JSON object, no markdown, no explanation.`;
-
-      const response = await anthropic.messages.create({
+      const aiResponse = await anthropic.messages.create({
         model: "claude-opus-4-6",
-        max_tokens: 1024,
-        messages: [{ role: "user", content: mapoPrompt }],
+        max_tokens: 2048,
+        messages: [{ role: "user", content: scoringPrompt }],
       });
 
-      const text = response.content[0].type === "text" ? response.content[0].text : "{}";
-      // Extract JSON — strip any accidental markdown
+      const text = aiResponse.content[0].type === "text" ? aiResponse.content[0].text : "{}";
       const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) return res.status(500).json({ error: "Invalid AI response" });
-      const parsed = JSON.parse(jsonMatch[0]);
+      if (!jsonMatch) return res.status(500).json({ error: "Invalid AI response", raw: text.slice(0, 300) });
 
-      res.json({ ...parsed, rawResponse: text });
-    } catch (error) {
+      let parsed: any;
+      try {
+        parsed = JSON.parse(jsonMatch[0]);
+      } catch (e) {
+        return res.status(500).json({ error: "Failed to parse AI response", raw: text.slice(0, 300) });
+      }
+
+      return res.json({
+        ...parsed,
+        quantSignals: { ...quantSignals, signalSummary: signalSummary },
+        dataSource: "fmp+alphavantage+claude",
+        analyzedAt: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
       console.error("MAPO score error:", error);
-      res.status(500).json({ error: "Failed to compute MAPO score" });
+      res.status(500).json({ error: "Failed to compute MAPO score", detail: error.message });
+    }
+  });
+
+  // ====== STOCK SCREENER ======
+  app.post("/api/screen", async (req, res) => {
+    try {
+      const { sector, maxMarketCap, minMarketCap } = req.body;
+      const results = await fmp.screenStocks({
+        marketCapMoreThan: minMarketCap ?? 1_000_000_000,
+        marketCapLessThan: maxMarketCap ?? 50_000_000_000,
+        volumeMoreThan: 500_000,
+        sector,
+      });
+      if (!results || !Array.isArray(results)) return res.json([]);
+      const filtered = (results as any[])
+        .filter((s: any) => !isExcluded(s.symbol).excluded)
+        .slice(0, 50)
+        .map((s: any) => ({
+          ticker: s.symbol,
+          name: s.companyName,
+          sector: s.sector,
+          marketCapB: s.marketCap ? `$${(s.marketCap / 1e9).toFixed(1)}B` : "?",
+          price: s.price,
+          volume: s.volume,
+          beta: s.beta,
+          peRatio: s.pe,
+          change: s.changesPercentage,
+        }));
+      res.json(filtered);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
