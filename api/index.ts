@@ -54,6 +54,12 @@ function initApp(): Promise<void> {
 }
 
 export default async function handler(req: Request, res: Response) {
-  await initApp();
+  try {
+    await initApp();
+  } catch (err: any) {
+    console.error("[api/index] initApp failed:", err?.message, err?.stack);
+    res.status(500).json({ error: "Server initialization failed", detail: err?.message });
+    return;
+  }
   return app(req, res);
 }
