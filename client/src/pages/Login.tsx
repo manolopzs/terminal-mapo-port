@@ -164,12 +164,12 @@ export default function Login({ onSuccess }: LoginProps) {
                 Email
               </label>
               <input
-                type="email"
+                type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoFocus
-                placeholder="user@domain.com"
+                placeholder="Username"
                 style={{
                   width: "100%",
                   background: "#0B0F1A",
