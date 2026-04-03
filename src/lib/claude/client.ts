@@ -1,8 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const anthropic = process.env.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  : null;
 
 export async function callClaude(params: {
   system: string;
@@ -10,6 +10,7 @@ export async function callClaude(params: {
   model?: string;
   maxTokens?: number;
 }): Promise<string> {
+  if (!anthropic) throw new Error("ANTHROPIC_API_KEY not configured");
   const response = await anthropic.messages.create({
     model: params.model ?? "claude-sonnet-4-20250514",
     max_tokens: params.maxTokens ?? 4096,
