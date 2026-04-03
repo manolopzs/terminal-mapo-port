@@ -23,7 +23,7 @@ import { calcMomentum, calcGoldenCross, calcSUE, calcRevisions, calcBeta, calcVa
 import { isExcluded, RULES } from "./lib/constants.js";
 import { isSupabaseEnabled } from "./lib/supabase.js";
 
-const anthropic = new Anthropic();
+const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
 const openai = process.env.OPENAI_API_KEY ? new OpenAI() : null;
 
 type AIModel = "claude" | "gpt" | "gemini";
@@ -321,6 +321,7 @@ RESPONSE INSTRUCTIONS:
 
       if (selectedModel.sdk === "anthropic") {
         // Anthropic Messages API
+        if (!anthropic) throw new Error("ANTHROPIC_API_KEY not configured");
         const response = await anthropic.messages.create({
           model: selectedModel.modelId,
           max_tokens: 1024,
@@ -1051,6 +1052,7 @@ Return ONLY valid JSON, no markdown, no backticks, no explanation:
   "agiAlignment": "<Core Infra | Secondary Beneficiary | Neutral | Disruption Risk | High Disruption>"
 }`;
 
+      if (!anthropic) throw new Error("ANTHROPIC_API_KEY not configured");
       const aiResponse = await anthropic.messages.create({
         model: "claude-opus-4-6",
         max_tokens: 2048,
