@@ -8,12 +8,12 @@ interface CorrelationMatrixProps {
 }
 
 function getCellColor(val: number): string {
-  if (val >= 0.95) return "#00D9FF";
-  if (val >= 0.7) return "rgba(0, 217, 255, 0.55)";
-  if (val >= 0.4) return "rgba(0, 217, 255, 0.28)";
-  if (val >= 0.1) return "rgba(0, 217, 255, 0.12)";
+  if (val >= 0.95) return "var(--color-primary)";
+  if (val >= 0.7) return "rgba(212, 168, 83, 0.55)";
+  if (val >= 0.4) return "rgba(212, 168, 83, 0.28)";
+  if (val >= 0.1) return "rgba(212, 168, 83, 0.12)";
   if (val >= -0.1) return "rgba(255,255,255,0.04)";
-  if (val >= -0.4) return "rgba(255, 68, 88, 0.2)";
+  if (val >= -0.4) return "var(--color-red-a20)";
   return "rgba(255, 68, 88, 0.45)";
 }
 

@@ -7,14 +7,14 @@ interface AssetAllocationProps {
 }
 
 const COLORS = [
-  "#00D9FF", // cyan - Technology
-  "#F0883E", // orange - Crypto
+  "var(--color-primary)", // cyan - Technology
+  "var(--color-orange)", // orange - Crypto
   "#A855F7", // purple - Industrials
-  "#00E6A8", // green - Energy
+  "var(--color-green)", // green - Energy
   "#3B82F6", // blue - Financials
   "#EC4899", // pink - Healthcare
   "#EAB308", // yellow - Consumer Disc.
-  "#FF4458", // red - Utilities
+  "var(--color-red)", // red - Utilities
 ];
 
 export function AssetAllocation({ holdings }: AssetAllocationProps) {

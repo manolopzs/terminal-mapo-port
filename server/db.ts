@@ -10,8 +10,8 @@ import type {
   ChatMessage, InsertChatMessage,
 } from "@shared/schema";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle(pool);
+const pool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL }) : null as any;
+export const db = pool ? drizzle(pool) : null as any;
 
 export class DatabaseStorage implements IStorage {
   async getPortfolios(): Promise<Portfolio[]> {

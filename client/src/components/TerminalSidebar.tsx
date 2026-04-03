@@ -161,9 +161,9 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
               style={{
                 padding: collapsed ? "8px 0" : "8px 12px",
                 justifyContent: collapsed ? "center" : "flex-start",
-                background: isActive ? "rgba(0, 217, 255, 0.07)" : "transparent",
+                background: isActive ? "rgba(212, 168, 83, 0.07)" : "transparent",
                 borderBottom: "1px solid rgba(28, 40, 64, 0.6)",
-                borderLeft: isActive ? "2px solid #00D9FF" : "2px solid transparent",
+                borderLeft: isActive ? "2px solid #D4A853" : "2px solid transparent",
                 cursor: "pointer",
                 position: "relative",
                 transition: "background 0.12s ease",
@@ -181,7 +181,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
                   flex: 1,
                   justifyContent: collapsed ? "center" : "flex-start",
                   padding: 0,
-                  color: isActive ? "#00D9FF" : "#A0AABА",
+                  color: isActive ? "var(--color-primary)" : "#A0AABА",
                 }}
                 data-testid={`portfolio-${p.id}`}
               >
@@ -198,7 +198,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
                         textOverflow: "ellipsis",
                         maxWidth: 115,
                         display: "block",
-                        color: isActive ? "#00D9FF" : "#9AAABB",
+                        color: isActive ? "var(--color-primary)" : "#9AAABB",
                       }}
                     >
                       {p.name}
@@ -232,7 +232,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
                     opacity: 0.5,
                     flexShrink: 0,
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "#FF4458"; e.currentTarget.style.opacity = "1"; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "var(--color-red)"; e.currentTarget.style.opacity = "1"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.color = "#8B949E"; e.currentTarget.style.opacity = "0.5"; }}
                   data-testid={`delete-portfolio-${p.id}`}
                 >
@@ -303,7 +303,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
                   fontSize: 9,
                   fontWeight: 700,
                   padding: "4px 0",
-                  background: "#00D9FF",
+                  background: "var(--color-primary)",
                   color: "#040810",
                   border: "none",
                   borderRadius: 3,
@@ -378,7 +378,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
             fontWeight: 600,
             padding: "5px 0",
             background: "rgba(255, 68, 88, 0.07)",
-            color: "#FF4458",
+            color: "var(--color-red)",
             border: "1px solid rgba(255, 68, 88, 0.18)",
             borderRadius: 3,
             cursor: "pointer",
@@ -407,17 +407,17 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
             fontSize: 9,
             fontWeight: 700,
             padding: "5px 0",
-            background: "rgba(0, 217, 255, 0.09)",
-            color: "#00D9FF",
-            border: "1px solid rgba(0, 217, 255, 0.18)",
+            background: "rgba(212, 168, 83, 0.09)",
+            color: "var(--color-primary)",
+            border: "1px solid rgba(212, 168, 83, 0.18)",
             borderRadius: 3,
             cursor: "pointer",
             letterSpacing: 0.8,
             textTransform: "uppercase",
             transition: "background 0.12s",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0, 217, 255, 0.16)")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0, 217, 255, 0.09)")}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(212, 168, 83, 0.16)")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(212, 168, 83, 0.09)")}
           data-testid="add-position-btn"
         >
           <Plus size={10} />
@@ -449,14 +449,14 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
             borderRadius: 4,
             padding: 24,
             width: 340,
-            boxShadow: "0 0 40px rgba(255,68,88,0.15)",
+            boxShadow: "0 0 40px var(--color-red-a15)",
           }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-            <Trash2 size={13} color="#FF4458" />
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#FF4458", fontFamily: "monospace" }}>
+            <Trash2 size={13} color="var(--color-red)" />
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "var(--color-red)", fontFamily: "monospace" }}>
               Delete Portfolio
             </span>
           </div>
@@ -464,7 +464,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
           {/* Warning text */}
           <div style={{ marginBottom: 6 }}>
             <span style={{ fontSize: 10, color: "#C9D1D9" }}>You are about to permanently delete </span>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "#FF4458", fontFamily: "monospace" }}>"{confirmDelete.name}"</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--color-red)", fontFamily: "monospace" }}>"{confirmDelete.name}"</span>
             <span style={{ fontSize: 10, color: "#C9D1D9" }}>.</span>
           </div>
           <div style={{ fontSize: 9, color: "#8B949E", marginBottom: 20, lineHeight: 1.6 }}>
@@ -474,7 +474,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
           {/* Type to confirm */}
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", fontSize: 10, color: "#8B949E", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace", marginBottom: 6 }}>
-              Type <span style={{ color: "#FF4458" }}>delete</span> to confirm
+              Type <span style={{ color: "var(--color-red)" }}>delete</span> to confirm
             </label>
             <input
               autoFocus
@@ -485,7 +485,7 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
               style={{
                 width: "100%",
                 background: "#070B14",
-                border: `1px solid ${confirmInput.toLowerCase() === "delete" ? "#FF4458" : "#1C2840"}`,
+                border: `1px solid ${confirmInput.toLowerCase() === "delete" ? "var(--color-red)" : "#1C2840"}`,
                 borderRadius: 3,
                 padding: "7px 10px",
                 fontSize: 11,
@@ -529,10 +529,10 @@ export function TerminalSidebar({ activePortfolioId, onSelectPortfolio, onAddPos
                 fontWeight: 700,
                 letterSpacing: 1.5,
                 textTransform: "uppercase",
-                background: confirmInput.toLowerCase() === "delete" ? "rgba(255,68,88,0.15)" : "#0B0F1A",
-                border: `1px solid ${confirmInput.toLowerCase() === "delete" ? "#FF4458" : "#2E3E52"}`,
+                background: confirmInput.toLowerCase() === "delete" ? "var(--color-red-a15)" : "#0B0F1A",
+                border: `1px solid ${confirmInput.toLowerCase() === "delete" ? "var(--color-red)" : "#2E3E52"}`,
                 borderRadius: 3,
-                color: confirmInput.toLowerCase() === "delete" ? "#FF4458" : "#2E3E52",
+                color: confirmInput.toLowerCase() === "delete" ? "var(--color-red)" : "#2E3E52",
                 fontFamily: "monospace",
                 cursor: confirmInput.toLowerCase() === "delete" ? "pointer" : "not-allowed",
                 transition: "all 0.15s",

@@ -77,7 +77,7 @@ export function GainLossTable({ holdings }: GainLossTableProps) {
           </thead>
           <tbody>
             {rows.map((r) => {
-              const color = r.pnl >= 0 ? "#00E6A8" : "#FF4458";
+              const color = r.pnl >= 0 ? "var(--color-green)" : "var(--color-red)";
               return (
                 <tr
                   key={r.ticker}
@@ -87,7 +87,7 @@ export function GainLossTable({ holdings }: GainLossTableProps) {
                     style={{
                       fontSize: 9,
                       fontWeight: 600,
-                      color: "#00D9FF",
+                      color: "var(--color-primary)",
                       padding: "2px 5px",
                       fontFamily: "'JetBrains Mono', monospace",
                     }}
@@ -154,7 +154,7 @@ export function GainLossTable({ holdings }: GainLossTableProps) {
             style={{
               fontSize: 10,
               fontWeight: 700,
-              color: totalPnl >= 0 ? "#00E6A8" : "#FF4458",
+              color: totalPnl >= 0 ? "var(--color-green)" : "var(--color-red)",
             }}
           >
             {totalPnl >= 0 ? "+" : ""}${Math.abs(totalPnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -164,7 +164,7 @@ export function GainLossTable({ holdings }: GainLossTableProps) {
             style={{
               fontSize: 9,
               fontWeight: 600,
-              color: totalPnlPct >= 0 ? "#00E6A8" : "#FF4458",
+              color: totalPnlPct >= 0 ? "var(--color-green)" : "var(--color-red)",
               opacity: 0.8,
             }}
           >

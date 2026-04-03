@@ -28,11 +28,11 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
         <span className="terminal-badge">{holdings.length} POSITIONS</span>
       </div>
       <div className="flex-1 overflow-auto" style={{ padding: 0 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 420 }}>
           <colgroup>
-            <col style={{ width: "28%" }} />
-            <col style={{ width: "18%" }} />
-            <col style={{ width: "10%" }} />
+            <col style={{ width: "30%" }} />
+            <col style={{ width: "17%" }} />
+            <col style={{ width: "9%" }} />
             <col style={{ width: "13%" }} />
             <col style={{ width: "11%" }} />
             <col style={{ width: "11%" }} />
@@ -58,7 +58,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                     color: "#4A5A6E",
                     letterSpacing: 1.3,
                     textTransform: "uppercase",
-                    padding: "5px 5px",
+                    padding: h === "TICKER" ? "6px 6px 6px 10px" : "6px 6px",
                     textAlign: h === "TICKER" ? "left" : "right",
                     fontFamily: "'Inter', system-ui, sans-serif",
                   }}
@@ -72,9 +72,9 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
             {sorted.map((h) => {
               const alloc = totalValue > 0 ? ((h.value ?? 0) / totalValue) * 100 : 0;
               const chgPct = h.dayChangePct ?? 0;
-              const chgColor = chgPct > 0 ? "#00E6A8" : chgPct < 0 ? "#FF4458" : "#8B949E";
+              const chgColor = chgPct > 0 ? "var(--color-green)" : chgPct < 0 ? "var(--color-red)" : "#8B949E";
               const pnlPct = h.gainLossPct ?? 0;
-              const pnlColor = pnlPct >= 0 ? "#00E6A8" : "#FF4458";
+              const pnlColor = pnlPct >= 0 ? "var(--color-green)" : "var(--color-red)";
               const avgCost = (h.quantity ?? 0) > 0 ? (h.costBasis ?? 0) / (h.quantity ?? 1) : 0;
               const shortName = h.name.length > 15 ? h.name.slice(0, 15) + "…" : h.name;
               return (
@@ -85,16 +85,16 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                     borderBottom: "1px solid rgba(28, 40, 64, 0.5)",
                     transition: "background 0.1s",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,217,255,0.025)")}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-primary-a03)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 >
                   {/* TICKER + name */}
-                  <td style={{ padding: "4px 5px" }}>
+                  <td style={{ padding: "6px 6px 6px 10px" }}>
                     <div
                       style={{
                         fontSize: 11,
                         fontWeight: 700,
-                        color: "#00D9FF",
+                        color: "var(--color-primary)",
                         fontFamily: "'JetBrains Mono', monospace",
                         lineHeight: 1.15,
                         letterSpacing: 0.5,
@@ -118,7 +118,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                   </td>
 
                   {/* VALUE + avg cost */}
-                  <td style={{ padding: "4px 5px", textAlign: "right" }}>
+                  <td style={{ padding: "6px 6px", textAlign: "right" }}>
                     <div
                       className="font-mono tabular-nums"
                       style={{
@@ -146,7 +146,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                   {/* QTY */}
                   <td
                     className="font-mono tabular-nums"
-                    style={{ fontSize: 10, color: "#6A7A8E", padding: "4px 5px", textAlign: "right" }}
+                    style={{ fontSize: 10, color: "#6A7A8E", padding: "6px 6px", textAlign: "right" }}
                   >
                     {(h.quantity ?? 0) < 1
                       ? (h.quantity ?? 0).toFixed(3)
@@ -158,7 +158,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                   {/* PRICE */}
                   <td
                     className="font-mono tabular-nums"
-                    style={{ fontSize: 10, color: "#C9D1D9", padding: "4px 5px", textAlign: "right" }}
+                    style={{ fontSize: 10, color: "#C9D1D9", padding: "6px 6px", textAlign: "right" }}
                   >
                     ${(h.price ?? 0).toFixed(2)}
                   </td>
@@ -169,7 +169,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                     style={{
                       fontSize: 10,
                       color: chgColor,
-                      padding: "4px 5px",
+                      padding: "6px 6px",
                       textAlign: "right",
                       fontWeight: 600,
                     }}
@@ -185,7 +185,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                       fontSize: 10,
                       fontWeight: 700,
                       color: pnlColor,
-                      padding: "4px 5px",
+                      padding: "6px 6px",
                       textAlign: "right",
                     }}
                   >
@@ -194,7 +194,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                   </td>
 
                   {/* ALLOC% with mini bar */}
-                  <td style={{ padding: "4px 5px", textAlign: "right" }}>
+                  <td style={{ padding: "6px 6px", textAlign: "right" }}>
                     <div
                       className="font-mono tabular-nums"
                       style={{ fontSize: 9, color: "#5A6B80", lineHeight: 1.15 }}
@@ -216,9 +216,9 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                           width: `${Math.min(alloc * 4, 100)}%`,
                           background:
                             alloc > 25
-                              ? "#F0883E"
+                              ? "var(--color-orange)"
                               : alloc > 15
-                                ? "#00D9FF"
+                                ? "var(--color-primary)"
                                 : "#3A5A7C",
                           borderRadius: 1,
                           transition: "width 0.4s ease",
@@ -228,7 +228,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                   </td>
 
                   {/* DELETE */}
-                  <td style={{ padding: "4px 3px", textAlign: "right" }}>
+                  <td style={{ padding: "6px 4px", textAlign: "right" }}>
                     <button
                       onClick={() => deleteHolding.mutate(h.id)}
                       disabled={deleteHolding.isPending}
@@ -245,7 +245,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.opacity = "1";
-                        e.currentTarget.style.color = "#FF4458";
+                        e.currentTarget.style.color = "var(--color-red)";
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.opacity = "0.25";
@@ -293,7 +293,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
               style={{
                 fontSize: 12,
                 fontWeight: 700,
-                color: totals.pnl >= 0 ? "#00E6A8" : "#FF4458",
+                color: totals.pnl >= 0 ? "var(--color-green)" : "var(--color-red)",
               }}
             >
               {totals.pnl >= 0 ? "+" : ""}$
@@ -307,7 +307,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
               style={{
                 fontSize: 10,
                 fontWeight: 600,
-                color: totals.pnlPct >= 0 ? "#00E6A8" : "#FF4458",
+                color: totals.pnlPct >= 0 ? "var(--color-green)" : "var(--color-red)",
                 opacity: 0.8,
               }}
             >
@@ -332,7 +332,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
               style={{
                 fontSize: 10,
                 fontWeight: 600,
-                color: totals.totalDayChg >= 0 ? "#00E6A8" : "#FF4458",
+                color: totals.totalDayChg >= 0 ? "var(--color-green)" : "var(--color-red)",
               }}
             >
               {totals.totalDayChg >= 0 ? "+" : ""}$

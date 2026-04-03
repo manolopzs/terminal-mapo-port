@@ -33,12 +33,12 @@ export function TradeHistory({ portfolioId }: { portfolioId: string }) {
         </span>
         <div className="flex items-center gap-3">
           {hasPnl && (
-            <span className="font-mono tabular-nums" style={{ fontSize: 9, fontWeight: 700, color: totalRealizedPnl >= 0 ? "#00E6A8" : "#FF4458" }}>
+            <span className="font-mono tabular-nums" style={{ fontSize: 9, fontWeight: 700, color: totalRealizedPnl >= 0 ? "var(--color-green)" : "var(--color-red)" }}>
               {totalRealizedPnl >= 0 ? "+" : ""}${totalRealizedPnl.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           )}
           {winRate !== null && (
-            <span style={{ fontSize: 9, color: winRate >= 50 ? "#00E6A8" : "#FF4458" }}>
+            <span style={{ fontSize: 9, color: winRate >= 50 ? "var(--color-green)" : "var(--color-red)" }}>
               {winRate}% win
             </span>
           )}
@@ -99,8 +99,8 @@ export function TradeHistory({ portfolioId }: { portfolioId: string }) {
 
 function TradeRow({ trade }: { trade: Trade }) {
   const isBuy = trade.action === "BUY";
-  const actionColor = isBuy ? "#00E6A8" : "#FF4458";
-  const pnlColor = trade.pnl != null ? (trade.pnl >= 0 ? "#00E6A8" : "#FF4458") : "#4A5A6E";
+  const actionColor = isBuy ? "var(--color-green)" : "var(--color-red)";
+  const pnlColor = trade.pnl != null ? (trade.pnl >= 0 ? "var(--color-green)" : "var(--color-red)") : "#4A5A6E";
 
   return (
     <tr

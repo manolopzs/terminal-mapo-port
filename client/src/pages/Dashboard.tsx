@@ -3,13 +3,15 @@ import { Header } from "@/components/Header";
 import { TickerTape } from "@/components/TickerTape";
 import { HoldingsTable } from "@/components/HoldingsTable";
 import { PerformanceChart } from "@/components/PerformanceChart";
-import { RiskAnalysis } from "@/components/RiskAnalysis";
+import { MarketPulse } from "@/components/MarketPulse";
 import { SectorAllocation } from "@/components/SectorAllocation";
 import { EarningsCalendar } from "@/components/EarningsCalendar";
 import { PositionAttribution } from "@/components/PositionAttribution";
 import { TopMovers } from "@/components/TopMovers";
 import { NewsTicker } from "@/components/NewsTicker";
-import { TerminalSidebar } from "@/components/TerminalSidebar";
+import { AgentConsole } from "@/components/AgentConsole";
+import { SettingsTab } from "@/pages/SettingsTab";
+import { NavRail } from "@/components/NavRail";
 import { TradeHistory } from "@/components/TradeHistory";
 import { AIAnalyst } from "@/components/AIAnalyst";
 import { AddPositionDialog } from "@/components/AddPositionDialog";
@@ -33,7 +35,7 @@ import { queryClient } from "@/lib/queryClient";
 import { Loader2, Bot, LogOut, Plus, ArrowRightLeft, BarChart2, Globe, Search, Star, RefreshCw, BookOpen } from "lucide-react";
 import { logout } from "@/lib/auth";
 
-type TabId = "PORTFOLIO" | "MARKET" | "SCREENER" | "MAPO" | "REBALANCE" | "JOURNAL" | "TRADES";
+type TabId = "PORTFOLIO" | "MARKET" | "SCREENER" | "MAPO" | "REBALANCE" | "JOURNAL" | "TRADES" | "SETTINGS";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "PORTFOLIO", label: "PORTFOLIO" },
@@ -43,6 +45,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "REBALANCE", label: "REBALANCE" },
   { id: "TRADES", label: "TRADE LOG" },
   { id: "JOURNAL", label: "JOURNAL" },
+  { id: "SETTINGS", label: "SETTINGS" },
 ];
 
 export default function Dashboard() {
@@ -131,7 +134,7 @@ export default function Dashboard() {
         style={{ background: "#040810" }}
       >
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-7 w-7 animate-spin" style={{ color: "#00D9FF", opacity: 0.8 }} />
+          <Loader2 className="h-7 w-7 animate-spin" style={{ color: "var(--color-primary)", opacity: 0.8 }} />
           <span
             style={{
               fontSize: 10,
@@ -190,7 +193,7 @@ export default function Dashboard() {
               <div
                 style={{
                   width: 26, height: 26, borderRadius: 4,
-                  background: "linear-gradient(135deg, #00D9FF 0%, #0088CC 100%)",
+                  background: "linear-gradient(135deg, #D4A853 0%, #0088CC 100%)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 9, fontWeight: 700, color: "#040810",
                   fontFamily: "'JetBrains Mono', monospace", letterSpacing: 1,
@@ -208,15 +211,15 @@ export default function Dashboard() {
                 ${totalValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end", marginTop: 2 }}>
-                <span className="font-mono" style={{ fontSize: 11, fontWeight: 600, color: (summary?.dayChange ?? 0) >= 0 ? "#00E6A8" : "#FF4458" }}>
+                <span className="font-mono" style={{ fontSize: 11, fontWeight: 600, color: (summary?.dayChange ?? 0) >= 0 ? "var(--color-green)" : "var(--color-red)" }}>
                   {(summary?.dayChange ?? 0) >= 0 ? "+" : ""}${Math.abs(summary?.dayChange ?? 0).toFixed(2)} today
                 </span>
                 <span
                   style={{
                     fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 3,
-                    background: (liveSentiment?.marketStatus === "open") ? "rgba(0,230,168,0.1)" : "rgba(255,68,88,0.1)",
-                    color: (liveSentiment?.marketStatus === "open") ? "#00E6A8" : "#FF4458",
-                    border: `1px solid ${(liveSentiment?.marketStatus === "open") ? "rgba(0,230,168,0.2)" : "rgba(255,68,88,0.2)"}`,
+                    background: (liveSentiment?.marketStatus === "open") ? "rgba(0,230,168,0.1)" : "var(--color-red-a10)",
+                    color: (liveSentiment?.marketStatus === "open") ? "var(--color-green)" : "var(--color-red)",
+                    border: `1px solid ${(liveSentiment?.marketStatus === "open") ? "rgba(0,230,168,0.2)" : "var(--color-red-a20)"}`,
                   }}
                 >
                   MKT {(liveSentiment?.marketStatus === "open") ? "OPEN" : "CLOSED"}
@@ -228,10 +231,10 @@ export default function Dashboard() {
           {/* Portfolio P/L row */}
           <div style={{ display: "flex", gap: 16, marginTop: 10 }}>
             {[
-              { label: "TOTAL P/L", value: `${(summary?.totalGainLossPct ?? 0) >= 0 ? "+" : ""}${(summary?.totalGainLossPct ?? 0).toFixed(2)}%`, color: (summary?.totalGainLossPct ?? 0) >= 0 ? "#00E6A8" : "#FF4458" },
+              { label: "TOTAL P/L", value: `${(summary?.totalGainLossPct ?? 0) >= 0 ? "+" : ""}${(summary?.totalGainLossPct ?? 0).toFixed(2)}%`, color: (summary?.totalGainLossPct ?? 0) >= 0 ? "var(--color-green)" : "var(--color-red)" },
               { label: "POSITIONS", value: String(summary?.holdingsCount ?? 0), color: "#8B949E" },
               { label: "CASH", value: `$${(summary?.cash ?? 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}`, color: "#8B949E" },
-              { label: "SENTIMENT", value: liveSentiment?.sentiment ?? "—", color: liveSentiment?.sentiment === "BULLISH" ? "#00E6A8" : liveSentiment?.sentiment === "BEARISH" ? "#FF4458" : "#F0883E" },
+              { label: "SENTIMENT", value: liveSentiment?.sentiment ?? "—", color: liveSentiment?.sentiment === "BULLISH" ? "var(--color-green)" : liveSentiment?.sentiment === "BEARISH" ? "var(--color-red)" : "var(--color-orange)" },
             ].map((s) => (
               <div key={s.label}>
                 <div style={{ fontSize: 8, color: "#4A5A6E", letterSpacing: 1, textTransform: "uppercase" }}>{s.label}</div>
@@ -265,10 +268,10 @@ export default function Dashboard() {
                 style={{
                   display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                   padding: "8px 16px", gap: 3, flexShrink: 0,
-                  background: active ? "rgba(0,217,255,0.06)" : "transparent",
+                  background: active ? "var(--color-primary-a06)" : "transparent",
                   border: "none",
-                  borderBottom: active ? "2px solid #00D9FF" : "2px solid transparent",
-                  color: active ? "#00D9FF" : "#5A6B80",
+                  borderBottom: active ? "2px solid #D4A853" : "2px solid transparent",
+                  color: active ? "var(--color-primary)" : "#5A6B80",
                   cursor: "pointer",
                   minWidth: 64,
                 }}
@@ -323,17 +326,17 @@ export default function Dashboard() {
           )}
           {activeTab === "SCREENER" && (
             <div style={{ minHeight: 500 }}>
-              <ScreenPage />
+              <ScreenerTab />
             </div>
           )}
           {activeTab === "MAPO" && (
             <div style={{ minHeight: 500 }}>
-              <AnalyzePage />
+              <MAPOScoreTab />
             </div>
           )}
           {activeTab === "REBALANCE" && (
             <div style={{ minHeight: 500 }}>
-              <RebalancePage />
+              <RebalanceTab portfolioId={activePortfolioId} />
             </div>
           )}
           {activeTab === "TRADES" && (
@@ -368,8 +371,8 @@ export default function Dashboard() {
             onClick={() => setAddPositionOpen(true)}
             style={{
               flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              padding: "10px", borderRadius: 6, border: "1px solid rgba(0,217,255,0.25)",
-              background: "rgba(0,217,255,0.08)", color: "#00D9FF",
+              padding: "10px", borderRadius: 6, border: "1px solid var(--color-primary-a25)",
+              background: "var(--color-primary-a08)", color: "var(--color-primary)",
               fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: "pointer",
             }}
           >
@@ -380,8 +383,8 @@ export default function Dashboard() {
             onClick={() => setLogTradeOpen(true)}
             style={{
               flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              padding: "10px", borderRadius: 6, border: "1px solid rgba(255,68,88,0.2)",
-              background: "rgba(255,68,88,0.07)", color: "#FF4458",
+              padding: "10px", borderRadius: 6, border: "1px solid var(--color-red-a20)",
+              background: "rgba(255,68,88,0.07)", color: "var(--color-red)",
               fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: "pointer",
             }}
           >
@@ -393,9 +396,9 @@ export default function Dashboard() {
             style={{
               flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               padding: "10px", borderRadius: 6, border: "none",
-              background: "linear-gradient(135deg, #00C4E8 0%, #0055DD 100%)", color: "#fff",
+              background: "linear-gradient(135deg, #C49B3C 0%, #8B6420 100%)", color: "#fff",
               fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: "pointer",
-              boxShadow: "0 2px 12px rgba(0,180,255,0.25)",
+              boxShadow: "0 2px 12px var(--color-primary-a25)",
             }}
           >
             <Bot size={13} />
@@ -418,14 +421,6 @@ export default function Dashboard() {
       className="h-screen w-screen flex overflow-hidden"
       style={{ background: "#080C14" }}
     >
-      {/* Sidebar */}
-      <TerminalSidebar
-        activePortfolioId={activePortfolioId}
-        onSelectPortfolio={setActivePortfolioId}
-        onAddPosition={() => setAddPositionOpen(true)}
-        onLogTrade={() => setLogTradeOpen(true)}
-      />
-
       {/* Main terminal area */}
       <div className="flex-1 flex flex-col overflow-hidden" style={{ minWidth: 0 }}>
         {/* Header bar */}
@@ -433,6 +428,23 @@ export default function Dashboard() {
 
         {/* Markets ticker tape */}
         <TickerTape />
+
+        {/* Body: nav rail + content side by side */}
+        <div className="flex flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+
+        {/* Vertical nav rail */}
+        <NavRail
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          activePortfolioId={activePortfolioId}
+          onSelectPortfolio={setActivePortfolioId}
+          onAddPosition={() => setAddPositionOpen(true)}
+          onLogTrade={() => setLogTradeOpen(true)}
+          onBriefing={() => setBriefingOpen(true)}
+        />
+
+        {/* Content column */}
+        <div className="flex-1 flex flex-col overflow-hidden" style={{ minWidth: 0 }}>
 
         {/* Portfolio stats bar — always visible */}
         {activePortfolioId && (
@@ -467,14 +479,14 @@ export default function Dashboard() {
                 label: "β",
                 value: analytics?.beta != null ? analytics.beta.toFixed(2) : "—",
                 color: analytics?.beta != null
-                  ? analytics.beta > 1.3 ? "#F0883E" : analytics.beta < 0.7 ? "#A371F7" : "#8B949E"
+                  ? analytics.beta > 1.3 ? "var(--color-orange)" : analytics.beta < 0.7 ? "#A371F7" : "#8B949E"
                   : "#3A4A5C",
               },
               {
                 label: "SHARPE",
                 value: analytics?.sharpe != null ? analytics.sharpe.toFixed(2) : "—",
                 color: analytics?.sharpe != null
-                  ? analytics.sharpe >= 1.5 ? "#00E6A8" : analytics.sharpe >= 0.5 ? "#8B949E" : "#FF4458"
+                  ? analytics.sharpe >= 1.5 ? "var(--color-green)" : analytics.sharpe >= 0.5 ? "#8B949E" : "var(--color-red)"
                   : "#3A4A5C",
               },
               {
@@ -486,7 +498,7 @@ export default function Dashboard() {
                 label: "MAX DD",
                 value: analytics?.maxDrawdown != null ? `${analytics.maxDrawdown.toFixed(1)}%` : "—",
                 color: analytics?.maxDrawdown != null
-                  ? analytics.maxDrawdown < -20 ? "#FF4458" : analytics.maxDrawdown < -10 ? "#F0883E" : "#8B949E"
+                  ? analytics.maxDrawdown < -20 ? "var(--color-red)" : analytics.maxDrawdown < -10 ? "var(--color-orange)" : "#8B949E"
                   : "#3A4A5C",
               },
               {
@@ -499,14 +511,14 @@ export default function Dashboard() {
                 value: summary?.bestPerformer
                   ? `${summary.bestPerformer.ticker} +${summary.bestPerformer.gainLossPct.toFixed(1)}%`
                   : "—",
-                color: "#00E6A8",
+                color: "var(--color-green)",
               },
               {
                 label: "WORST",
                 value: summary?.worstPerformer
                   ? `${summary.worstPerformer.ticker} ${summary.worstPerformer.gainLossPct.toFixed(1)}%`
                   : "—",
-                color: "#FF4458",
+                color: "var(--color-red)",
               },
             ].map((stat, i) => (
               <div
@@ -558,102 +570,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Bloomberg-style tab bar */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "stretch",
-            borderBottom: "1px solid #1C2840",
-            background: "#070B14",
-            flexShrink: 0,
-          }}
-        >
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                padding: "9px 20px",
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: 1.8,
-                textTransform: "uppercase",
-                fontFamily: "'Inter', system-ui, sans-serif",
-                background: activeTab === tab.id ? "rgba(0, 217, 255, 0.05)" : "transparent",
-                border: "none",
-                borderBottom: activeTab === tab.id ? "2px solid #00D9FF" : "2px solid transparent",
-                borderTop: "2px solid transparent",
-                color: activeTab === tab.id ? "#00D9FF" : "#5A6B80",
-                cursor: "pointer",
-                transition: "all 0.15s",
-                marginBottom: -1,
-              }}
-              onMouseEnter={(e) => {
-                if (activeTab !== tab.id) {
-                  e.currentTarget.style.color = "#8B9AAB";
-                  e.currentTarget.style.background = "rgba(255,255,255,0.02)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (activeTab !== tab.id) {
-                  e.currentTarget.style.color = "#5A6B80";
-                  e.currentTarget.style.background = "transparent";
-                }
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-          {/* Spacer + briefing + logout */}
-          <div style={{ flex: 1 }} />
-          <button
-            onClick={() => setBriefingOpen(true)}
-            style={{
-              padding: "8px 16px",
-              fontSize: 10,
-              letterSpacing: 1.2,
-              textTransform: "uppercase",
-              fontFamily: "'Inter', system-ui, sans-serif",
-              background: "transparent",
-              border: "none",
-              color: "#3A4A5C",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              transition: "color 0.15s",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#00D9FF")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "#3A4A5C")}
-          >
-            <BookOpen size={10} />
-            Briefing
-          </button>
-          <button
-            onClick={() => { logout(); window.location.reload(); }}
-            style={{
-              padding: "8px 16px",
-              fontSize: 10,
-              letterSpacing: 1.2,
-              textTransform: "uppercase",
-              fontFamily: "'Inter', system-ui, sans-serif",
-              background: "transparent",
-              border: "none",
-              color: "#3A4A5C",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              transition: "color 0.15s",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#FF4458")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "#3A4A5C")}
-          >
-            <LogOut size={10} />
-            Logout
-          </button>
-        </div>
-
         {/* Tab content */}
         {activeTab === "MARKET" && (
           <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
@@ -669,17 +585,17 @@ export default function Dashboard() {
         )}
         {activeTab === "SCREENER" && (
           <div className="flex-1 overflow-auto" style={{ minHeight: 0 }}>
-            <ScreenPage />
+            <ScreenerTab />
           </div>
         )}
         {activeTab === "MAPO" && (
           <div className="flex-1 overflow-auto" style={{ minHeight: 0 }}>
-            <AnalyzePage />
+            <MAPOScoreTab />
           </div>
         )}
         {activeTab === "REBALANCE" && (
           <div className="flex-1 overflow-auto" style={{ minHeight: 0 }}>
-            <RebalancePage />
+            <RebalanceTab portfolioId={activePortfolioId} />
           </div>
         )}
         {activeTab === "TRADES" && (
@@ -693,21 +609,27 @@ export default function Dashboard() {
           </div>
         )}
 
+        {activeTab === "SETTINGS" && (
+          <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+            <SettingsTab />
+          </div>
+        )}
+
         {/* Portfolio tab — 3-column × 2-row, 6 panels */}
         <div
           className="flex-1 overflow-hidden"
           style={{
             display: activeTab === "PORTFOLIO" ? "grid" : "none",
-            gridTemplateColumns: "1fr 1.7fr 1fr",
+            gridTemplateColumns: "1.4fr 1.8fr 1.2fr",
             gridTemplateRows: "1fr 1fr",
             gap: 0,
             minHeight: 0,
             background: "#0A0E1A",
           }}
         >
-          {/* Row 1, Col 1: Holdings */}
-          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", borderBottom: "1px solid #1C2840", overflow: "auto" }}>
-            <HoldingsTable holdings={holdingsData} totalValue={totalValue} />
+          {/* Row 1, Col 1: Position Attribution */}
+          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", borderBottom: "1px solid #1C2840", overflow: "hidden" }}>
+            <PositionAttribution holdings={holdingsData} totalValue={totalValue} />
           </div>
 
           {/* Row 1, Col 2: Performance Chart */}
@@ -715,30 +637,35 @@ export default function Dashboard() {
             <PerformanceChart portfolioId={activePortfolioId} />
           </div>
 
-          {/* Row 1, Col 3: Sector Allocation */}
-          <div className="flex flex-col" style={{ borderBottom: "1px solid #1C2840", overflow: "hidden" }}>
-            <SectorAllocation holdings={holdingsData} totalValue={totalValue} />
-          </div>
-
-          {/* Row 2, Col 1: Position Attribution */}
-          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", overflow: "hidden" }}>
-            <PositionAttribution holdings={holdingsData} totalValue={totalValue} />
-          </div>
-
-          {/* Row 2, Col 2: Risk Analysis */}
-          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", overflow: "auto" }}>
-            <RiskAnalysis holdings={holdingsData} analytics={analytics} />
-          </div>
-
-          {/* Row 2, Col 3: Earnings Calendar */}
-          <div className="flex flex-col" style={{ overflow: "auto" }}>
+          {/* Row 1, Col 3: Earnings Calendar */}
+          <div className="flex flex-col" style={{ borderBottom: "1px solid #1C2840", overflow: "auto" }}>
             <EarningsCalendar holdings={holdingsData} liveEarnings={liveEarnings} />
+          </div>
+
+          {/* Row 2, Col 1: Market Pulse */}
+          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", overflow: "hidden" }}>
+            <MarketPulse />
+          </div>
+
+          {/* Row 2, Col 2: Holdings */}
+          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", overflow: "auto" }}>
+            <HoldingsTable holdings={holdingsData} totalValue={totalValue} />
+          </div>
+
+          {/* Row 2, Col 3: Sector Allocation */}
+          <div className="flex flex-col" style={{ overflow: "hidden" }}>
+            <SectorAllocation holdings={holdingsData} totalValue={totalValue} />
           </div>
         </div>
 
+        {/* Agent Operations Console — persistent above news ticker */}
+        <AgentConsole />
+
         {/* News ticker at bottom — only on portfolio tab */}
         {activeTab === "PORTFOLIO" && <NewsTicker holdings={holdingsData} liveNews={liveNews} />}
-      </div>
+        </div>{/* end content column */}
+        </div>{/* end body row (nav + content) */}
+      </div>{/* end main terminal area */}
 
       {/* AI Analyst FAB */}
       <button
@@ -750,11 +677,11 @@ export default function Dashboard() {
           width: 46,
           height: 46,
           borderRadius: 12,
-          background: "linear-gradient(135deg, #00C4E8 0%, #0055DD 100%)",
+          background: "linear-gradient(135deg, #C49B3C 0%, #8B6420 100%)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          boxShadow: "0 4px 24px rgba(0,180,255,0.3), 0 0 0 1px rgba(0,217,255,0.15)",
+          boxShadow: "0 4px 24px var(--color-primary-a30), 0 0 0 1px var(--color-primary-a15)",
           border: "none",
           cursor: "pointer",
           zIndex: 90,
@@ -766,13 +693,13 @@ export default function Dashboard() {
         onMouseEnter={(e) => {
           if (!analystOpen) {
             e.currentTarget.style.transform = "scale(1.1)";
-            e.currentTarget.style.boxShadow = "0 6px 28px rgba(0,180,255,0.45), 0 0 0 1px rgba(0,217,255,0.25)";
+            e.currentTarget.style.boxShadow = "0 6px 28px rgba(212,168,83,0.45), 0 0 0 1px var(--color-primary-a25)";
           }
         }}
         onMouseLeave={(e) => {
           if (!analystOpen) {
             e.currentTarget.style.transform = "scale(1)";
-            e.currentTarget.style.boxShadow = "0 4px 24px rgba(0,180,255,0.3), 0 0 0 1px rgba(0,217,255,0.15)";
+            e.currentTarget.style.boxShadow = "0 4px 24px var(--color-primary-a30), 0 0 0 1px var(--color-primary-a15)";
           }
         }}
         data-testid="button-open-analyst"
@@ -1030,7 +957,7 @@ function AddPositionDialogControlled({
             type="submit"
             className="w-full"
             style={{
-              background: "#00D9FF",
+              background: "var(--color-primary)",
               color: "#080C14",
               fontWeight: 700,
               fontSize: 10,

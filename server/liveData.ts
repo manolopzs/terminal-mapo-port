@@ -227,6 +227,103 @@ export async function fetchMarketSentiment(): Promise<MarketSentiment> {
   });
 }
 
+export interface MarketPulseData {
+  indices: Array<{ symbol: string; label: string; price: number; changePct: number }>;
+  sentiment: {
+    score: number;        // 0–100 (0=Extreme Fear, 100=Extreme Greed)
+    label: string;        // "Extreme Fear" | "Fear" | "Neutral" | "Greed" | "Extreme Greed"
+    bullPct: number;
+    bearPct: number;
+    neutPct: number;
+  };
+  context: string;
+  marketStatus: string;
+}
+
+export async function fetchMarketPulse(): Promise<MarketPulseData> {
+  return cachedAsync("market-pulse", 300_000, async () => {
+    const SYMBOLS = ["SPY", "QQQ", "IWM", "VIX", "GLD", "TLT"];
+    const LABELS: Record<string, string> = {
+      SPY: "S&P 500", QQQ: "NASDAQ", IWM: "Russell 2K", VIX: "VIX", GLD: "Gold", TLT: "20Y Bond",
+    };
+
+    // Fetch index quotes + market status + CNN Fear & Greed in parallel
+    const [quotesRes, statusRes, fgRes] = await Promise.allSettled([
+      Promise.all(SYMBOLS.map(s => finnhub(`/quote?symbol=${s}`))),
+      finnhub("/stock/market-status?exchange=US"),
+      fetch("https://production.dataviz.cnn.io/index/fearandgreed/graphdata", {
+        headers: { "User-Agent": "Mozilla/5.0" },
+        signal: AbortSignal.timeout(5000),
+      }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+
+    // Build index rows
+    const rawQuotes = quotesRes.status === "fulfilled" ? quotesRes.value : [];
+    const indices = SYMBOLS.map((sym, i) => {
+      const q = rawQuotes[i];
+      return {
+        symbol: sym,
+        label: LABELS[sym],
+        price: q?.c ?? 0,
+        changePct: q?.dp ?? 0,
+      };
+    });
+
+    const marketStatus = statusRes.status === "fulfilled"
+      ? (statusRes.value?.isOpen ? "open" : "closed")
+      : "unknown";
+
+    // CNN Fear & Greed score (0-100)
+    let fgScore: number | null = null;
+    if (fgRes.status === "fulfilled" && fgRes.value) {
+      fgScore = fgRes.value?.fear_and_greed?.score ?? null;
+    }
+
+    // Fallback: derive score from VIX + SPY change
+    if (fgScore === null) {
+      const vixPct = rawQuotes[3]?.c ?? 20; // VIX current
+      const spyDp = rawQuotes[0]?.dp ?? 0;
+      // VIX 10 → score 90 (greed), VIX 40 → score 10 (fear)
+      const vixScore = Math.max(10, Math.min(90, 90 - (vixPct - 10) * 2.67));
+      // SPY trend nudge: ±0.5% day change shifts score ±10
+      const trendNudge = Math.min(15, Math.max(-15, spyDp * 10));
+      fgScore = Math.round(Math.max(0, Math.min(100, vixScore + trendNudge)));
+    }
+
+    const score = fgScore;
+    let label: string;
+    if (score >= 75) label = "Extreme Greed";
+    else if (score >= 55) label = "Greed";
+    else if (score >= 45) label = "Neutral";
+    else if (score >= 25) label = "Fear";
+    else label = "Extreme Fear";
+
+    // Retail sentiment bar: map score to bull/bear/neut distribution
+    // Score 100 → 65% bull, 10% bear, 25% neut
+    // Score 0   → 15% bull, 60% bear, 25% neut
+    const bullPct = Math.round(15 + (score / 100) * 50);
+    const bearPct = Math.round(60 - (score / 100) * 50);
+    const neutPct = 100 - bullPct - bearPct;
+
+    // Context line
+    const spyDp = rawQuotes[0]?.dp ?? 0;
+    const vixVal = rawQuotes[3]?.c ?? 0;
+    const bondDp = rawQuotes[5]?.dp ?? 0;
+    let context = "";
+    if (vixVal > 30) context = "High volatility regime — elevated tail risk";
+    else if (vixVal > 20) context = "Elevated uncertainty, risk-off posture";
+    else if (score >= 75) context = "Retail optimism stretched — watch for reversal";
+    else if (score <= 25) context = "Fear-driven selling, potential contrarian entry";
+    else if (spyDp > 1 && bondDp < -0.5) context = "Risk-on rotation: equities bid, bonds sold";
+    else if (spyDp < -1 && bondDp > 0.5) context = "Flight to safety — classic risk-off";
+    else if (spyDp > 0.5) context = "Broad market advancing with low volatility";
+    else if (spyDp < -0.5) context = "Broad market under pressure";
+    else context = "Consolidation — low conviction tape";
+
+    return { indices, sentiment: { score, label, bullPct, bearPct, neutPct }, context, marketStatus };
+  });
+}
+
 export async function fetchPortfolioNews(
   rawTickers: string[]
 ): Promise<Array<{ ticker: string; headline: string; time: string; source: string }>> {

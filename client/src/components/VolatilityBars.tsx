@@ -42,10 +42,10 @@ export function VolatilityBars({ holdings, volatilityData }: VolatilityBarsProps
       <div className="flex-1 overflow-auto" style={{ padding: "4px 8px" }}>
         {volData.map((d) => {
           const pct = (d.vol / maxVol) * 100;
-          const color = d.vol > 60 ? "#FF4458" : d.vol > 35 ? "#F0883E" : "#00D9FF";
+          const color = d.vol > 60 ? "var(--color-red)" : d.vol > 35 ? "var(--color-orange)" : "var(--color-primary)";
           return (
             <div key={d.ticker} className="flex items-center gap-2" style={{ marginBottom: 2, height: 16 }}>
-              <span className="font-mono" style={{ fontSize: 10, fontWeight: 600, color: "#00D9FF", width: 36, textAlign: "right", flexShrink: 0 }}>
+              <span className="font-mono" style={{ fontSize: 10, fontWeight: 600, color: "var(--color-primary)", width: 36, textAlign: "right", flexShrink: 0 }}>
                 {d.ticker}
               </span>
               <div style={{ flex: 1, height: 8, background: "#1C2840", borderRadius: 1 }}>

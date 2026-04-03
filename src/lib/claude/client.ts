@@ -12,7 +12,7 @@ export async function callClaude(params: {
 }): Promise<string> {
   if (!anthropic) throw new Error("ANTHROPIC_API_KEY not configured");
   const response = await anthropic.messages.create({
-    model: params.model ?? "claude-sonnet-4-20250514",
+    model: params.model ?? "claude-sonnet-4-6",
     max_tokens: params.maxTokens ?? 4096,
     system: params.system,
     messages: [{ role: "user", content: params.prompt }],
@@ -29,7 +29,7 @@ export async function callClaudeDeep(system: string, prompt: string): Promise<st
   return callClaude({
     system,
     prompt,
-    model: "claude-opus-4-20250514",
+    model: "claude-opus-4-6",
     maxTokens: 8192,
   });
 }

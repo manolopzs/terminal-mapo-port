@@ -77,8 +77,8 @@ export function TickerTape() {
       <div
         className="flex-shrink-0 flex items-center justify-center"
         style={{
-          background: "rgba(0, 217, 255, 0.08)",
-          color: "#00D9FF",
+          background: "var(--color-primary-a08)",
+          color: "var(--color-primary)",
           fontSize: 11,
           fontWeight: 700,
           letterSpacing: 1.5,
@@ -104,7 +104,7 @@ export function TickerTape() {
               </span>
               <span
                 className="font-mono tabular-nums"
-                style={{ color: t.change >= 0 ? "#00E6A8" : "#FF4458", fontWeight: 600, fontSize: 11 }}
+                style={{ color: t.change >= 0 ? "var(--color-green)" : "var(--color-red)", fontWeight: 600, fontSize: 11 }}
               >
                 {t.change >= 0 ? "+" : ""}
                 {t.change.toFixed(2)}%

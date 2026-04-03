@@ -53,7 +53,7 @@ export function NewsTicker({ holdings, liveNews }: NewsTickerProps) {
       <div
         className="flex-shrink-0 flex items-center justify-center"
         style={{
-          background: "rgba(0, 217, 255, 0.1)",
+          background: "var(--color-primary-a10)",
           padding: "0 8px",
           height: "100%",
           borderRight: "1px solid #1C2840",
@@ -63,7 +63,7 @@ export function NewsTicker({ holdings, liveNews }: NewsTickerProps) {
           style={{
             fontSize: 11,
             fontWeight: 700,
-            color: "#00D9FF",
+            color: "var(--color-primary)",
             letterSpacing: 1,
           }}
         >
@@ -79,7 +79,7 @@ export function NewsTicker({ holdings, liveNews }: NewsTickerProps) {
             <span key={i} className="inline-flex items-center gap-2" style={{ fontSize: 11 }}>
               <span
                 className="font-mono"
-                style={{ color: "#00D9FF", fontWeight: 600 }}
+                style={{ color: "var(--color-primary)", fontWeight: 600 }}
               >
                 {h.source}
               </span>

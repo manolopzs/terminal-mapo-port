@@ -87,7 +87,7 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
     ];
   }, [perfData, dayChangePct]);
 
-  const dayColor = dayChange >= 0 ? "#00E6A8" : "#FF4458";
+  const dayColor = dayChange >= 0 ? "var(--color-green)" : "var(--color-red)";
 
   const mktStatus = (() => {
     const quoteMktStatus = liveQuotes?.quotes?.[0]?.marketStatus;
@@ -117,42 +117,45 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
         <div
           className="flex items-center justify-center font-bold"
           style={{
-            width: 32,
-            height: 32,
-            background: "linear-gradient(135deg, #00D9FF 0%, #0088CC 100%)",
-            color: "#040810",
+            width: 34,
+            height: 34,
+            background: "linear-gradient(135deg, #D4A853 0%, #8B6420 100%)",
+            color: "#fff",
             fontSize: 11,
             fontFamily: "'JetBrains Mono', monospace",
-            borderRadius: 4,
+            borderRadius: 6,
             letterSpacing: 1,
-            boxShadow: "0 0 10px rgba(0,217,255,0.2)",
+            boxShadow: "0 0 16px var(--color-primary-a35), 0 0 0 1px var(--color-primary-a15)",
             flexShrink: 0,
           }}
         >
-          MT
+          M
         </div>
         <div>
           <div
             style={{
-              fontSize: 13,
-              fontWeight: 700,
-              color: "#D6DFE8",
-              letterSpacing: 3,
+              fontSize: 12,
+              fontWeight: 800,
+              color: "#E2E8F0",
+              letterSpacing: 4,
               lineHeight: 1,
+              fontFamily: "'JetBrains Mono', monospace",
             }}
           >
-            MAPO TERMINAL
+            MAPO
           </div>
           <div
             style={{
-              fontSize: 10,
-              color: "#3A4A5C",
-              letterSpacing: 1.5,
+              fontSize: 9,
+              color: "var(--color-primary)",
+              letterSpacing: 2,
               textTransform: "uppercase",
-              marginTop: 2,
+              marginTop: 3,
+              fontWeight: 600,
+              opacity: 0.7,
             }}
           >
-            PERSONAL PORTFOLIO
+            TERMINAL
           </div>
         </div>
       </div>
@@ -202,7 +205,7 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
               style={{
                 fontSize: 13,
                 fontWeight: 700,
-                color: p.value === null ? "#2E3E52" : p.value >= 0 ? "#00E6A8" : "#FF4458",
+                color: p.value === null ? "#2E3E52" : p.value >= 0 ? "var(--color-green)" : "var(--color-red)",
                 lineHeight: 1.3,
               }}
             >
@@ -225,7 +228,7 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
           style={{
             fontSize: 20,
             fontWeight: 700,
-            color: totalReturn >= 0 ? "#00E6A8" : "#FF4458",
+            color: totalReturn >= 0 ? "var(--color-green)" : "var(--color-red)",
             lineHeight: 1.15,
           }}
         >
@@ -247,7 +250,7 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
           const price = q?.c ?? 0;
           const pct = q?.dp ?? 0;
           const isPos = pct >= 0;
-          const color = Math.abs(pct) < 0.02 ? "#8B949E" : isPos ? "#00E6A8" : "#FF4458";
+          const color = Math.abs(pct) < 0.02 ? "#8B949E" : isPos ? "var(--color-green)" : "var(--color-red)";
           return (
             <div
               key={symbol}
@@ -298,10 +301,10 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
               fontWeight: 700,
               color:
                 liveSentiment?.sentiment === "BULLISH"
-                  ? "#00E6A8"
+                  ? "var(--color-green)"
                   : liveSentiment?.sentiment === "BEARISH"
-                    ? "#FF4458"
-                    : "#F0883E",
+                    ? "var(--color-red)"
+                    : "var(--color-orange)",
               letterSpacing: 1,
               lineHeight: 1.3,
             }}
@@ -318,9 +321,9 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
             letterSpacing: 1.2,
             padding: "3px 8px",
             borderRadius: 3,
-            background: isOpen ? "rgba(0, 230, 168, 0.08)" : "rgba(255, 68, 88, 0.08)",
-            color: isOpen ? "#00E6A8" : "#FF4458",
-            border: `1px solid ${isOpen ? "rgba(0, 230, 168, 0.2)" : "rgba(255, 68, 88, 0.2)"}`,
+            background: isOpen ? "var(--color-green-a08)" : "rgba(255, 68, 88, 0.08)",
+            color: isOpen ? "var(--color-green)" : "var(--color-red)",
+            border: `1px solid ${isOpen ? "var(--color-green-a20)" : "var(--color-red-a20)"}`,
             lineHeight: 1.6,
           }}
         >
@@ -335,14 +338,14 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
                 width: 5,
                 height: 5,
                 borderRadius: "50%",
-                background: liveQuotes ? "#00E6A8" : "#F0883E",
+                background: liveQuotes ? "var(--color-green)" : "var(--color-orange)",
                 boxShadow: liveQuotes ? "0 0 4px rgba(0,230,168,0.5)" : "none",
               }}
             />
             <span
               style={{
                 fontSize: 10,
-                color: liveQuotes ? "#00E6A8" : "#F0883E",
+                color: liveQuotes ? "var(--color-green)" : "var(--color-orange)",
                 letterSpacing: 1,
                 fontWeight: 700,
                 lineHeight: 1,

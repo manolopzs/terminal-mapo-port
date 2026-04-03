@@ -11,9 +11,9 @@ interface RuleCheck {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  PASS: "#00E6A8",
-  FAIL: "#FF4458",
-  WARN: "#F0883E",
+  PASS: "var(--color-green)",
+  FAIL: "var(--color-red)",
+  WARN: "var(--color-orange)",
 };
 
 function computeHealthChecks(holdings: Holding[], totalValue: number): RuleCheck[] {
@@ -110,7 +110,7 @@ export function PortfolioHealth({ portfolioId }: { portfolioId: string }) {
   const passCount = checks.filter(c => c.status === "PASS").length;
   const healthScore = checks.length > 0 ? Math.round((passCount / checks.length) * 100) : 0;
 
-  const scoreColor = healthScore >= 80 ? "#00E6A8" : healthScore >= 50 ? "#F0883E" : "#FF4458";
+  const scoreColor = healthScore >= 80 ? "var(--color-green)" : healthScore >= 50 ? "var(--color-orange)" : "var(--color-red)";
 
   return (
     <div

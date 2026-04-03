@@ -59,7 +59,7 @@ export function PositionAttribution({ holdings, totalValue }: PositionAttributio
             style={{
               fontSize: 11,
               fontWeight: 700,
-              color: isPositive ? "#00E6A8" : "#FF4458",
+              color: isPositive ? "var(--color-green)" : "var(--color-red)",
             }}
           >
             {isPositive ? "+" : ""}${Math.abs(activeTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -78,8 +78,8 @@ export function PositionAttribution({ holdings, totalValue }: PositionAttributio
                   textTransform: "uppercase",
                   border: "none",
                   cursor: "pointer",
-                  background: view === v ? "rgba(0,217,255,0.12)" : "transparent",
-                  color: view === v ? "#00D9FF" : "#4A5A6E",
+                  background: view === v ? "var(--color-primary-a12)" : "transparent",
+                  color: view === v ? "var(--color-primary)" : "#4A5A6E",
                   transition: "all 0.15s",
                 }}
               >
@@ -108,26 +108,26 @@ export function PositionAttribution({ holdings, totalValue }: PositionAttributio
               <div
                 key={row.ticker}
                 style={{
-                  padding: "5px 10px",
+                  padding: "7px 12px",
                   borderBottom: "1px solid rgba(28,40,64,0.5)",
                   display: "flex",
                   flexDirection: "column",
-                  gap: 3,
+                  gap: 5,
                   background: i === 0 ? "rgba(255,255,255,0.015)" : "transparent",
                 }}
               >
-                {/* Top row: ticker + amount + pct */}
+                {/* Top row: ticker + badge + name */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0, flex: 1 }}>
                     <span
                       className="font-mono"
                       style={{
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: 700,
                         letterSpacing: "0.06em",
-                        color: pos ? "#00E6A8" : "#FF4458",
+                        color: pos ? "var(--color-green)" : "var(--color-red)",
                         flexShrink: 0,
-                        minWidth: 44,
+                        minWidth: 48,
                       }}
                     >
                       {row.ticker}
@@ -140,7 +140,7 @@ export function PositionAttribution({ holdings, totalValue }: PositionAttributio
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
-                        maxWidth: 100,
+                        flex: 1,
                       }}
                     >
                       {row.name}
@@ -148,28 +148,28 @@ export function PositionAttribution({ holdings, totalValue }: PositionAttributio
                     {isTop && (
                       <span style={{
                         fontSize: 7, fontWeight: 700, letterSpacing: 0.8,
-                        padding: "1px 4px", borderRadius: 2,
-                        background: pos ? "rgba(0,230,168,0.08)" : "rgba(255,68,88,0.08)",
-                        color: pos ? "#00E6A8" : "#FF4458",
-                        border: `1px solid ${pos ? "rgba(0,230,168,0.15)" : "rgba(255,68,88,0.15)"}`,
+                        padding: "1px 5px", borderRadius: 2,
+                        background: pos ? "var(--color-green-a08)" : "var(--color-red-a08)",
+                        color: pos ? "var(--color-green)" : "var(--color-red)",
+                        border: `1px solid ${pos ? "var(--color-green-a15)" : "var(--color-red-a15)"}`,
                         flexShrink: 0,
                       }}>
                         #{i + 1}
                       </span>
                     )}
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, marginLeft: 10 }}>
                     <span
                       className="font-mono tabular-nums"
-                      style={{ fontSize: 11, fontWeight: 600, color: pos ? "#00E6A8" : "#FF4458" }}
+                      style={{ fontSize: 12, fontWeight: 700, color: pos ? "var(--color-green)" : "var(--color-red)" }}
                     >
                       {pos ? "+" : ""}${Math.abs(amount).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </span>
                     <span
                       className="font-mono tabular-nums"
                       style={{
-                        fontSize: 9, fontWeight: 600, minWidth: 44, textAlign: "right",
-                        color: pos ? "rgba(0,230,168,0.65)" : "rgba(255,68,88,0.65)",
+                        fontSize: 10, fontWeight: 600, minWidth: 50, textAlign: "right",
+                        color: pos ? "var(--color-green-a65)" : "var(--color-red-a65)",
                       }}
                     >
                       {pos ? "+" : ""}{pct.toFixed(2)}%
@@ -177,24 +177,29 @@ export function PositionAttribution({ holdings, totalValue }: PositionAttributio
                   </div>
                 </div>
 
-                {/* Bar */}
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <div style={{ flex: 1, background: "rgba(28,40,64,0.6)", borderRadius: 2, height: 3, overflow: "hidden" }}>
+                {/* Bar + weight + sector */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ flex: 1, background: "rgba(28,40,64,0.6)", borderRadius: 2, height: 4, overflow: "hidden" }}>
                     <div
                       style={{
                         width: `${barWidth}%`,
                         height: "100%",
                         borderRadius: 2,
                         background: pos
-                          ? `linear-gradient(90deg, rgba(0,230,168,0.4), rgba(0,230,168,0.8))`
-                          : `linear-gradient(90deg, rgba(255,68,88,0.4), rgba(255,68,88,0.8))`,
+                          ? `linear-gradient(90deg, rgba(0,230,168,0.35), rgba(0,230,168,0.85))`
+                          : `linear-gradient(90deg, rgba(255,68,88,0.35), rgba(255,68,88,0.85))`,
                         transition: "width 0.4s ease",
                       }}
                     />
                   </div>
+                  {row.sector ? (
+                    <span style={{ fontSize: 7, color: "#2E3E52", flexShrink: 0, maxWidth: 70, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {row.sector}
+                    </span>
+                  ) : null}
                   <span
                     className="font-mono tabular-nums"
-                    style={{ fontSize: 8, color: "#3A4A5C", minWidth: 28, textAlign: "right" }}
+                    style={{ fontSize: 8, color: "#4A5A6E", minWidth: 32, textAlign: "right", flexShrink: 0 }}
                   >
                     {row.weight.toFixed(1)}%
                   </span>

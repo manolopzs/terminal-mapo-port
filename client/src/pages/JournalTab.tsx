@@ -42,7 +42,7 @@ function saveEntries(entries: JournalEntry[]) {
 
 const CONVICTION_DOTS = (n: number) =>
   Array.from({ length: 5 }, (_, i) => (
-    <span key={i} style={{ color: i < n ? "#00D9FF" : "#1C2840", fontSize: 9, fontFamily: "monospace" }}>
+    <span key={i} style={{ color: i < n ? "var(--color-primary)" : "#1C2840", fontSize: 9, fontFamily: "monospace" }}>
       {i < n ? "●" : "○"}
     </span>
   ));
@@ -198,9 +198,9 @@ export function JournalTab() {
             letterSpacing: 1.5,
             textTransform: "uppercase",
             fontFamily: "monospace",
-            background: showForm ? "rgba(0,217,255,0.1)" : "transparent",
-            border: "1px solid rgba(0,217,255,0.3)",
-            color: "#00D9FF",
+            background: showForm ? "var(--color-primary-a10)" : "transparent",
+            border: "1px solid var(--color-primary-a30)",
+            color: "var(--color-primary)",
             cursor: "pointer",
             borderRadius: 2,
           }}
@@ -232,8 +232,8 @@ export function JournalTab() {
             stats.winRate === "—"
               ? "#C9D1D9"
               : parseInt(stats.winRate) > 50
-              ? "#00E6A8"
-              : "#FF4458"
+              ? "var(--color-green)"
+              : "var(--color-red)"
           }
         />
         <span style={{ color: "#1C2840", margin: "0 14px", fontSize: 12 }}>|</span>
@@ -330,9 +330,9 @@ export function JournalTab() {
                     width: 28,
                     height: 28,
                     border: "1px solid",
-                    borderColor: form.conviction >= n ? "#00D9FF" : "#1C2840",
-                    background: form.conviction >= n ? "rgba(0,217,255,0.15)" : "transparent",
-                    color: form.conviction >= n ? "#00D9FF" : "#4A5A6E",
+                    borderColor: form.conviction >= n ? "var(--color-primary)" : "#1C2840",
+                    background: form.conviction >= n ? "var(--color-primary-a15)" : "transparent",
+                    color: form.conviction >= n ? "var(--color-primary)" : "#4A5A6E",
                     borderRadius: 2,
                     cursor: "pointer",
                     fontSize: 9,
@@ -372,7 +372,7 @@ export function JournalTab() {
               letterSpacing: 1.5,
               textTransform: "uppercase",
               fontFamily: "monospace",
-              background: "#00D9FF",
+              background: "var(--color-primary)",
               border: "none",
               borderRadius: 2,
               color: "#070B14",
@@ -451,10 +451,10 @@ export function JournalTab() {
                   gap: 12,
                   padding: "10px 16px",
                   cursor: "pointer",
-                  background: isExpanded ? "rgba(0,217,255,0.03)" : "transparent",
+                  background: isExpanded ? "rgba(212,168,83,0.03)" : "transparent",
                   transition: "background 0.1s",
                 }}
-                onMouseEnter={(e) => { if (!isExpanded) (e.currentTarget as HTMLElement).style.background = "rgba(0,217,255,0.02)"; }}
+                onMouseEnter={(e) => { if (!isExpanded) (e.currentTarget as HTMLElement).style.background = "rgba(212,168,83,0.02)"; }}
                 onMouseLeave={(e) => { if (!isExpanded) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
               >
                 {/* Date */}
@@ -493,7 +493,7 @@ export function JournalTab() {
 
                 {/* MAPO score */}
                 {entry.mapoScore !== null && (
-                  <span style={{ fontSize: 9, color: "#00D9FF", fontFamily: "monospace", flexShrink: 0 }}>
+                  <span style={{ fontSize: 9, color: "var(--color-primary)", fontFamily: "monospace", flexShrink: 0 }}>
                     {entry.mapoScore}
                   </span>
                 )}
@@ -508,7 +508,7 @@ export function JournalTab() {
                       fontSize: 9,
                       fontFamily: "monospace",
                       flexShrink: 0,
-                      color: entry.actualReturn >= 0 ? "#00E6A8" : "#FF4458",
+                      color: entry.actualReturn >= 0 ? "var(--color-green)" : "var(--color-red)",
                     }}
                   >
                     {entry.actualReturn >= 0 ? "+" : ""}{entry.actualReturn.toFixed(1)}%
@@ -522,7 +522,7 @@ export function JournalTab() {
                   data-journal="entry-detail"
                   style={{
                     padding: "12px 14px 14px 20px",
-                    background: "rgba(0,217,255,0.02)",
+                    background: "rgba(212,168,83,0.02)",
                     borderTop: "1px solid #1C2840",
                     borderLeft: "3px solid #1C2840",
                     marginLeft: 16,
@@ -586,7 +586,7 @@ export function JournalTab() {
                         fontFamily: "monospace",
                         background: "transparent",
                         border: "1px solid rgba(0,200,83,0.4)",
-                        color: "#00E6A8",
+                        color: "var(--color-green)",
                         borderRadius: 2,
                         cursor: "pointer",
                       }}
@@ -606,7 +606,7 @@ export function JournalTab() {
                         fontFamily: "monospace",
                         background: "transparent",
                         border: "1px solid rgba(255,77,77,0.3)",
-                        color: "#FF4458",
+                        color: "var(--color-red)",
                         borderRadius: 2,
                         cursor: "pointer",
                       }}
@@ -696,9 +696,9 @@ function FilterChip({
         letterSpacing: 1.2,
         textTransform: "uppercase",
         fontFamily: "monospace",
-        background: active ? "rgba(0,217,255,0.1)" : "transparent",
-        border: active ? "1px solid rgba(0,217,255,0.35)" : "1px solid #1C2840",
-        color: active ? "#00D9FF" : "#8B949E",
+        background: active ? "var(--color-primary-a10)" : "transparent",
+        border: active ? "1px solid var(--color-primary-a35)" : "1px solid #1C2840",
+        color: active ? "var(--color-primary)" : "#8B949E",
         borderRadius: 2,
         cursor: "pointer",
       }}
@@ -710,9 +710,9 @@ function FilterChip({
 
 function ActionBadge({ action }: { action: JournalEntry["action"] }) {
   const map = {
-    BUY: { bg: "rgba(0,200,83,0.1)", border: "rgba(0,200,83,0.3)", color: "#00E6A8" },
-    SELL: { bg: "rgba(255,77,77,0.1)", border: "rgba(255,77,77,0.3)", color: "#FF4458" },
-    WATCH: { bg: "rgba(240,136,62,0.1)", border: "rgba(240,136,62,0.3)", color: "#F0883E" },
+    BUY: { bg: "rgba(0,200,83,0.1)", border: "rgba(0,200,83,0.3)", color: "var(--color-green)" },
+    SELL: { bg: "rgba(255,77,77,0.1)", border: "rgba(255,77,77,0.3)", color: "var(--color-red)" },
+    WATCH: { bg: "var(--color-orange-a10)", border: "rgba(240,136,62,0.3)", color: "var(--color-orange)" },
     AVOID: { bg: "rgba(72,79,88,0.15)", border: "rgba(72,79,88,0.4)", color: "#4A5A6E" },
   };
   const s = map[action];
@@ -740,9 +740,9 @@ function ActionBadge({ action }: { action: JournalEntry["action"] }) {
 function OutcomeBadge({ outcome }: { outcome: JournalEntry["outcome"] }) {
   const map = {
     PENDING: { bg: "rgba(139,148,158,0.1)", border: "rgba(139,148,158,0.2)", color: "#8B949E" },
-    WIN: { bg: "rgba(0,200,83,0.1)", border: "rgba(0,200,83,0.3)", color: "#00E6A8" },
-    LOSS: { bg: "rgba(255,77,77,0.1)", border: "rgba(255,77,77,0.3)", color: "#FF4458" },
-    NEUTRAL: { bg: "rgba(240,136,62,0.1)", border: "rgba(240,136,62,0.3)", color: "#F0883E" },
+    WIN: { bg: "rgba(0,200,83,0.1)", border: "rgba(0,200,83,0.3)", color: "var(--color-green)" },
+    LOSS: { bg: "rgba(255,77,77,0.1)", border: "rgba(255,77,77,0.3)", color: "var(--color-red)" },
+    NEUTRAL: { bg: "var(--color-orange-a10)", border: "rgba(240,136,62,0.3)", color: "var(--color-orange)" },
   };
   const s = map[outcome];
   return (

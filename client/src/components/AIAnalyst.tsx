@@ -68,9 +68,9 @@ export function AIAnalyst({ portfolioId, open, onClose }: AIAnalystProps) {
   }
 
   const quickPrompts = [
-    { icon: TrendingUp, label: "Portfolio health check", color: "#00E6A8" },
-    { icon: BarChart3, label: "Score my holdings", color: "#00D9FF" },
-    { icon: Shield, label: "Risk alerts", color: "#F0883E" },
+    { icon: TrendingUp, label: "Portfolio health check", color: "var(--color-green)" },
+    { icon: BarChart3, label: "Score my holdings", color: "var(--color-primary)" },
+    { icon: Shield, label: "Risk alerts", color: "var(--color-orange)" },
     { icon: RefreshCw, label: "Rebalancing ideas", color: "#A78BFA" },
   ];
 
@@ -127,7 +127,7 @@ export function AIAnalyst({ portfolioId, open, onClose }: AIAnalystProps) {
                 width: 32,
                 height: 32,
                 borderRadius: 8,
-                background: "linear-gradient(135deg, #00D9FF 0%, #0066FF 100%)",
+                background: "linear-gradient(135deg, #D4A853 0%, #0066FF 100%)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -283,13 +283,13 @@ export function AIAnalyst({ portfolioId, open, onClose }: AIAnalystProps) {
                 width: 56,
                 height: 56,
                 borderRadius: 16,
-                background: "linear-gradient(135deg, rgba(0,217,255,0.1) 0%, rgba(0,102,255,0.1) 100%)",
-                border: "1px solid rgba(0,217,255,0.15)",
+                background: "linear-gradient(135deg, var(--color-primary-a10) 0%, rgba(0,102,255,0.1) 100%)",
+                border: "1px solid var(--color-primary-a15)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}>
-                <Sparkles size={26} color="#00D9FF" />
+                <Sparkles size={26} color="var(--color-primary)" />
               </div>
               <div style={{ textAlign: "center" }}>
                 <div style={{ fontSize: 16, fontWeight: 600, color: "#E6EDF3", marginBottom: 6 }}>
@@ -374,7 +374,7 @@ export function AIAnalyst({ portfolioId, open, onClose }: AIAnalystProps) {
               <style>{`
                 .analyst-dot {
                   width: 5px; height: 5px; border-radius: 50%;
-                  background: #00D9FF; opacity: 0.4;
+                  background: #D4A853; opacity: 0.4;
                   animation: analystPulse 1.4s ease-in-out infinite;
                 }
                 .analyst-dot-1 { animation-delay: 0s; }
@@ -393,10 +393,10 @@ export function AIAnalyst({ portfolioId, open, onClose }: AIAnalystProps) {
               padding: "10px 14px",
               marginBottom: 8,
               borderRadius: 10,
-              background: "rgba(255,68,88,0.08)",
-              border: "1px solid rgba(255,68,88,0.2)",
+              background: "var(--color-red-a08)",
+              border: "1px solid var(--color-red-a20)",
               fontSize: 12,
-              color: "#FF4458",
+              color: "var(--color-red)",
               lineHeight: 1.5,
             }}>
               {sendMessage.error?.message || "Failed to get response. Try again."}
@@ -454,7 +454,7 @@ export function AIAnalyst({ portfolioId, open, onClose }: AIAnalystProps) {
                 height: 32,
                 borderRadius: 8,
                 border: "none",
-                background: input.trim() ? "#00D9FF" : "transparent",
+                background: input.trim() ? "var(--color-primary)" : "transparent",
                 cursor: input.trim() ? "pointer" : "default",
                 display: "flex",
                 alignItems: "center",

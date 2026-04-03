@@ -165,10 +165,10 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
                   fontWeight: 700,
                   letterSpacing: 1.5,
                   textTransform: "uppercase",
-                  border: `1px solid ${action === a ? (a === "BUY" ? "#00E6A8" : "#FF4458") : "#1C2840"}`,
+                  border: `1px solid ${action === a ? (a === "BUY" ? "var(--color-green)" : "var(--color-red)") : "#1C2840"}`,
                   borderRadius: 2,
-                  background: action === a ? (a === "BUY" ? "rgba(0,230,168,0.1)" : "rgba(255,68,88,0.1)") : "#070B14",
-                  color: action === a ? (a === "BUY" ? "#00E6A8" : "#FF4458") : "#8B949E",
+                  background: action === a ? (a === "BUY" ? "rgba(0,230,168,0.1)" : "var(--color-red-a10)") : "#070B14",
+                  color: action === a ? (a === "BUY" ? "var(--color-green)" : "var(--color-red)") : "#8B949E",
                   cursor: "pointer",
                 }}
               >
@@ -199,9 +199,9 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
                       fontFamily: "'JetBrains Mono', monospace",
                       padding: "2px 6px",
                       borderRadius: 2,
-                      border: `1px solid ${ticker.toUpperCase() === h.ticker ? "#00D9FF" : "#1C2840"}`,
-                      background: ticker.toUpperCase() === h.ticker ? "rgba(0,217,255,0.1)" : "#070B14",
-                      color: ticker.toUpperCase() === h.ticker ? "#00D9FF" : "#8B949E",
+                      border: `1px solid ${ticker.toUpperCase() === h.ticker ? "var(--color-primary)" : "#1C2840"}`,
+                      background: ticker.toUpperCase() === h.ticker ? "var(--color-primary-a10)" : "#070B14",
+                      color: ticker.toUpperCase() === h.ticker ? "var(--color-primary)" : "#8B949E",
                       cursor: "pointer",
                     }}
                   >
@@ -288,14 +288,14 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
                   <span style={{ color: "#8B949E" }}>REALIZED P&L</span>
                   <span
                     className="font-mono tabular-nums"
-                    style={{ color: pnl >= 0 ? "#00E6A8" : "#FF4458", fontWeight: 700 }}
+                    style={{ color: pnl >= 0 ? "var(--color-green)" : "var(--color-red)", fontWeight: 700 }}
                   >
                     {pnl >= 0 ? "+" : ""}${Math.abs(pnl).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
               )}
               {isFullExit && (
-                <div style={{ fontSize: 10, color: "#F0883E", marginTop: 4 }}>
+                <div style={{ fontSize: 10, color: "var(--color-orange)", marginTop: 4 }}>
                   FULL EXIT — position will be removed from holdings
                 </div>
               )}
@@ -307,7 +307,7 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
             className="w-full"
             disabled={createTrade.isPending || sharesNum <= 0 || priceNum <= 0}
             style={{
-              background: action === "BUY" ? "#00E6A8" : "#FF4458",
+              background: action === "BUY" ? "var(--color-green)" : "var(--color-red)",
               color: "#070B14",
               fontWeight: 700,
               fontSize: 10,

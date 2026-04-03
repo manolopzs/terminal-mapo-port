@@ -54,9 +54,9 @@ function CustomTooltip({ active, payload, label }: any) {
       </div>
       {payload.map((entry: any) => {
         const colorMap: Record<string, string> = {
-          portfolio: "#00D9FF",
-          voo: "#F0883E",
-          qqq: "#A371F7",
+          portfolio: "var(--color-primary)",
+          voo: "#5A7A9E",
+          qqq: "#8B949E",
         };
         const nameMap: Record<string, string> = {
           portfolio: "Portfolio",
@@ -83,7 +83,7 @@ function CustomTooltip({ active, payload, label }: any) {
             <span style={{ color: "#8B949E", minWidth: 60 }}>{name}</span>
             <span
               style={{
-                color: val >= 0 ? "#00E6A8" : "#FF4458",
+                color: val >= 0 ? "var(--color-green)" : "var(--color-red)",
                 marginLeft: "auto",
                 fontFamily: "JetBrains Mono, monospace",
                 fontWeight: 600,
@@ -192,9 +192,9 @@ export function PerformanceChart({ portfolioId }: PerformanceChartProps) {
                 fontWeight: 700,
                 padding: "1px 6px",
                 borderRadius: 2,
-                background: alpha >= 0 ? "rgba(0,230,168,0.1)" : "rgba(255,68,88,0.1)",
-                color: alpha >= 0 ? "#00E6A8" : "#FF4458",
-                border: `1px solid ${alpha >= 0 ? "rgba(0,230,168,0.2)" : "rgba(255,68,88,0.2)"}`,
+                background: alpha >= 0 ? "rgba(0,230,168,0.1)" : "var(--color-red-a10)",
+                color: alpha >= 0 ? "var(--color-green)" : "var(--color-red)",
+                border: `1px solid ${alpha >= 0 ? "rgba(0,230,168,0.2)" : "var(--color-red-a20)"}`,
                 letterSpacing: 0.5,
                 fontFamily: "JetBrains Mono, monospace",
               }}
@@ -218,8 +218,8 @@ export function PerformanceChart({ portfolioId }: PerformanceChartProps) {
                 border: "none",
                 borderRadius: 3,
                 cursor: "pointer",
-                background: period === p ? "rgba(0,217,255,0.12)" : "transparent",
-                color: period === p ? "#00D9FF" : "#4A5A6E",
+                background: period === p ? "var(--color-primary-a12)" : "transparent",
+                color: period === p ? "var(--color-primary)" : "#4A5A6E",
                 transition: "all 0.15s",
                 fontFamily: "'Inter', system-ui, sans-serif",
               }}
@@ -242,9 +242,9 @@ export function PerformanceChart({ portfolioId }: PerformanceChartProps) {
         style={{ height: 22, borderBottom: "1px solid #1C2840", flexShrink: 0 }}
       >
         {[
-          { key: "portfolio", label: "Portfolio", color: "#00D9FF", dash: false },
-          { key: "voo", label: "VOO", color: "#F0883E", dash: true },
-          { key: "qqq", label: "QQQ", color: "#A371F7", dash: true },
+          { key: "portfolio", label: "Portfolio", color: "var(--color-primary)", dash: false },
+          { key: "voo", label: "VOO", color: "#5A7A9E", dash: true },
+          { key: "qqq", label: "QQQ", color: "#8B949E", dash: true },
         ].map(({ key, label, color, dash }) => {
           const val = latest ? (latest as any)[key] as number : null;
           return (
@@ -259,7 +259,7 @@ export function PerformanceChart({ portfolioId }: PerformanceChartProps) {
                 <span
                   style={{
                     fontSize: 9,
-                    color: val >= 0 ? "#00E6A8" : "#FF4458",
+                    color: val >= 0 ? "var(--color-green)" : "var(--color-red)",
                     fontFamily: "JetBrains Mono, monospace",
                     fontWeight: 600,
                     marginLeft: 2,
@@ -299,29 +299,29 @@ export function PerformanceChart({ portfolioId }: PerformanceChartProps) {
             <Area
               type="monotone"
               dataKey="portfolio"
-              stroke="#00D9FF"
+              stroke="var(--color-primary)"
               strokeWidth={2}
-              fill="rgba(0, 217, 255, 0.06)"
+              fill="var(--color-primary-a06)"
               dot={false}
-              activeDot={{ r: 3, fill: "#00D9FF", stroke: "#0B0F1A", strokeWidth: 1 }}
+              activeDot={{ r: 3, fill: "var(--color-primary)", stroke: "#0B0F1A", strokeWidth: 1 }}
             />
             <Line
               type="monotone"
               dataKey="voo"
-              stroke="#F0883E"
+              stroke="#5A7A9E"
               strokeWidth={1.5}
               strokeDasharray="5 3"
               dot={false}
-              activeDot={{ r: 3, fill: "#F0883E", stroke: "#0B0F1A", strokeWidth: 1 }}
+              activeDot={{ r: 3, fill: "#5A7A9E", stroke: "#0B0F1A", strokeWidth: 1 }}
             />
             <Line
               type="monotone"
               dataKey="qqq"
-              stroke="#A371F7"
+              stroke="#8B949E"
               strokeWidth={1.5}
               strokeDasharray="5 3"
               dot={false}
-              activeDot={{ r: 3, fill: "#A371F7", stroke: "#0B0F1A", strokeWidth: 1 }}
+              activeDot={{ r: 3, fill: "#8B949E", stroke: "#0B0F1A", strokeWidth: 1 }}
             />
           </ComposedChart>
         </ResponsiveContainer>

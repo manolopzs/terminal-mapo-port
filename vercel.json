@@ -6,10 +6,6 @@
   "outputDirectory": "dist/public",
   "rewrites": [
     {
-      "source": "/api/login",
-      "destination": "/api/login"
-    },
-    {
       "source": "/api/(.*)",
       "destination": "/api/index"
     },
@@ -22,17 +18,8 @@
     "NODE_ENV": "production"
   },
   "crons": [
-    {
-      "path": "/api/cron/morning",
-      "schedule": "30 13 * * 1-5"
-    },
-    {
-      "path": "/api/cron/drawdown",
-      "schedule": "0 21 * * 1-5"
-    },
-    {
-      "path": "/api/cron/earnings",
-      "schedule": "0 12 * * 0"
-    }
+    { "path": "/api/cron/morning", "schedule": "30 13 * * 1-5" },
+    { "path": "/api/cron/drawdown", "schedule": "30 14-21 * * 1-5" },
+    { "path": "/api/cron/earnings", "schedule": "0 12 * * 0" }
   ]
 }

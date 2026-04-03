@@ -24,16 +24,16 @@ function loadScoreHistory(): ScoreEntry[] {
 }
 
 function signalColor(signal: string) {
-  if (signal.includes("STRONG BUY")) return "#00E6A8";
-  if (signal.includes("BUY")) return "#00E6A8";
-  if (signal.includes("HOLD")) return "#F0883E";
-  return "#FF4458";
+  if (signal.includes("STRONG BUY")) return "var(--color-green)";
+  if (signal.includes("BUY")) return "var(--color-green)";
+  if (signal.includes("HOLD")) return "var(--color-orange)";
+  return "var(--color-red)";
 }
 
 function scoreColor(score: number) {
-  if (score >= 65) return "#00E6A8";
-  if (score >= 50) return "#F0883E";
-  return "#FF4458";
+  if (score >= 65) return "var(--color-green)";
+  if (score >= 50) return "var(--color-orange)";
+  return "var(--color-red)";
 }
 
 function daysAgo(dateStr: string) {
@@ -117,21 +117,21 @@ export function MAPOSignals({ holdings, totalValue }: MAPOSignalsProps) {
             </thead>
             <tbody>
               {rows.map(({ holding, entry, currentAlloc, target, diff }) => {
-                const diffColor = diff > 5 ? "#F0883E" : diff < -5 ? "#A371F7" : "#8B949E";
+                const diffColor = diff > 5 ? "var(--color-orange)" : diff < -5 ? "#A371F7" : "#8B949E";
                 const diffLabel = diff > 0 ? `+${diff.toFixed(1)}%` : `${diff.toFixed(1)}%`;
 
                 return (
                   <tr
                     key={holding.id}
                     style={{ borderBottom: "1px solid rgba(28,40,64,0.4)" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,217,255,0.025)")}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-primary-a03)")}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                   >
                     {/* Ticker */}
                     <td style={{ padding: "5px 6px" }}>
                       <div
                         style={{
-                          fontSize: 11, fontWeight: 700, color: "#00D9FF",
+                          fontSize: 11, fontWeight: 700, color: "var(--color-primary)",
                           fontFamily: "'JetBrains Mono', monospace", letterSpacing: 0.5,
                         }}
                       >
@@ -189,7 +189,7 @@ export function MAPOSignals({ holdings, totalValue }: MAPOSignalsProps) {
                           {entry.signal.replace("STRONG BUY", "STR BUY")}
                         </span>
                       ) : (
-                        <span style={{ fontSize: 8, color: "#F0883E", letterSpacing: 0.8 }}>
+                        <span style={{ fontSize: 8, color: "var(--color-orange)", letterSpacing: 0.8 }}>
                           SCORE →
                         </span>
                       )}
@@ -241,7 +241,7 @@ export function MAPOSignals({ holdings, totalValue }: MAPOSignalsProps) {
         }}
       >
         <span style={{ fontSize: 8, color: "#2E3E52", letterSpacing: 0.5 }}>
-          vs target: <span style={{ color: "#F0883E" }}>+5%</span> overweight · <span style={{ color: "#A371F7" }}>−5%</span> underweight
+          vs target: <span style={{ color: "var(--color-orange)" }}>+5%</span> overweight · <span style={{ color: "#A371F7" }}>−5%</span> underweight
         </span>
         <span style={{ fontSize: 8, color: "#2E3E52", marginLeft: "auto" }}>
           MAPO tab → score a ticker

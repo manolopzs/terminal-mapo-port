@@ -49,9 +49,9 @@ function Week52Bar({ ticker, currentPrice, extMap }: {
           top: "50%",
           transform: "translate(-50%, -60%)",
           fontSize: 10,
-          color: "#00D9FF",
+          color: "var(--color-primary)",
           lineHeight: 1,
-          textShadow: "0 0 4px rgba(0,217,255,0.5)",
+          textShadow: "0 0 4px var(--color-primary-a50)",
         }}>◆</div>
       </div>
     </div>
@@ -64,12 +64,12 @@ function MoverCard({ holding, type, extMap }: {
   extMap: Record<string, ExtendedQuote>;
 }) {
   const isGainer = type === "gainer";
-  const color = isGainer ? "#00E6A8" : "#FF4458";
+  const color = isGainer ? "var(--color-green)" : "var(--color-red)";
   const arrow = isGainer ? "▲" : "▼";
   const label = isGainer ? "GAINER" : "LOSER";
   const changePct = holding.dayChangePct ?? 0;
   const totalPnlPct = holding.gainLossPct ?? 0;
-  const totalColor = totalPnlPct >= 0 ? "#00E6A8" : "#FF4458";
+  const totalColor = totalPnlPct >= 0 ? "var(--color-green)" : "var(--color-red)";
 
   return (
     <div style={{ background: "#0A0E18", border: "1px solid #1C2840", borderRadius: 2, padding: "6px 8px" }}>
@@ -134,9 +134,9 @@ export function TopMovers({ holdings, portfolioId }: TopMoversProps) {
         <span className="terminal-badge">DAILY</span>
       </div>
       <div style={{ padding: "2px 4px", fontSize: 9, color: "#8B949E", borderBottom: "1px solid #1C2840" }}>
-        <span style={{ color: "#00E6A8" }}>▲ {upCount} up</span>
+        <span style={{ color: "var(--color-green)" }}>▲ {upCount} up</span>
         {"  "}
-        <span style={{ color: "#FF4458" }}>▼ {downCount} down</span>
+        <span style={{ color: "var(--color-red)" }}>▼ {downCount} down</span>
       </div>
       <div className="flex-1 overflow-auto" style={{ padding: 4 }}>
         {(gainers.length > 0 || losers.length > 0) ? (

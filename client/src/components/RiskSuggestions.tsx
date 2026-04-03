@@ -131,8 +131,8 @@ export function RiskSuggestions({ holdings }: RiskSuggestionsProps) {
                   letterSpacing: 0.8,
                   padding: "1px 5px",
                   borderRadius: 1,
-                  background: "rgba(255, 68, 88, 0.2)",
-                  color: "#FF4458",
+                  background: "var(--color-red-a20)",
+                  color: "var(--color-red)",
                   textTransform: "uppercase",
                 }}
               >
@@ -146,8 +146,8 @@ export function RiskSuggestions({ holdings }: RiskSuggestionsProps) {
               {s.description}
             </p>
             <div className="flex items-start gap-1">
-              <span style={{ color: "#00D9FF", fontSize: 10, lineHeight: 1.3 }}>→</span>
-              <span style={{ fontSize: 9, color: "#00D9FF", lineHeight: 1.3 }}>
+              <span style={{ color: "var(--color-primary)", fontSize: 10, lineHeight: 1.3 }}>→</span>
+              <span style={{ fontSize: 9, color: "var(--color-primary)", lineHeight: 1.3 }}>
                 {s.suggestion}
               </span>
             </div>

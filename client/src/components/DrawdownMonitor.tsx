@@ -10,10 +10,10 @@ interface DrawdownEntry {
 }
 
 function getDrawdownLevel(pct: number): { level: DrawdownEntry["level"]; color: string } {
-  if (pct >= 20) return { level: "EXIT", color: "#FF4458" };
-  if (pct >= 15) return { level: "REVIEW", color: "#F0883E" };
+  if (pct >= 20) return { level: "EXIT", color: "var(--color-red)" };
+  if (pct >= 15) return { level: "REVIEW", color: "var(--color-orange)" };
   if (pct >= 10) return { level: "WATCH", color: "#F0C83E" };
-  return { level: "OK", color: "#00E6A8" };
+  return { level: "OK", color: "var(--color-green)" };
 }
 
 function computeDrawdowns(holdings: Holding[]): DrawdownEntry[] {
@@ -67,7 +67,7 @@ export function DrawdownMonitor({ portfolioId }: { portfolioId: string }) {
                 width: 6,
                 height: 6,
                 borderRadius: "50%",
-                background: "#FF4458",
+                background: "var(--color-red)",
                 animation: "pulse-alert 1.5s ease-in-out infinite",
               }}
             />
@@ -89,7 +89,7 @@ export function DrawdownMonitor({ portfolioId }: { portfolioId: string }) {
       {/* Drawdown rows */}
       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
         {drawdowns.length === 0 && (
-          <span style={{ fontSize: 9, color: "#00E6A8", fontFamily: "monospace" }}>
+          <span style={{ fontSize: 9, color: "var(--color-green)", fontFamily: "monospace" }}>
             {holdingsData.filter(h => h.type !== "Cash" && h.ticker !== "CASH").length > 0
               ? "All positions profitable"
               : "No holdings"}

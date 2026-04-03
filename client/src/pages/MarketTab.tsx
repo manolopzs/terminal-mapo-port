@@ -71,7 +71,7 @@ function QuoteCell({ data, label, symbol }: { data: any; label: string; symbol: 
   const isPos = change >= 0;
   const isNeutral = Math.abs(changePct) < 0.01;
 
-  const color = isNeutral ? "#8B949E" : isPos ? "#00E6A8" : "#FF4458";
+  const color = isNeutral ? "#8B949E" : isPos ? "var(--color-green)" : "var(--color-red)";
 
   return (
     <div
@@ -81,7 +81,7 @@ function QuoteCell({ data, label, symbol }: { data: any; label: string; symbol: 
         cursor: "default",
         transition: "background 0.15s",
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,217,255,0.03)")}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(212,168,83,0.03)")}
       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -142,9 +142,9 @@ function SectionHeader({ title, badge }: { title: string; badge?: string }) {
         <span
           style={{
             fontSize: 10,
-            color: "#00D9FF",
-            background: "rgba(0,217,255,0.1)",
-            border: "1px solid rgba(0,217,255,0.2)",
+            color: "var(--color-primary)",
+            background: "var(--color-primary-a10)",
+            border: "1px solid var(--color-primary-a20)",
             borderRadius: 2,
             padding: "1px 5px",
             letterSpacing: 1,
@@ -231,15 +231,15 @@ export function MarketTab({ portfolioHoldings }: { portfolioHoldings?: Array<{ t
           <div style={{ fontSize: 9, color: "#8B949E", lineHeight: 2, fontFamily: "monospace" }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span style={{ color: "#4A5A6E" }}>VIX</span>
-              <span style={{ color: vix > 30 ? "#FF4458" : vix > 20 ? "#F0883E" : "#00E6A8" }}>{vixNote}</span>
+              <span style={{ color: vix > 30 ? "var(--color-red)" : vix > 20 ? "var(--color-orange)" : "var(--color-green)" }}>{vixNote}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span style={{ color: "#4A5A6E" }}>TLT</span>
-              <span style={{ color: tltChange > 0.5 ? "#F0883E" : tltChange < -0.5 ? "#00E6A8" : "#8B949E" }}>{tltNote}</span>
+              <span style={{ color: tltChange > 0.5 ? "var(--color-orange)" : tltChange < -0.5 ? "var(--color-green)" : "#8B949E" }}>{tltNote}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span style={{ color: "#4A5A6E" }}>UUP</span>
-              <span style={{ color: uupChange > 0.3 ? "#FF4458" : uupChange < -0.3 ? "#00E6A8" : "#8B949E" }}>{uupNote}</span>
+              <span style={{ color: uupChange > 0.3 ? "var(--color-red)" : uupChange < -0.3 ? "var(--color-green)" : "#8B949E" }}>{uupNote}</span>
             </div>
           </div>
         </div>
@@ -271,7 +271,7 @@ export function MarketTab({ portfolioHoldings }: { portfolioHoldings?: Array<{ t
                   <div
                     key={sec.symbol}
                     style={{ padding: "8px 14px", borderBottom: "1px solid #0B0F1A" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,217,255,0.03)")}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(212,168,83,0.03)")}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                   >
                     <div
@@ -292,7 +292,7 @@ export function MarketTab({ portfolioHoldings }: { portfolioHoldings?: Array<{ t
                         style={{
                           fontSize: 10,
                           fontWeight: 700,
-                          color: isPos ? "#00E6A8" : "#FF4458",
+                          color: isPos ? "var(--color-green)" : "var(--color-red)",
                           fontFamily: "monospace",
                         }}
                       >
@@ -304,7 +304,7 @@ export function MarketTab({ portfolioHoldings }: { portfolioHoldings?: Array<{ t
                         style={{
                           height: "100%",
                           width: `${barWidth}%`,
-                          background: isPos ? "#00E6A8" : "#FF4458",
+                          background: isPos ? "var(--color-green)" : "var(--color-red)",
                           borderRadius: 2,
                           transition: "width 0.5s ease",
                         }}
@@ -326,7 +326,7 @@ export function MarketTab({ portfolioHoldings }: { portfolioHoldings?: Array<{ t
               const pct = h.dayChangePct ?? 0;
               const pnlPct = h.gainLossPct ?? 0;
               const isPos = pct >= 0;
-              const color = Math.abs(pct) < 0.01 ? "#8B949E" : isPos ? "#00E6A8" : "#FF4458";
+              const color = Math.abs(pct) < 0.01 ? "#8B949E" : isPos ? "var(--color-green)" : "var(--color-red)";
               return (
                 <div
                   key={h.ticker}
@@ -336,19 +336,19 @@ export function MarketTab({ portfolioHoldings }: { portfolioHoldings?: Array<{ t
                     cursor: "default",
                     transition: "background 0.15s",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,217,255,0.03)")}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(212,168,83,0.03)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#00D9FF", fontFamily: "monospace" }}>{h.ticker}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--color-primary)", fontFamily: "monospace" }}>{h.ticker}</div>
                       <div style={{ fontSize: 10, color: "#4A5A6E" }}>{h.name.length > 18 ? h.name.slice(0, 18) + "…" : h.name}</div>
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 11, color, fontWeight: 700, fontFamily: "monospace" }}>
                         {isPos ? "+" : ""}{pct.toFixed(2)}%
                       </div>
-                      <div style={{ fontSize: 9, color: pnlPct >= 0 ? "#00E6A8" : "#FF4458", fontFamily: "monospace", opacity: 0.7 }}>
+                      <div style={{ fontSize: 9, color: pnlPct >= 0 ? "var(--color-green)" : "var(--color-red)", fontFamily: "monospace", opacity: 0.7 }}>
                         P&L {pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(1)}%
                       </div>
                     </div>

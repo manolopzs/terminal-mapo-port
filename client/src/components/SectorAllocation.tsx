@@ -7,16 +7,16 @@ interface SectorAllocationProps {
 }
 
 const SECTOR_COLORS: Record<string, string> = {
-  "Technology":             "#00D9FF",
+  "Technology":             "var(--color-primary)",
   "Financials":             "#A371F7",
-  "Health Care":            "#00E6A8",
-  "Consumer Discretionary": "#F0883E",
+  "Health Care":            "var(--color-green)",
+  "Consumer Discretionary": "var(--color-orange)",
   "Industrials":            "#3B82F6",
   "Energy":                 "#FBBF24",
   "Consumer Staples":       "#6EE7B7",
   "Utilities":              "#F43F5E",
   "Real Estate":            "#FB923C",
-  "Materials":              "#818CF8",
+  "Materials":              "var(--color-primary)",
   "Communication Services": "#38BDF8",
 };
 
@@ -62,9 +62,9 @@ export function SectorAllocation({ holdings, totalValue }: SectorAllocationProps
               style={{
                 fontSize: 8, fontWeight: 700, letterSpacing: 0.8,
                 padding: "2px 6px", borderRadius: 3,
-                background: maxPct >= MAX_SECTOR_PCT ? "rgba(255,68,88,0.1)" : "rgba(240,136,62,0.1)",
-                color: maxPct >= MAX_SECTOR_PCT ? "#FF4458" : "#F0883E",
-                border: `1px solid ${maxPct >= MAX_SECTOR_PCT ? "rgba(255,68,88,0.2)" : "rgba(240,136,62,0.2)"}`,
+                background: maxPct >= MAX_SECTOR_PCT ? "var(--color-red-a10)" : "var(--color-orange-a10)",
+                color: maxPct >= MAX_SECTOR_PCT ? "var(--color-red)" : "var(--color-orange)",
+                border: `1px solid ${maxPct >= MAX_SECTOR_PCT ? "var(--color-red-a20)" : "rgba(240,136,62,0.2)"}`,
                 textTransform: "uppercase",
               }}
             >
@@ -75,9 +75,9 @@ export function SectorAllocation({ holdings, totalValue }: SectorAllocationProps
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "6px 0" }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "4px 0" }}>
         {sectors.length === 0 ? (
-          <div style={{ padding: 20, textAlign: "center", color: "#3A4A5C", fontSize: 10, fontFamily: "'Inter', system-ui, sans-serif" }}>
+          <div style={{ padding: 24, textAlign: "center", color: "#3A4A5C", fontSize: 10, fontFamily: "'Inter', system-ui, sans-serif" }}>
             No holdings
           </div>
         ) : (
@@ -85,74 +85,66 @@ export function SectorAllocation({ holdings, totalValue }: SectorAllocationProps
             const barWidth = maxPct > 0 ? (sector.pct / maxPct) * 100 : 0;
             const isOver = sector.pct >= MAX_SECTOR_PCT;
             const isWarn = sector.pct >= WARN_SECTOR_PCT && !isOver;
-            const displayColor = isOver ? "#FF4458" : isWarn ? "#F0883E" : sector.color;
+            const displayColor = isOver ? "var(--color-red)" : isWarn ? "var(--color-orange)" : sector.color;
 
             return (
               <div
                 key={sector.name}
-                style={{
-                  padding: "5px 10px",
-                  borderBottom: "1px solid rgba(28,40,64,0.5)",
-                }}
+                style={{ padding: "8px 12px", borderBottom: "1px solid rgba(28,40,64,0.4)" }}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.015)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
               >
                 {/* Top row */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0, flex: 1 }}>
                     <div style={{
-                      width: 6, height: 6, borderRadius: "50%",
+                      width: 7, height: 7, borderRadius: "50%",
                       background: displayColor, flexShrink: 0,
-                      boxShadow: `0 0 4px ${displayColor}`,
+                      boxShadow: `0 0 5px ${displayColor}80`,
                     }} />
                     <span style={{
-                      fontSize: 10, fontWeight: 600,
+                      fontSize: 11, fontWeight: 600,
                       color: displayColor,
                       fontFamily: "'Inter', system-ui, sans-serif",
                       whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                      maxWidth: 110,
                     }}>
                       {sector.name}
                     </span>
-                    <span style={{
-                      fontSize: 8, color: "#3A4A5C",
-                      fontFamily: "'Inter', system-ui, sans-serif",
-                      whiteSpace: "nowrap",
-                    }}>
-                      {sector.tickers.join(", ")}
+                    <span style={{ fontSize: 8, color: "#2E3E52", fontFamily: "'Inter', system-ui, sans-serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1 }}>
+                      {sector.tickers.join(" · ")}
                     </span>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                    <span className="font-mono tabular-nums" style={{ fontSize: 11, fontWeight: 700, color: displayColor }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, marginLeft: 8 }}>
+                    <span className="font-mono tabular-nums" style={{ fontSize: 13, fontWeight: 700, color: displayColor }}>
                       {sector.pct.toFixed(1)}%
                     </span>
-                    <span className="font-mono tabular-nums" style={{ fontSize: 9, color: "#4A5A6E", minWidth: 48, textAlign: "right" }}>
+                    <span className="font-mono tabular-nums" style={{ fontSize: 9, color: "#3A4A5C", minWidth: 52, textAlign: "right" }}>
                       ${sector.value.toLocaleString("en-US", { maximumFractionDigits: 0 })}
                     </span>
                   </div>
                 </div>
 
                 {/* Bar */}
-                <div style={{ background: "rgba(28,40,64,0.6)", borderRadius: 2, height: 3, overflow: "hidden", position: "relative" }}>
+                <div style={{ background: "rgba(28,40,64,0.5)", borderRadius: 3, height: 4, overflow: "hidden", position: "relative" }}>
                   <div style={{
                     width: `${barWidth}%`,
                     height: "100%",
-                    borderRadius: 2,
+                    borderRadius: 3,
                     background: isOver
-                      ? "linear-gradient(90deg, rgba(255,68,88,0.5), #FF4458)"
+                      ? "linear-gradient(90deg, var(--color-red-a40), var(--color-red))"
                       : isWarn
-                        ? "linear-gradient(90deg, rgba(240,136,62,0.4), #F0883E)"
-                        : `linear-gradient(90deg, ${displayColor}55, ${displayColor})`,
+                        ? "linear-gradient(90deg, var(--color-orange-a10), var(--color-orange))"
+                        : `linear-gradient(90deg, ${displayColor}40, ${displayColor})`,
                     transition: "width 0.5s ease",
                   }} />
-                  {/* 40% max marker */}
-                  <div style={{
-                    position: "absolute",
-                    top: 0,
-                    left: `${(MAX_SECTOR_PCT / maxPct) * 100}%`,
-                    width: 1,
-                    height: "100%",
-                    background: "rgba(255,68,88,0.4)",
-                    display: maxPct > MAX_SECTOR_PCT ? "block" : "none",
-                  }} />
+                  {maxPct > MAX_SECTOR_PCT && (
+                    <div style={{
+                      position: "absolute", top: 0,
+                      left: `${(MAX_SECTOR_PCT / maxPct) * 100}%`,
+                      width: 1, height: "100%",
+                      background: "var(--color-red-a40)",
+                    }} />
+                  )}
                 </div>
               </div>
             );
@@ -163,7 +155,7 @@ export function SectorAllocation({ holdings, totalValue }: SectorAllocationProps
       {/* Footer */}
       {sectors.length > 0 && (
         <div style={{
-          padding: "5px 10px",
+          padding: "6px 12px",
           borderTop: "1px solid #1C2840",
           display: "flex",
           justifyContent: "space-between",
@@ -172,7 +164,7 @@ export function SectorAllocation({ holdings, totalValue }: SectorAllocationProps
           background: "rgba(0,0,0,0.2)",
         }}>
           <span style={{ fontSize: 8, color: "#3A4A5C", letterSpacing: 1, textTransform: "uppercase", fontFamily: "'Inter', system-ui, sans-serif" }}>
-            Max single sector: <span style={{ color: isConcentrated ? (maxPct >= MAX_SECTOR_PCT ? "#FF4458" : "#F0883E") : "#6E8098" }}>
+            Max single sector: <span style={{ color: isConcentrated ? (maxPct >= MAX_SECTOR_PCT ? "var(--color-red)" : "var(--color-orange)") : "#6E8098" }}>
               {topSector?.pct.toFixed(1)}% {topSector?.name}
             </span>
           </span>

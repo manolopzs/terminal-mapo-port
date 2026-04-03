@@ -15,7 +15,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { fetchLiveQuotes, fetchEarningsSchedule, fetchMarketSentiment, fetchPortfolioNews, fetchExtendedQuotes } from "./liveData";
+import { fetchLiveQuotes, fetchEarningsSchedule, fetchMarketSentiment, fetchPortfolioNews, fetchExtendedQuotes, fetchMarketPulse } from "./liveData";
 import { insertHoldingSchema, insertTradeSchema } from "@shared/schema";
 import * as fmp from "./lib/fmp.js";
 import { getDailyPrices, getRSI } from "./lib/alphavantage.js";
@@ -38,12 +38,30 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Auth
+  app.post("/api/login", (req, res) => {
+    const { email, password } = (req.body as any) ?? {};
+    const validEmail = process.env.AUTH_EMAIL ?? "";
+    const validPass = process.env.AUTH_PASS ?? "";
+    if (!validEmail || !validPass) {
+      res.status(500).json({ error: "Auth not configured on server" });
+      return;
+    }
+    const ok =
+      typeof email === "string" &&
+      typeof password === "string" &&
+      email.toLowerCase() === validEmail.toLowerCase() &&
+      password === validPass;
+    res.status(ok ? 200 : 401).json(ok ? { ok: true } : { error: "Invalid credentials" });
+  });
+
   // Wave 2 MAPO routes
   app.post("/api/analyze", analyzeRoute);
   app.get("/api/portfolio/status", portfolioStatusRoute);
   app.post("/api/portfolio/validate", portfolioValidateRoute);
   app.get("/api/briefing", briefingRoute);
   app.post("/api/screen/v2", screenRoute);
+  app.post("/api/screen", screenRoute); // alias
   app.post("/api/rebalance", rebalanceRoute);
   app.get("/api/cron/morning", cronMorningRoute);
   app.get("/api/cron/drawdown", cronDrawdownRoute);
@@ -645,6 +663,17 @@ RESPONSE INSTRUCTIONS:
     } catch (error) {
       console.error("Earnings schedule error:", error);
       res.status(500).json({ error: "Failed to fetch earnings" });
+    }
+  });
+
+  // Market Pulse — indices + retail sentiment + context
+  app.get("/api/market/pulse", async (_req, res) => {
+    try {
+      const pulse = await fetchMarketPulse();
+      res.json(pulse);
+    } catch (error) {
+      console.error("Market pulse error:", error);
+      res.status(500).json({ error: "Failed to fetch market pulse" });
     }
   });
 

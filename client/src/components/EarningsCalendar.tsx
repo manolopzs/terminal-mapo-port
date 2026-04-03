@@ -104,60 +104,33 @@ export function EarningsCalendar({ holdings, liveEarnings }: EarningsCalendarPro
             >
               <th style={thStyle("left")}>TICKER</th>
               <th style={thStyle("right")}>WT%</th>
-              <th style={thStyle("left")}>NEXT DATE</th>
+              <th style={thStyle("left")}>DATE</th>
               <th style={thStyle("left")}>PERIOD</th>
             </tr>
           </thead>
           <tbody>
             {sortedEarnings.map((e) => (
-              <tr key={e.ticker} style={{ borderBottom: "1px solid rgba(26, 35, 50, 0.5)" }}>
-                <td
-                  className="font-mono"
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: "#00D9FF",
-                    padding: "4px 6px",
-                    whiteSpace: "nowrap",
-                  }}
-                >
+              <tr key={e.ticker} style={{ borderBottom: "1px solid rgba(26, 35, 50, 0.5)" }}
+                onMouseEnter={ev => (ev.currentTarget.style.background = "var(--color-primary-a03)")}
+                onMouseLeave={ev => (ev.currentTarget.style.background = "transparent")}
+              >
+                <td className="font-mono" style={{ fontSize: 11, fontWeight: 700, color: "var(--color-primary)", padding: "7px 10px", whiteSpace: "nowrap" }}>
                   {e.ticker}
                 </td>
-                <td
-                  className="font-mono tabular-nums"
-                  style={{
-                    fontSize: 10,
-                    color: "#C9D1D9",
-                    padding: "4px 6px",
-                    textAlign: "right",
-                    whiteSpace: "nowrap",
-                  }}
-                >
+                <td className="font-mono tabular-nums" style={{ fontSize: 10, color: "#6A7A8E", padding: "7px 10px", textAlign: "right", whiteSpace: "nowrap" }}>
                   {e.wt}
                 </td>
-                <td
-                  style={{
-                    fontSize: 10,
-                    color: e.isLive ? "#C9D1D9" : "#4A5568",
-                    padding: "4px 6px",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {e.nextDate}
+                <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>
+                  <span style={{ fontSize: 11, color: e.isLive ? "#C9D1D9" : "#3A4A5C", fontWeight: e.isLive ? 600 : 400 }}>
+                    {e.nextDate}
+                  </span>
                   {e.time && (
-                    <span style={{ color: "#8B949E", fontSize: 10, marginLeft: 4 }}>
+                    <span style={{ color: "#4A5A6E", fontSize: 9, marginLeft: 5 }}>
                       {e.time}
                     </span>
                   )}
                 </td>
-                <td
-                  style={{
-                    fontSize: 9,
-                    color: "#8B949E",
-                    padding: "4px 6px",
-                    whiteSpace: "nowrap",
-                  }}
-                >
+                <td style={{ fontSize: 9, color: "#4A5A6E", padding: "7px 10px", whiteSpace: "nowrap" }}>
                   {e.fiscalPeriod}
                 </td>
               </tr>
@@ -172,7 +145,7 @@ export function EarningsCalendar({ holdings, liveEarnings }: EarningsCalendarPro
               Macro Events
             </div>
             {macroEvents.slice(0, 5).map((ev) => {
-              const typeColor = ev.type === "FOMC" ? "#FFB300" : ev.type === "CPI" ? "#00D9FF" : "#8B949E";
+              const typeColor = ev.type === "FOMC" ? "#FFB300" : ev.type === "CPI" ? "var(--color-primary)" : "#8B949E";
               const urgency = ev.daysUntil <= 7 ? "#FF4D4D" : ev.daysUntil <= 14 ? "#FFB300" : "#484F58";
               return (
                 <div key={ev.date + ev.type} style={{ display: "flex", alignItems: "center", padding: "3px 6px", borderBottom: "1px solid rgba(26,35,50,0.4)" }}>
