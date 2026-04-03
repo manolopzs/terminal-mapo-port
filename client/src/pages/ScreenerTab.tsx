@@ -692,9 +692,9 @@ export function ScreenerTab() {
             }}
           >
             {[
-              { label: "BUY", color: "var(--color-green)", count: screenResults.filter((r) => !r.rejected && aiActionFromRating(r.scoring?.rating ?? "") === "BUY").length },
-              { label: "HOLD", color: "var(--color-orange)", count: screenResults.filter((r) => !r.rejected && aiActionFromRating(r.scoring?.rating ?? "") === "HOLD").length },
-              { label: "AVOID", color: "var(--color-red)", count: screenResults.filter((r) => !r.rejected && aiActionFromRating(r.scoring?.rating ?? "") === "AVOID").length },
+              { label: "BUY", color: "var(--color-green)", count: screenResults.filter((r) => !r.rejected && aiActionFromRating(r.rating ?? r.scoring?.rating ?? "") === "BUY").length },
+              { label: "HOLD", color: "var(--color-orange)", count: screenResults.filter((r) => !r.rejected && aiActionFromRating(r.rating ?? r.scoring?.rating ?? "") === "HOLD").length },
+              { label: "AVOID", color: "var(--color-red)", count: screenResults.filter((r) => !r.rejected && aiActionFromRating(r.rating ?? r.scoring?.rating ?? "") === "AVOID").length },
               { label: "REJECTED", color: "#2A3A50", count: screenResults.filter((r) => r.rejected).length },
             ].map(({ label, color, count }) => (
               <div key={label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -756,12 +756,12 @@ export function ScreenerTab() {
         {/* Accepted rows */}
         {accepted.map((result) => {
           const ticker = result.ticker ?? "???";
-          const score = result.scoring?.compositeScore ?? 0;
-          const rating = result.scoring?.rating ?? "HOLD";
+          const score = result.score ?? result.scoring?.compositeScore ?? 0;
+          const rating = result.rating ?? result.scoring?.rating ?? "HOLD";
           const action = aiActionFromRating(rating);
           const actionColor = aiActionColor(rating);
-          const signalCount = result.quantSignals?.compositeCount ?? 0;
-          const keySignal = result.keySignal ?? result.signal ?? (signalCount > 0 ? `${signalCount} quant signals` : "—");
+          const signalCount = result.signalCount ?? result.quantSignals?.compositeCount ?? result.quantSignals?.signals?.length ?? 0;
+          const keySignal = result.keySignal ?? result.signal ?? result.screeningNotes ?? (signalCount > 0 ? `${signalCount} quant signals` : "—");
 
           return (
             <div
