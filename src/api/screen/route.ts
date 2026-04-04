@@ -16,7 +16,7 @@ import { checkExclusion } from "../../lib/agents/risk/exclusion-guard.js";
 import { analyzeStock } from "../../lib/agents/scoring/composite-scorer.js";
 import type { CandidateTicker } from "../../lib/fmp/types.js";
 
-async function batchScore(tickers: string[], batchSize = 5): Promise<Map<string, any>> {
+async function batchScore(tickers: string[], batchSize = 3): Promise<Map<string, any>> {
   const results = new Map<string, any>();
   for (let i = 0; i < tickers.length; i += batchSize) {
     const batch = tickers.slice(i, i + batchSize);
@@ -24,8 +24,8 @@ async function batchScore(tickers: string[], batchSize = 5): Promise<Map<string,
     settled.forEach((r, idx) => {
       if (r.status === "fulfilled") results.set(batch[idx], r.value);
     });
-    // Respect FMP rate limit between batches
-    if (i + batchSize < tickers.length) await new Promise(r => setTimeout(r, 500));
+    // 15s between batches to stay within Claude's 30k TPM window
+    if (i + batchSize < tickers.length) await new Promise(r => setTimeout(r, 15_000));
   }
   return results;
 }

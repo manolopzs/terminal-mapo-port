@@ -3,7 +3,6 @@
  * Orchestrates: FMP data fetch -> Quant signals -> Claude scoring
  */
 import * as fmp from "../../../../server/lib/fmp.js";
-import { getDailyPrices } from "../../../../server/lib/alphavantage.js";
 import { assembleQuantSignals } from "../../scoring/quant-signals.js";
 import { checkExclusion } from "../risk/exclusion-guard.js";
 import { RULES } from "../../constants/rules.js";
@@ -66,8 +65,8 @@ export async function analyzeStock(ticker: string): Promise<AnalysisResult> {
     fmp.getEarnings(upper),
     fmp.getUpgradesDowngrades(upper),
     fmp.getInsiderTrading(upper),
-    getDailyPrices(upper, "full"),
-    getDailyPrices("SPY", "compact"),
+    fmp.getDailyPrices(upper),
+    fmp.getDailyPrices("SPY"),
   ]);
 
   const val = <T>(r: PromiseSettledResult<T>): T | null =>
@@ -145,35 +144,52 @@ export async function analyzeStock(ticker: string): Promise<AnalysisResult> {
     },
   };
 
-  // Claude scoring
-  const raw = await callClaude({
-    system: SCORING_SYSTEM_PROMPT,
-    prompt: `Score this stock. Respond ONLY with JSON, no markdown.\n\n${JSON.stringify(dataPackage, null, 2)}`,
-  });
+  // Claude scoring — retry once on rate limit / transient errors
+  let rawResponse: string | null = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      rawResponse = await callClaude({
+        system: SCORING_SYSTEM_PROMPT,
+        prompt: `Score this stock. Respond ONLY with JSON, no markdown.\n\n${JSON.stringify(dataPackage, null, 2)}`,
+      });
+      break;
+    } catch (err: any) {
+      const isRateLimit = err?.status === 429 || /rate.limit|overloaded|529/i.test(String(err?.message ?? ""));
+      if (isRateLimit && attempt === 0) {
+        console.warn(`[composite-scorer] Rate limit hit for ${upper}, retrying in 10s...`);
+        await new Promise(r => setTimeout(r, 20_000));
+      } else {
+        console.error(`[composite-scorer] Claude call failed for ${upper}:`, err?.message ?? err);
+        break;
+      }
+    }
+  }
 
   let scoring: AnalysisResult["scoring"] = null;
-  try {
-    const cleaned = raw.replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(cleaned);
-    if (parsed.rejected) {
-      return {
-        ticker: upper, profile: companyProfile, quantSignals,
-        scoring: null, rejected: true,
-        rejectReason: parsed.rejectReason ?? "Rejected by scorer",
-        timestamp: new Date().toISOString(),
+  if (rawResponse) {
+    try {
+      const cleaned = rawResponse.replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+      if (parsed.rejected) {
+        return {
+          ticker: upper, profile: companyProfile, quantSignals,
+          scoring: null, rejected: true,
+          rejectReason: parsed.rejectReason ?? "Rejected by scorer",
+          timestamp: new Date().toISOString(),
+        };
+      }
+      scoring = {
+        factors: parsed.factors,
+        compositeScore: parsed.compositeScore,
+        rating: parsed.rating,
+        bullCase: parsed.bullCase ?? [],
+        bearCase: parsed.bearCase ?? [],
+        recommendation: parsed.recommendation ?? "",
+        agiAlignment: parsed.agiAlignment ?? "",
       };
+    } catch {
+      console.error("[composite-scorer] Parse failed:", rawResponse.slice(0, 200));
     }
-    scoring = {
-      factors: parsed.factors,
-      compositeScore: parsed.compositeScore,
-      rating: parsed.rating,
-      bullCase: parsed.bullCase ?? [],
-      bearCase: parsed.bearCase ?? [],
-      recommendation: parsed.recommendation ?? "",
-      agiAlignment: parsed.agiAlignment ?? "",
-    };
-  } catch {
-    console.error("[composite-scorer] Parse failed:", raw.slice(0, 200));
   }
 
   // Persist to score_history
