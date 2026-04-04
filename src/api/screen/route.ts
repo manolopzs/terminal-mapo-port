@@ -32,6 +32,54 @@ async function batchScore(tickers: string[], batchSize = 5): Promise<Map<string,
 
 export async function screenRoute(req: Request, res: Response): Promise<void> {
   try {
+    const { tickers: requestTickers } = req.body ?? {};
+
+    // Fast path: if caller sends specific tickers, score them directly
+    if (Array.isArray(requestTickers) && requestTickers.length > 0) {
+      const upperTickers = requestTickers.map((t: string) => t.toUpperCase()).slice(0, 30);
+      console.log(`[/api/screen/v2] Fast path: scoring ${upperTickers.length} provided tickers`);
+
+      const exclusionResults = await Promise.allSettled(
+        upperTickers.map(async t => ({ t, ok: (await checkExclusion(t)).passed }))
+      );
+      const allowed = new Set(
+        exclusionResults
+          .filter(r => r.status === "fulfilled" && r.value.ok)
+          .map(r => (r as PromiseFulfilledResult<any>).value.t)
+      );
+      const toScore = upperTickers.filter(t => allowed.has(t));
+
+      const scores = await batchScore(toScore);
+
+      const fastResults = toScore.map(ticker => {
+        const analysis = scores.get(ticker);
+        return {
+          ticker,
+          name: analysis?.profile?.companyName ?? ticker,
+          sector: analysis?.profile?.sector ?? null,
+          industry: analysis?.profile?.industry ?? null,
+          marketCap: analysis?.profile?.marketCap ?? null,
+          marketCapB: analysis?.profile?.marketCap ? `$${(analysis.profile.marketCap / 1e9).toFixed(1)}B` : "?",
+          agiAlignmentScore: 0,
+          screenType: "direct",
+          screeningNotes: analysis?.quantSignals?.signalSummary ?? null,
+          signalCount: 1,
+          price: analysis?.profile?.price ?? null,
+          changePct: 0,
+          score: analysis?.scoring?.compositeScore ?? null,
+          rating: analysis?.scoring?.rating ?? null,
+          rejected: analysis?.rejected ?? false,
+          rejectReason: analysis?.rejectReason ?? null,
+          quantSignals: analysis?.quantSignals ?? null,
+        };
+      })
+        .filter(r => !r.rejected)
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+
+      console.log(`[/api/screen/v2] Fast path done. ${fastResults.length} results.`);
+      return res.json(fastResults);
+    }
+
     console.log("[/api/screen/v2] Starting full MAPO screen...");
 
     // AGI engine + broad engine in parallel
