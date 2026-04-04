@@ -92,8 +92,9 @@ export async function runGrowthScout(): Promise<CandidateTicker[]> {
       const earningsData = earningsResult.status === "fulfilled" ? earningsResult.value : [];
 
       // Growth filter
+      // FMP stable API returns 'epsgrowth' (lowercase g), not 'epsGrowth'
       const revenueGrowth: number = growth.revenueGrowth ?? 0;
-      const epsGrowth: number | null = growth.epsGrowth ?? null;
+      const epsGrowth: number | null = growth.epsGrowth ?? growth.epsgrowth ?? null;
 
       if (revenueGrowth <= MIN_REVENUE_GROWTH) continue;
       if (epsGrowth === null) continue;

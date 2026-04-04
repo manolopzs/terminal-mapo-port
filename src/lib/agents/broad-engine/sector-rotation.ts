@@ -86,7 +86,11 @@ export async function runSectorRotation(): Promise<SectorRotationResult> {
   const neutralSectors = sectorRankings.slice(3, Math.max(3, totalSectors - 3)).map(s => s.sector);
 
   // Gather candidate tickers from top sectors
-  const topSectorNames = overweight.slice(0, 3);
+  // Fallback: when sector performance data is unavailable (e.g. weekend/holiday),
+  // use AGI-boosted sectors as the default top sectors
+  const topSectorNames = overweight.length > 0
+    ? overweight.slice(0, 3)
+    : Array.from(AGI_BOOSTED_SECTORS).concat(["Industrials"]);
   const candidateTickers = new Set<string>();
   for (const sectorName of topSectorNames) {
     const tickers = SECTOR_CANDIDATE_MAP[sectorName] ?? [];

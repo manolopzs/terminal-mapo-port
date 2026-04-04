@@ -1,4 +1,4 @@
-import { getKeyMetrics, getProfile } from "../../../../server/lib/fmp.js";
+import { getKeyMetrics, getKeyRatios, getProfile } from "../../../../server/lib/fmp.js";
 import { isExcluded } from "../../constants/exclusion-list.js";
 import { getAgiAlignment } from "../../constants/sector-map.js";
 import type { CandidateTicker } from "../../fmp/types.js";
@@ -28,6 +28,16 @@ async function fetchKeyMetricsSafe(ticker: string): Promise<any | null> {
   }
 }
 
+async function fetchRatiosSafe(ticker: string): Promise<any | null> {
+  try {
+    const data = await getKeyRatios(ticker);
+    if (!data) return null;
+    return Array.isArray(data) ? data[0] ?? null : data;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchProfileSafe(ticker: string): Promise<any | null> {
   try {
     const data = await getProfile(ticker);
@@ -44,20 +54,24 @@ export async function runValueDiscovery(): Promise<CandidateTicker[]> {
   for (let i = 0; i < VALUE_UNIVERSE.length; i += BATCH_SIZE) {
     const batch = VALUE_UNIVERSE.slice(i, i + BATCH_SIZE);
 
-    const [metricsResults, profileResults] = await Promise.all([
+    const [metricsResults, ratiosResults, profileResults] = await Promise.all([
       Promise.allSettled(batch.map(t => fetchKeyMetricsSafe(t))),
+      Promise.allSettled(batch.map(t => fetchRatiosSafe(t))),
       Promise.allSettled(batch.map(t => fetchProfileSafe(t))),
     ]);
 
     for (let j = 0; j < batch.length; j++) {
       const ticker = batch[j];
       const metricsResult = metricsResults[j];
+      const ratiosResult = ratiosResults[j];
       const profileResult = profileResults[j];
 
       if (metricsResult.status === "rejected" || !metricsResult.value) continue;
       if (profileResult.status === "rejected" || !profileResult.value) continue;
 
       const metrics = metricsResult.value;
+      // ratios may be null if fetch failed — fall back gracefully
+      const ratios = ratiosResult.status === "fulfilled" ? ratiosResult.value : null;
       const profile = profileResult.value;
 
       // Exclusion check
@@ -68,8 +82,9 @@ export async function runValueDiscovery(): Promise<CandidateTicker[]> {
       if (marketCap < MIN_MARKET_CAP || marketCap > MAX_MARKET_CAP) continue;
 
       // Value filter: EV/EBITDA between 0 and 20, P/B between 0 and 5
-      const evEbitda: number = metrics.enterpriseValueOverEBITDA ?? metrics.evToEBITDA ?? 0;
-      const pbRatio: number = metrics.pbRatio ?? 0;
+      // FMP stable /key-metrics uses 'evToEBITDA'; /ratios uses 'priceToBookRatio'
+      const evEbitda: number = metrics.evToEBITDA ?? metrics.enterpriseValueOverEBITDA ?? 0;
+      const pbRatio: number = ratios?.priceToBookRatio ?? ratios?.pbRatio ?? metrics.pbRatio ?? 0;
 
       const evEbitdaValid = evEbitda > 0 && evEbitda < 20;
       const pbValid = pbRatio > 0 && pbRatio < 5;
