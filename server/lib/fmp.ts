@@ -138,10 +138,10 @@ export async function screenStocks(params: {
     marketCapMoreThan: String(params.marketCapMoreThan ?? 500_000_000),
     marketCapLessThan: String(params.marketCapLessThan ?? 50_000_000_000),
     country: params.country ?? "US",
-    limit: "100",
+    limit: "1000",
   };
   if (params.sector) p.sector = params.sector;
   if (params.betaMoreThan !== undefined) p.betaMoreThan = String(params.betaMoreThan);
   if (params.betaLessThan !== undefined) p.betaLessThan = String(params.betaLessThan);
-  return fmpFetch("/stock-screener", p);
+  return fmpFetch("/company-screener", p);
 }

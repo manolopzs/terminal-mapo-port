@@ -1,85 +1,36 @@
 /**
- * MAPO Unified Discovery Agent
- * Replaces 7 separate agents (4 AGI + 3 broad) + 2 overlays with a single pass.
- * Fetches FMP profiles for the master universe, applies filters, returns top candidates.
+ * MAPO Dynamic Discovery Agent
+ * Uses FMP stock screener API to build a fresh universe every run.
+ * No hardcoded ticker lists — the market defines the universe.
+ *
+ * Flow: FMP screener (by sector) → exclusion → AGI alignment scoring → top 30
  */
-import { getProfile, getFinancialGrowth, getKeyMetrics, getKeyRatios } from "../../../server/lib/fmp.js";
+import { screenStocks } from "../../../server/lib/fmp.js";
 import { isExcluded } from "../constants/exclusion-list.js";
 import { getAgiAlignment } from "../constants/sector-map.js";
 import type { CandidateTicker } from "../fmp/types.js";
 
-/* ── Master ticker universe ─────────────────────────────────────────────── */
+/* ── Sectors to scan — aligned with MAPO AGI thesis ─────────────────────── */
 
-const AGI_COMPUTE = [
-  "VRT", "CIEN", "SMCI", "CRDO", "ANET", "COHR", "PSTG", "NTAP", "EME", "PWR",
-  "DELL", "HPE", "JNPR", "LITE", "FORM", "DY", "MYRG",
+const SECTORS_TO_SCAN = [
+  "Technology",
+  "Industrials",
+  "Utilities",
+  "Communication Services",
+  "Financial Services",
+  "Healthcare",
+  "Energy",
+  "Basic Materials",
+  "Consumer Cyclical",
+  "Consumer Defensive",
 ];
-
-const AGI_POWER = [
-  "VST", "CEG", "ETR", "NRG", "AES", "GNRC", "OTTR", "ATO", "NI",
-  "GEV", "POWL", "ETN",
-];
-
-const AGI_SEMI = [
-  "MRVL", "ON", "MPWR", "PI", "POWI", "DIOD", "ONTO", "MKSI",
-  "LRCX", "KLIC", "MTSI", "AMBA",
-];
-
-const AGI_DEFENSE = [
-  "PLTR", "LDOS", "SAIC", "CACI", "BAH", "DRS", "KTOS", "AVAV",
-  "AXON", "CRWD",
-];
-
-const GROWTH = [
-  "DDOG", "ZS", "NET", "SNOW", "MDB", "HUBS", "BILL", "CFLT", "GTLB", "TOST",
-  "S", "PANW", "SQ", "SOFI", "HOOD", "NU", "AFRM",
-  "HIMS", "ELF", "STRL", "MKTX", "LPLA",
-];
-
-const VALUE = [
-  "GXO", "RXO", "SITE", "MLM", "BAH", "LDOS",
-];
-
-// Deduplicated master universe
-const UNIVERSE = Array.from(new Set([
-  ...AGI_COMPUTE, ...AGI_POWER, ...AGI_SEMI, ...AGI_DEFENSE,
-  ...GROWTH, ...VALUE,
-]));
-
-// Category lookup for screening notes
-const CATEGORY_MAP = new Map<string, string>();
-AGI_COMPUTE.forEach(t => CATEGORY_MAP.set(t, "AGI_COMPUTE"));
-AGI_POWER.forEach(t => CATEGORY_MAP.set(t, "AGI_POWER"));
-AGI_SEMI.forEach(t => CATEGORY_MAP.set(t, "AGI_SEMI"));
-AGI_DEFENSE.forEach(t => CATEGORY_MAP.set(t, "AGI_DEFENSE"));
-GROWTH.forEach(t => {
-  const existing = CATEGORY_MAP.get(t);
-  CATEGORY_MAP.set(t, existing ? `${existing}+GROWTH` : "GROWTH");
-});
-VALUE.forEach(t => {
-  const existing = CATEGORY_MAP.get(t);
-  CATEGORY_MAP.set(t, existing ? `${existing}+VALUE` : "VALUE");
-});
 
 /* ── Config ──────────────────────────────────────────────────────────────── */
 
 const MIN_MARKET_CAP = 500_000_000;
 const MAX_MARKET_CAP = 50_000_000_000;
 const MIN_LIQUIDITY = 5_000_000;
-const BATCH_SIZE = 10;
 const TOP_N = 30;
-
-/* ── Helpers ─────────────────────────────────────────────────────────────── */
-
-async function fetchSafe<T>(fn: () => Promise<T>): Promise<T | null> {
-  try {
-    const data = await fn();
-    if (!data) return null;
-    return Array.isArray(data) ? (data[0] ?? null) as T : data;
-  } catch {
-    return null;
-  }
-}
 
 /* ── Main discovery function ─────────────────────────────────────────────── */
 
@@ -89,61 +40,82 @@ export interface DiscoveryResult {
 }
 
 export async function runDiscovery(): Promise<DiscoveryResult> {
-  const candidates: CandidateTicker[] = [];
-  let excluded = 0;
-  let filtered = 0;
+  console.log("[discovery] Scanning FMP stock screener across sectors...");
 
-  for (let i = 0; i < UNIVERSE.length; i += BATCH_SIZE) {
-    const batch = UNIVERSE.slice(i, i + BATCH_SIZE);
+  // Query all sectors in parallel — each returns up to 1000 stocks
+  const sectorResults = await Promise.allSettled(
+    SECTORS_TO_SCAN.map(sector =>
+      screenStocks({
+        sector,
+        marketCapMoreThan: MIN_MARKET_CAP,
+        marketCapLessThan: MAX_MARKET_CAP,
+        country: "US",
+      })
+    )
+  );
 
-    // Fetch profiles for the batch in parallel
-    const profiles = await Promise.allSettled(
-      batch.map(t => fetchSafe(() => getProfile(t)))
-    );
-
-    for (let j = 0; j < batch.length; j++) {
-      const ticker = batch[j];
-      const profileResult = profiles[j];
-      const profile = profileResult.status === "fulfilled" ? profileResult.value : null;
-      if (!profile) { filtered++; continue; }
-
-      // Exclusion check
-      const exclusion = isExcluded(ticker);
-      if (exclusion.excluded) { excluded++; continue; }
-
-      const price: number = (profile as any).price ?? 0;
-      const marketCap: number = (profile as any).marketCap ?? (profile as any).mktCap ?? 0;
-      const volAvg: number = (profile as any).averageVolume ?? (profile as any).volAvg ?? 0;
-
-      // Market cap filter
-      if (marketCap < MIN_MARKET_CAP || marketCap > MAX_MARKET_CAP) { filtered++; continue; }
-
-      // Liquidity filter
-      if (price > 0 && volAvg > 0 && volAvg * price < MIN_LIQUIDITY) { filtered++; continue; }
-
-      // AGI alignment score
-      const agiScore = getAgiAlignment(
-        (profile as any).sector ?? "",
-        (profile as any).industry ?? "",
-        (profile as any).description ?? ""
-      );
-
-      const category = CATEGORY_MAP.get(ticker) ?? "BROAD";
-
-      candidates.push({
-        ticker,
-        companyName: (profile as any).companyName ?? ticker,
-        marketCap,
-        sector: (profile as any).sector ?? "Unknown",
-        industry: (profile as any).industry ?? "Unknown",
-        agiAlignmentScore: agiScore,
-        screeningNotes: category,
-        screenType: category,
-      });
+  // Collect all raw results
+  const allStocks: any[] = [];
+  for (const result of sectorResults) {
+    if (result.status === "fulfilled" && Array.isArray(result.value)) {
+      allStocks.push(...result.value);
     }
   }
 
-  // Sort by AGI alignment descending, then market cap descending
+  console.log(`[discovery] FMP returned ${allStocks.length} stocks across ${SECTORS_TO_SCAN.length} sectors`);
+
+  // Deduplicate by ticker
+  const seen = new Set<string>();
+  const unique: any[] = [];
+  for (const stock of allStocks) {
+    const ticker = (stock.symbol ?? "").toUpperCase();
+    if (!ticker || seen.has(ticker)) continue;
+    seen.add(ticker);
+    unique.push(stock);
+  }
+
+  // Apply filters
+  let excluded = 0;
+  let filtered = 0;
+  const candidates: CandidateTicker[] = [];
+
+  for (const stock of unique) {
+    const ticker = (stock.symbol ?? "").toUpperCase();
+
+    // Exclusion check
+    const exclusion = isExcluded(ticker);
+    if (exclusion.excluded) { excluded++; continue; }
+
+    const marketCap: number = stock.marketCap ?? 0;
+    const price: number = stock.price ?? stock.lastAnnualDividend ?? 0;
+    const volume: number = stock.volume ?? stock.avgVolume ?? 0;
+
+    // Market cap bounds (redundant with screener params but defensive)
+    if (marketCap < MIN_MARKET_CAP || marketCap > MAX_MARKET_CAP) { filtered++; continue; }
+
+    // Liquidity filter
+    if (price > 0 && volume > 0 && volume * price < MIN_LIQUIDITY) { filtered++; continue; }
+
+    // AGI alignment score from sector/industry
+    const agiScore = getAgiAlignment(
+      stock.sector ?? "",
+      stock.industry ?? "",
+      stock.companyName ?? ""
+    );
+
+    candidates.push({
+      ticker,
+      companyName: stock.companyName ?? ticker,
+      marketCap,
+      sector: stock.sector ?? "Unknown",
+      industry: stock.industry ?? "Unknown",
+      agiAlignmentScore: agiScore,
+      screeningNotes: stock.sector ?? "BROAD",
+      screenType: stock.sector ?? "BROAD",
+    });
+  }
+
+  // Sort: highest AGI alignment first, then largest market cap
   candidates.sort((a, b) => {
     if (b.agiAlignmentScore !== a.agiAlignmentScore) {
       return b.agiAlignmentScore - a.agiAlignmentScore;
@@ -153,10 +125,12 @@ export async function runDiscovery(): Promise<DiscoveryResult> {
 
   const topCandidates = candidates.slice(0, TOP_N);
 
+  console.log(`[discovery] ${unique.length} unique → ${excluded} excluded, ${filtered} filtered → ${topCandidates.length} candidates`);
+
   return {
     candidates: topCandidates,
     stats: {
-      total: UNIVERSE.length,
+      total: unique.length,
       excluded,
       filtered,
       passed: topCandidates.length,
