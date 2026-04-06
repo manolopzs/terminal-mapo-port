@@ -27,9 +27,9 @@ const PRESET_SCREENS = [
 ];
 
 const AGENT_CARDS = [
-  { id: "macro-sentinel", name: "MACRO SENTINEL", hint: "Macro regime + rates" },
-  { id: "edgar-crawler", name: "EDGAR CRAWLER", hint: "SEC filings parser" },
-  { id: "quant-engine", name: "QUANT ENGINE", hint: "6-factor scoring" },
+  { id: "discovery", name: "DISCOVERY", hint: "80-ticker universe scan" },
+  { id: "exclusion-guard", name: "EXCLUSION GUARD", hint: "Blacklist + cooldown filter" },
+  { id: "composite-scorer", name: "COMPOSITE SCORER", hint: "Claude AI 6-factor scoring" },
 ];
 
 function useScreenerQuotes(tickers: string[]) {
@@ -215,9 +215,9 @@ export function ScreenerTab() {
     setDeployProgressLabel(`Initializing agents...`);
 
     // Fire agent bus events
-    startAgent("macro-sentinel");
-    startAgent("edgar-crawler");
-    startAgent("quant-engine");
+    startAgent("discovery");
+    startAgent("exclusion-guard");
+    startAgent("composite-scorer");
     addLog({ agentName: "SCREENER", message: `Deploying agents: screening ${tickers.length} tickers`, type: "info" });
     setLastOperation("SCREEN: " + tickers.join(", "));
 
@@ -251,9 +251,9 @@ export function ScreenerTab() {
       setDeployProgressLabel("Analysis complete.");
       setScreenResults(results);
 
-      completeAgent("macro-sentinel");
-      completeAgent("edgar-crawler");
-      completeAgent("quant-engine", `${results.length} results`);
+      completeAgent("discovery");
+      completeAgent("exclusion-guard");
+      completeAgent("composite-scorer", `${results.length} results`);
       addLog({ agentName: "SCREENER", message: `Screen complete: ${results.length} stocks analyzed`, type: "success" });
 
       // Brief pause to show 100% then flip to results
@@ -267,9 +267,9 @@ export function ScreenerTab() {
       setScreenError(msg);
       setScreenLoading(false);
 
-      errorAgent("macro-sentinel", msg);
-      errorAgent("edgar-crawler", msg);
-      errorAgent("quant-engine", msg);
+      errorAgent("discovery", msg);
+      errorAgent("exclusion-guard", msg);
+      errorAgent("composite-scorer", msg);
       addLog({ agentName: "SCREENER", message: `Screen failed: ${msg}`, type: "error" });
 
       // Stay in deploying mode but show error

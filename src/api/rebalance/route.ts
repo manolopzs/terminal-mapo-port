@@ -13,32 +13,12 @@ import { runMacroSentinel } from "../../lib/agents/intelligence/macro-sentinel.j
 import { runSituationalAwareness } from "../../lib/agents/agi-engine/situational-awareness.js";
 import { RULES } from "../../lib/constants/rules.js";
 
-// Run a lightweight screen (just AGI candidates, no full scoring) for rebalance context
+// Run unified discovery for rebalance context
 async function getTopCandidatesForRebalance(): Promise<any[]> {
   try {
-    const { runComputeScout } = await import("../../lib/agents/agi-engine/compute-scout.js");
-    const { runSemiSpecialist } = await import("../../lib/agents/agi-engine/semi-specialist.js");
-    const { runValueDiscovery } = await import("../../lib/agents/broad-engine/value-discovery.js");
-    const { runGrowthScout } = await import("../../lib/agents/broad-engine/growth-scout.js");
-
-    const [compute, semi, value, growth] = await Promise.allSettled([
-      runComputeScout(),
-      runSemiSpecialist(),
-      runValueDiscovery(),
-      runGrowthScout(),
-    ]);
-
-    const all = [
-      ...(compute.status === "fulfilled" ? compute.value : []),
-      ...(semi.status === "fulfilled" ? semi.value : []),
-      ...(value.status === "fulfilled" ? value.value : []),
-      ...(growth.status === "fulfilled" ? growth.value : []),
-    ];
-
-    // Deduplicate and return top 20
-    const seen = new Set<string>();
-    return all.filter(c => { if (seen.has(c.ticker)) return false; seen.add(c.ticker); return true; })
-      .slice(0, 20);
+    const { runDiscovery } = await import("../../lib/agents/discovery.js");
+    const { candidates } = await runDiscovery();
+    return candidates.slice(0, 20);
   } catch {
     return [];
   }
