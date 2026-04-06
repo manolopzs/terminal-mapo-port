@@ -2,21 +2,19 @@ import { useState, useRef, useEffect } from 'react';
 import { useAgentBus } from '@/hooks/useAgentBus';
 import type { AgentState, PipelineStage, LogEntry } from '@/lib/agent-bus';
 
-type LayerKey = 'intelligence' | 'agi' | 'broad' | 'risk';
+type LayerKey = 'intelligence' | 'agi' | 'risk';
 
-const LAYER_ORDER: LayerKey[] = ['intelligence', 'agi', 'broad', 'risk'];
+const LAYER_ORDER: LayerKey[] = ['intelligence', 'agi', 'risk'];
 
 const LAYER_LABELS: Record<LayerKey, string> = {
-  intelligence: 'INTELLIGENCE',
-  agi: 'AGI ENGINE (60%)',
-  broad: 'BROAD ENGINE (40%)',
+  intelligence: 'SCREENING & INTELLIGENCE',
+  agi: 'AGI THESIS',
   risk: 'RISK & VALIDATION',
 };
 
 const LAYER_ACCENT: Record<LayerKey, string> = {
   intelligence: 'var(--color-primary)',
   agi: '#A371F7',
-  broad: 'var(--color-orange)',
   risk: 'var(--color-red)',
 };
 

@@ -43,29 +43,19 @@ export interface BusState {
 // ─── Initial agent definitions ───────────────────────────────────────────────
 
 const INITIAL_AGENTS: AgentState[] = [
+  // screening pipeline
+  { id: 'discovery',           name: 'DISCOVERY',           layer: 'intelligence', hint: '1,700+ stock screener',    status: 'idle', lastRun: null, lastResult: null },
+  { id: 'exclusion-guard',    name: 'EXCLUSION GUARD',    layer: 'risk',         hint: 'Blacklist + cooldown',      status: 'idle', lastRun: null, lastResult: null },
+  { id: 'composite-scorer',   name: 'COMPOSITE SCORER',   layer: 'intelligence', hint: 'Claude AI 6-factor score', status: 'idle', lastRun: null, lastResult: null },
   // intelligence
-  { id: 'macro-sentinel',    name: 'MACRO SENTINEL',    layer: 'intelligence', hint: 'Macro regime + rates', status: 'idle', lastRun: null, lastResult: null },
-  { id: 'edgar-crawler',     name: 'EDGAR CRAWLER',     layer: 'intelligence', hint: 'SEC filings parser',   status: 'idle', lastRun: null, lastResult: null },
-  { id: 'earnings-monitor',  name: 'EARNINGS MONITOR',  layer: 'intelligence', hint: 'Earnings surprises',   status: 'idle', lastRun: null, lastResult: null },
-  { id: 'sentiment-scanner', name: 'SENTIMENT SCANNER', layer: 'intelligence', hint: 'NLP news sentiment',   status: 'idle', lastRun: null, lastResult: null },
-  { id: 'quant-engine',      name: 'QUANT ENGINE',      layer: 'intelligence', hint: '6-factor scoring',     status: 'idle', lastRun: null, lastResult: null },
-  // agi
-  { id: 'situational-awareness', name: 'SITUATIONAL AWARENESS', layer: 'agi', hint: 'Market regime context',  status: 'idle', lastRun: null, lastResult: null },
-  { id: 'compute-scout',         name: 'COMPUTE SCOUT',         layer: 'agi', hint: 'AI compute demand',      status: 'idle', lastRun: null, lastResult: null },
-  { id: 'power-analyst',         name: 'POWER ANALYST',         layer: 'agi', hint: 'Energy + datacenter',    status: 'idle', lastRun: null, lastResult: null },
-  { id: 'semi-specialist',       name: 'SEMI SPECIALIST',        layer: 'agi', hint: 'Semiconductor supply',  status: 'idle', lastRun: null, lastResult: null },
-  { id: 'defense-analyst',       name: 'DEFENSE ANALYST',       layer: 'agi', hint: 'Defense + gov spend',    status: 'idle', lastRun: null, lastResult: null },
-  { id: 'geopolitical-risk',     name: 'GEOPOLITICAL RISK',     layer: 'agi', hint: 'Geo risk signals',       status: 'idle', lastRun: null, lastResult: null },
-  // broad
-  { id: 'sector-rotation',  name: 'SECTOR ROTATION',  layer: 'broad', hint: 'Sector momentum',      status: 'idle', lastRun: null, lastResult: null },
-  { id: 'value-discovery',  name: 'VALUE DISCOVERY',  layer: 'broad', hint: 'Cheap quality screen', status: 'idle', lastRun: null, lastResult: null },
-  { id: 'growth-scout',     name: 'GROWTH SCOUT',     layer: 'broad', hint: 'High growth screen',   status: 'idle', lastRun: null, lastResult: null },
-  { id: 'catalyst-hunter',  name: 'CATALYST HUNTER',  layer: 'broad', hint: 'Event-driven picks',   status: 'idle', lastRun: null, lastResult: null },
+  { id: 'macro-sentinel',     name: 'MACRO SENTINEL',     layer: 'intelligence', hint: 'Macro regime + rates',     status: 'idle', lastRun: null, lastResult: null },
+  { id: 'situational-awareness', name: 'SITUATIONAL AWARENESS', layer: 'agi', hint: 'AGI thesis pulse',        status: 'idle', lastRun: null, lastResult: null },
+  { id: 'earnings-monitor',   name: 'EARNINGS MONITOR',   layer: 'intelligence', hint: 'Earnings surprises',       status: 'idle', lastRun: null, lastResult: null },
   // risk
-  { id: 'exclusion-guard',      name: 'EXCLUSION GUARD',      layer: 'risk', hint: 'ESG / exclusion filter',  status: 'idle', lastRun: null, lastResult: null },
-  { id: 'drawdown-monitor',     name: 'DRAWDOWN MONITOR',     layer: 'risk', hint: 'Max drawdown tracking',   status: 'idle', lastRun: null, lastResult: null },
-  { id: 'portfolio-validator',  name: 'PORTFOLIO VALIDATOR',  layer: 'risk', hint: 'Constraint checking',     status: 'idle', lastRun: null, lastResult: null },
-  { id: 'position-sizer',       name: 'POSITION SIZER',       layer: 'risk', hint: 'Kelly / vol sizing',      status: 'idle', lastRun: null, lastResult: null },
+  { id: 'drawdown-monitor',   name: 'DRAWDOWN MONITOR',   layer: 'risk', hint: 'Max drawdown tracking',           status: 'idle', lastRun: null, lastResult: null },
+  { id: 'portfolio-validator', name: 'PORTFOLIO VALIDATOR', layer: 'risk', hint: 'Constraint checking',            status: 'idle', lastRun: null, lastResult: null },
+  { id: 'position-sizer',     name: 'POSITION SIZER',     layer: 'risk', hint: 'Kelly / vol sizing',              status: 'idle', lastRun: null, lastResult: null },
+  { id: 'correlation-guard',  name: 'CORRELATION GUARD',  layer: 'risk', hint: 'Pair correlation limits',         status: 'idle', lastRun: null, lastResult: null },
 ];
 
 // ─── Internal store ───────────────────────────────────────────────────────────
