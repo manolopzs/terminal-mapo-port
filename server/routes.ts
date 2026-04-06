@@ -1133,7 +1133,7 @@ Return ONLY valid JSON, no markdown, no backticks, no explanation:
 
     } catch (error: any) {
       console.error("MAPO score error:", error);
-      res.status(500).json({ error: "Failed to compute MAPO score", detail: error.message });
+      return res.status(500).json({ error: "Failed to compute MAPO score", detail: error.message });
     }
   });
 

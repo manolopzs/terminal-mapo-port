@@ -195,10 +195,8 @@ export async function analyzeStock(ticker: string): Promise<AnalysisResult> {
   // Persist to score_history
   if (scoring) {
     try {
-      const { createClient } = await import("@supabase/supabase-js");
-      const sb = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!, {
-        auth: { persistSession: false },
-      });
+      const { supabase: sb, isSupabaseEnabled } = await import("../../../../server/lib/supabase.js");
+      if (!isSupabaseEnabled) throw new Error("Supabase not configured");
       await sb.from("score_history").insert({
         ticker: upper,
         score_date: new Date().toISOString().split("T")[0],

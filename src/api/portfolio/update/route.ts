@@ -1,12 +1,11 @@
 import type { Request, Response } from "express";
-import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
+import { supabase, isSupabaseEnabled } from "../../../../server/lib/supabase.js";
 import { getHoldings } from "../../../lib/portfolio/state.js";
 
 function getSb() {
-  const url = process.env.SUPABASE_URL!;
-  const key = process.env.SUPABASE_ANON_KEY!;
-  return createClient(url, key, { auth: { persistSession: false } });
+  if (!isSupabaseEnabled) throw new Error("Supabase not configured");
+  return supabase;
 }
 
 interface UpdatePortfolioBody {

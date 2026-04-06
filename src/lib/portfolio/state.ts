@@ -1,11 +1,9 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabase, isSupabaseEnabled } from "../../../server/lib/supabase.js";
 import type { Holding, Trade, PortfolioSnapshot } from "./types.js";
 
 function getSupabase() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_ANON_KEY;
-  if (!url || !key) throw new Error("Supabase env vars not set");
-  return createClient(url, key, { auth: { persistSession: false } });
+  if (!isSupabaseEnabled) throw new Error("Supabase not configured");
+  return supabase;
 }
 
 /**
