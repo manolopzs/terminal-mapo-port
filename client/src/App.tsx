@@ -6,9 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/Dashboard";
 import NotFound from "@/pages/not-found";
-import Login from "@/pages/Login";
-import { isAuthenticated } from "@/lib/auth";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 
 function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -18,16 +16,6 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
-  const [authed, setAuthed] = useState(isAuthenticated());
-
-  if (!authed) {
-    return (
-      <ThemeProvider>
-        <Login onSuccess={() => setAuthed(true)} />
-      </ThemeProvider>
-    );
-  }
-
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
