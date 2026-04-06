@@ -27,7 +27,7 @@ const PRESET_SCREENS = [
 ];
 
 const AGENT_CARDS = [
-  { id: "discovery", name: "DISCOVERY", hint: "80-ticker universe scan" },
+  { id: "discovery", name: "DISCOVERY", hint: "1,700+ stock dynamic screener" },
   { id: "exclusion-guard", name: "EXCLUSION GUARD", hint: "Blacklist + cooldown filter" },
   { id: "composite-scorer", name: "COMPOSITE SCORER", hint: "Claude AI 6-factor scoring" },
 ];
