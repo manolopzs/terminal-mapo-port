@@ -28957,18 +28957,32 @@ async function fmpFetch(path3, params = {}) {
   const url = new URL(`${FMP_BASE}${path3}`);
   url.searchParams.set("apikey", key);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  try {
-    const res = await fetch(url.toString(), { signal: AbortSignal.timeout(12e3) });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (typeof data === "string") return null;
-    if (data && typeof data === "object" && !Array.isArray(data)) {
-      if (data["Error Message"] || data["error"]) return null;
+  const cacheKey = url.toString();
+  const TTL = 3e5;
+  const cached = _cache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < TTL) return cached.data;
+  const existing = _inflight.get(cacheKey);
+  if (existing) return existing;
+  const p = (async () => {
+    try {
+      const res = await fetch(url.toString(), { signal: AbortSignal.timeout(12e3) });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (typeof data === "string") return null;
+      if (data && typeof data === "object" && !Array.isArray(data)) {
+        if (data["Error Message"] || data["error"]) return null;
+      }
+      const result = Array.isArray(data) && data.length === 0 ? null : data;
+      _cache.set(cacheKey, { data: result, ts: Date.now() });
+      return result;
+    } catch {
+      return null;
+    } finally {
+      _inflight.delete(cacheKey);
     }
-    return Array.isArray(data) && data.length === 0 ? null : data;
-  } catch {
-    return null;
-  }
+  })();
+  _inflight.set(cacheKey, p);
+  return p;
 }
 async function getProfile(ticker) {
   return fmpFetch("/profile", { symbol: ticker });
@@ -29003,11 +29017,54 @@ async function getInsiderTrading(ticker) {
 async function getFMPQuote(ticker) {
   return fmpFetch("/quote", { symbol: ticker });
 }
-var FMP_BASE;
+async function getDailyPrices(ticker) {
+  const key = ticker.toUpperCase();
+  const ttl = key === "SPY" ? 36e5 : 3e5;
+  const cached = _priceCache.get(key);
+  if (cached && Date.now() - cached.ts < ttl) return cached.data;
+  const existing = _priceInflight.get(key);
+  if (existing) return existing;
+  const p = fmpFetch("/historical-price-eod/full", { symbol: key }).then((data) => {
+    if (!data || !Array.isArray(data)) return [];
+    const bars = data.map((d) => ({
+      date: d.date,
+      open: d.open ?? d.adjOpen ?? 0,
+      high: d.high ?? d.adjHigh ?? 0,
+      low: d.low ?? d.adjLow ?? 0,
+      close: d.close ?? d.adjClose ?? 0,
+      volume: d.volume ?? 0
+    })).sort((a, b) => b.date.localeCompare(a.date));
+    _priceCache.set(key, { data: bars, ts: Date.now() });
+    _priceInflight.delete(key);
+    return bars;
+  }).catch(() => {
+    _priceInflight.delete(key);
+    return [];
+  });
+  _priceInflight.set(key, p);
+  return p;
+}
+async function screenStocks(params) {
+  const p = {
+    marketCapMoreThan: String(params.marketCapMoreThan ?? 5e8),
+    marketCapLessThan: String(params.marketCapLessThan ?? 5e10),
+    country: params.country ?? "US",
+    limit: "1000"
+  };
+  if (params.sector) p.sector = params.sector;
+  if (params.betaMoreThan !== void 0) p.betaMoreThan = String(params.betaMoreThan);
+  if (params.betaLessThan !== void 0) p.betaLessThan = String(params.betaLessThan);
+  return fmpFetch("/company-screener", p);
+}
+var FMP_BASE, _cache, _inflight, _priceCache, _priceInflight;
 var init_fmp = __esm({
   "server/lib/fmp.ts"() {
     "use strict";
     FMP_BASE = "https://financialmodelingprep.com/stable";
+    _cache = /* @__PURE__ */ new Map();
+    _inflight = /* @__PURE__ */ new Map();
+    _priceCache = /* @__PURE__ */ new Map();
+    _priceInflight = /* @__PURE__ */ new Map();
   }
 });
 
@@ -29114,469 +29171,130 @@ var init_sector_map = __esm({
   }
 });
 
-// src/lib/agents/agi-engine/compute-scout.ts
-var compute_scout_exports = {};
-__export(compute_scout_exports, {
-  runComputeScout: () => runComputeScout
+// src/lib/agents/discovery.ts
+var discovery_exports = {};
+__export(discovery_exports, {
+  runDiscovery: () => runDiscovery
 });
-async function fetchProfileSafe(ticker) {
-  try {
-    const data = await getProfile(ticker);
-    if (!data) return null;
-    return Array.isArray(data) ? data[0] ?? null : data;
-  } catch {
-    return null;
-  }
-}
-async function processBatch(tickers) {
-  const results = await Promise.allSettled(tickers.map((t) => fetchProfileSafe(t)));
-  return results.map((r) => r.status === "fulfilled" ? r.value : null);
-}
-async function runComputeScout() {
-  const candidates = [];
-  for (let i = 0; i < COMPUTE_TICKERS.length; i += BATCH_SIZE) {
-    const batch = COMPUTE_TICKERS.slice(i, i + BATCH_SIZE);
-    const profiles = await processBatch(batch);
-    for (let j = 0; j < batch.length; j++) {
-      const ticker = batch[j];
-      const profile = profiles[j];
-      if (!profile) continue;
-      const exclusion = isExcluded(ticker);
-      if (exclusion.excluded) continue;
-      const price = profile.price ?? 0;
-      const volAvg = profile.averageVolume ?? 0;
-      const marketCap = profile.marketCap ?? profile.mktCap ?? 0;
-      if (!price || price <= 0) continue;
-      if (marketCap < MIN_MARKET_CAP || marketCap > MAX_MARKET_CAP) continue;
-      if (volAvg * price < MIN_LIQUIDITY) continue;
-      const baseScore = getAgiAlignment(
-        profile.sector ?? "",
-        profile.industry ?? "",
-        profile.description ?? ""
-      );
-      const agiAlignmentScore = Math.max(MIN_AGI_SCORE, baseScore);
-      candidates.push({
-        ticker,
-        companyName: profile.companyName ?? ticker,
-        marketCap,
-        sector: profile.sector ?? "Unknown",
-        industry: profile.industry ?? "Unknown",
-        agiAlignmentScore,
-        screeningNotes: "Compute Infrastructure",
-        screenType: "AGI_COMPUTE"
-      });
+async function runDiscovery() {
+  console.log("[discovery] Scanning FMP company-screener across sectors...");
+  const sectorResults = await Promise.allSettled(
+    SECTORS_TO_SCAN.map(
+      (sector) => screenStocks({
+        sector,
+        marketCapMoreThan: MIN_MARKET_CAP,
+        marketCapLessThan: MAX_MARKET_CAP,
+        country: "US"
+      })
+    )
+  );
+  const allStocks = [];
+  for (const result of sectorResults) {
+    if (result.status === "fulfilled" && Array.isArray(result.value)) {
+      allStocks.push(...result.value);
     }
   }
-  candidates.sort((a, b) => b.marketCap - a.marketCap);
-  return candidates.slice(0, TOP_N);
+  console.log(`[discovery] FMP returned ${allStocks.length} stocks across ${SECTORS_TO_SCAN.length} sectors`);
+  const seen = /* @__PURE__ */ new Set();
+  const unique = [];
+  for (const stock of allStocks) {
+    const ticker = (stock.symbol ?? "").toUpperCase();
+    if (!ticker || seen.has(ticker)) continue;
+    seen.add(ticker);
+    unique.push(stock);
+  }
+  let excluded = 0;
+  let filtered = 0;
+  const candidates = [];
+  for (const stock of unique) {
+    const ticker = (stock.symbol ?? "").toUpperCase();
+    if (stock.isEtf || stock.isFund || stock.isAdr) {
+      filtered++;
+      continue;
+    }
+    const exclusion = isExcluded(ticker);
+    if (exclusion.excluded) {
+      excluded++;
+      continue;
+    }
+    const marketCap = stock.marketCap ?? 0;
+    const price = stock.price ?? 0;
+    const volume = stock.volume ?? 0;
+    if (marketCap < MIN_MARKET_CAP || marketCap > MAX_MARKET_CAP) {
+      filtered++;
+      continue;
+    }
+    if (price > 0 && volume > 0 && volume * price < MIN_LIQUIDITY) {
+      filtered++;
+      continue;
+    }
+    if (stock.isActivelyTrading === false) {
+      filtered++;
+      continue;
+    }
+    const agiScore = getAgiAlignment(
+      stock.sector ?? "",
+      stock.industry ?? "",
+      stock.companyName ?? ""
+    );
+    candidates.push({
+      ticker,
+      companyName: stock.companyName ?? ticker,
+      marketCap,
+      sector: stock.sector ?? "Unknown",
+      industry: stock.industry ?? "Unknown",
+      agiAlignmentScore: agiScore,
+      screeningNotes: stock.industry ?? stock.sector ?? "BROAD",
+      screenType: stock.sector ?? "BROAD"
+    });
+  }
+  candidates.sort((a, b) => {
+    if (b.agiAlignmentScore !== a.agiAlignmentScore) {
+      return b.agiAlignmentScore - a.agiAlignmentScore;
+    }
+    return b.marketCap - a.marketCap;
+  });
+  const sectorCount = /* @__PURE__ */ new Map();
+  const diversified = [];
+  for (const c of candidates) {
+    const sector = c.sector;
+    const count = sectorCount.get(sector) ?? 0;
+    if (count >= MAX_PER_SECTOR) continue;
+    sectorCount.set(sector, count + 1);
+    diversified.push(c);
+    if (diversified.length >= TOP_N) break;
+  }
+  console.log(`[discovery] ${unique.length} unique \u2192 ${excluded} excluded, ${filtered} filtered \u2192 ${diversified.length} candidates`);
+  return {
+    candidates: diversified,
+    stats: {
+      total: unique.length,
+      excluded,
+      filtered,
+      passed: diversified.length
+    }
+  };
 }
-var COMPUTE_TICKERS, MIN_MARKET_CAP, MAX_MARKET_CAP, MIN_LIQUIDITY, MIN_AGI_SCORE, BATCH_SIZE, TOP_N;
-var init_compute_scout = __esm({
-  "src/lib/agents/agi-engine/compute-scout.ts"() {
+var SECTORS_TO_SCAN, MIN_MARKET_CAP, MAX_MARKET_CAP, MIN_LIQUIDITY, TOP_N, MAX_PER_SECTOR;
+var init_discovery = __esm({
+  "src/lib/agents/discovery.ts"() {
     "use strict";
     init_fmp();
     init_exclusion_list();
     init_sector_map();
-    COMPUTE_TICKERS = [
-      "VRT",
-      "CIEN",
-      "SMCI",
-      "CRDO",
-      "ANET",
-      "COHR",
-      "PSTG",
-      "NTAP",
-      "EME",
-      "PWR",
-      "DELL",
-      "HPE",
-      "JNPR",
-      "VIAV",
-      "LITE",
-      "IIVI",
-      "FORM",
-      "ACM",
-      "DY",
-      "MYRG"
+    SECTORS_TO_SCAN = [
+      "Technology",
+      "Industrials",
+      "Utilities",
+      "Communication Services",
+      "Healthcare",
+      "Energy"
     ];
     MIN_MARKET_CAP = 5e8;
     MAX_MARKET_CAP = 5e10;
     MIN_LIQUIDITY = 5e6;
-    MIN_AGI_SCORE = 80;
-    BATCH_SIZE = 5;
-    TOP_N = 15;
-  }
-});
-
-// src/lib/agents/agi-engine/semi-specialist.ts
-var semi_specialist_exports = {};
-__export(semi_specialist_exports, {
-  runSemiSpecialist: () => runSemiSpecialist
-});
-async function fetchProfileSafe3(ticker) {
-  try {
-    const data = await getProfile(ticker);
-    if (!data) return null;
-    return Array.isArray(data) ? data[0] ?? null : data;
-  } catch {
-    return null;
-  }
-}
-async function processBatch3(tickers) {
-  const results = await Promise.allSettled(tickers.map((t) => fetchProfileSafe3(t)));
-  return results.map((r) => r.status === "fulfilled" ? r.value : null);
-}
-async function runSemiSpecialist() {
-  const candidates = [];
-  for (let i = 0; i < SEMI_TICKERS.length; i += BATCH_SIZE3) {
-    const batch = SEMI_TICKERS.slice(i, i + BATCH_SIZE3);
-    const profiles = await processBatch3(batch);
-    for (let j = 0; j < batch.length; j++) {
-      const ticker = batch[j];
-      const profile = profiles[j];
-      if (!profile) continue;
-      const exclusion = isExcluded(ticker);
-      if (exclusion.excluded) continue;
-      const price = profile.price ?? 0;
-      const volAvg = profile.averageVolume ?? 0;
-      const marketCap = profile.marketCap ?? profile.mktCap ?? 0;
-      if (!price || price <= 0) continue;
-      if (marketCap < MIN_MARKET_CAP3 || marketCap > MAX_MARKET_CAP3) continue;
-      if (volAvg * price < MIN_LIQUIDITY3) continue;
-      const baseScore = getAgiAlignment(
-        profile.sector ?? "",
-        profile.industry ?? "",
-        profile.description ?? ""
-      );
-      const agiAlignmentScore = Math.max(MIN_AGI_SCORE3, baseScore);
-      candidates.push({
-        ticker,
-        companyName: profile.companyName ?? ticker,
-        marketCap,
-        sector: profile.sector ?? "Unknown",
-        industry: profile.industry ?? "Unknown",
-        agiAlignmentScore,
-        screeningNotes: "Non-Mega Semiconductor, AI-Exposed",
-        screenType: "AGI_SEMI"
-      });
-    }
-  }
-  candidates.sort((a, b) => b.marketCap - a.marketCap);
-  return candidates.slice(0, TOP_N3);
-}
-var SEMI_TICKERS, MIN_MARKET_CAP3, MAX_MARKET_CAP3, MIN_LIQUIDITY3, MIN_AGI_SCORE3, BATCH_SIZE3, TOP_N3;
-var init_semi_specialist = __esm({
-  "src/lib/agents/agi-engine/semi-specialist.ts"() {
-    "use strict";
-    init_fmp();
-    init_exclusion_list();
-    init_sector_map();
-    SEMI_TICKERS = [
-      "MRVL",
-      "ON",
-      "MPWR",
-      "WOLF",
-      "PI",
-      "FORM",
-      "ACLS",
-      "POWI",
-      "DIOD",
-      "IOSP",
-      "COHU",
-      "ONTO",
-      "MKSI",
-      "UCTT",
-      "LRCX",
-      "KLIC",
-      "CEVA",
-      "MTSI",
-      "SLAB",
-      "AMBA"
-    ];
-    MIN_MARKET_CAP3 = 2e9;
-    MAX_MARKET_CAP3 = 5e10;
-    MIN_LIQUIDITY3 = 5e6;
-    MIN_AGI_SCORE3 = 70;
-    BATCH_SIZE3 = 5;
-    TOP_N3 = 10;
-  }
-});
-
-// src/lib/agents/broad-engine/value-discovery.ts
-var value_discovery_exports = {};
-__export(value_discovery_exports, {
-  runValueDiscovery: () => runValueDiscovery
-});
-async function fetchKeyMetricsSafe(ticker) {
-  try {
-    const data = await getKeyMetrics(ticker);
-    if (!data) return null;
-    return Array.isArray(data) ? data[0] ?? null : data;
-  } catch {
-    return null;
-  }
-}
-async function fetchProfileSafe7(ticker) {
-  try {
-    const data = await getProfile(ticker);
-    if (!data) return null;
-    return Array.isArray(data) ? data[0] ?? null : data;
-  } catch {
-    return null;
-  }
-}
-async function runValueDiscovery() {
-  const valueCandidates = [];
-  for (let i = 0; i < VALUE_UNIVERSE.length; i += BATCH_SIZE7) {
-    const batch = VALUE_UNIVERSE.slice(i, i + BATCH_SIZE7);
-    const [metricsResults, profileResults] = await Promise.all([
-      Promise.allSettled(batch.map((t) => fetchKeyMetricsSafe(t))),
-      Promise.allSettled(batch.map((t) => fetchProfileSafe7(t)))
-    ]);
-    for (let j = 0; j < batch.length; j++) {
-      const ticker = batch[j];
-      const metricsResult = metricsResults[j];
-      const profileResult = profileResults[j];
-      if (metricsResult.status === "rejected" || !metricsResult.value) continue;
-      if (profileResult.status === "rejected" || !profileResult.value) continue;
-      const metrics = metricsResult.value;
-      const profile = profileResult.value;
-      const exclusion = isExcluded(ticker);
-      if (exclusion.excluded) continue;
-      const marketCap = profile.marketCap ?? profile.mktCap ?? 0;
-      if (marketCap < MIN_MARKET_CAP6 || marketCap > MAX_MARKET_CAP6) continue;
-      const evEbitda = metrics.enterpriseValueOverEBITDA ?? metrics.evToEBITDA ?? 0;
-      const pbRatio = metrics.pbRatio ?? 0;
-      const evEbitdaValid = evEbitda > 0 && evEbitda < 20;
-      const pbValid = pbRatio > 0 && pbRatio < 5;
-      if (!evEbitdaValid || !pbValid) continue;
-      const baseScore = getAgiAlignment(
-        profile.sector ?? "",
-        profile.industry ?? "",
-        profile.description ?? ""
-      );
-      const agiAlignmentScore = Math.min(100, baseScore + 3);
-      valueCandidates.push({
-        ticker,
-        companyName: profile.companyName ?? ticker,
-        marketCap,
-        sector: profile.sector ?? "Unknown",
-        industry: profile.industry ?? "Unknown",
-        agiAlignmentScore,
-        screeningNotes: "Value Factor confirmed: EV/EBITDA + P/B filter",
-        screenType: "VALUE_DISCOVERY",
-        evEbitda
-      });
-    }
-  }
-  valueCandidates.sort((a, b) => a.evEbitda - b.evEbitda);
-  return valueCandidates.slice(0, TOP_N5).map(({ evEbitda: _ev, ...rest }) => rest);
-}
-var VALUE_UNIVERSE, MIN_MARKET_CAP6, MAX_MARKET_CAP6, BATCH_SIZE7, TOP_N5;
-var init_value_discovery = __esm({
-  "src/lib/agents/broad-engine/value-discovery.ts"() {
-    "use strict";
-    init_fmp();
-    init_exclusion_list();
-    init_sector_map();
-    VALUE_UNIVERSE = [
-      "VRT",
-      "CIEN",
-      "COHR",
-      "NTAP",
-      "EME",
-      "VST",
-      "ETR",
-      "AES",
-      "MRVL",
-      "ON",
-      "LPLA",
-      "MKTX",
-      "STRL",
-      "HIMS",
-      "ELF",
-      "CRDO",
-      "PSTG",
-      "NRG",
-      "GNRC",
-      "DRS",
-      "KTOS",
-      "BAH",
-      "LDOS",
-      "GXO",
-      "RXO",
-      "SITE",
-      "MLM",
-      "OTTR",
-      "ATO",
-      "NI"
-    ];
-    MIN_MARKET_CAP6 = 5e8;
-    MAX_MARKET_CAP6 = 5e10;
-    BATCH_SIZE7 = 5;
-    TOP_N5 = 15;
-  }
-});
-
-// src/lib/agents/broad-engine/growth-scout.ts
-var growth_scout_exports = {};
-__export(growth_scout_exports, {
-  runGrowthScout: () => runGrowthScout
-});
-async function fetchGrowthSafe(ticker) {
-  try {
-    const data = await getFinancialGrowth(ticker);
-    if (!data) return null;
-    return Array.isArray(data) ? data[0] ?? null : data;
-  } catch {
-    return null;
-  }
-}
-async function fetchEarningsSafe(ticker) {
-  try {
-    const data = await getEarnings(ticker);
-    if (!data || !Array.isArray(data)) return [];
-    return data;
-  } catch {
-    return [];
-  }
-}
-async function fetchProfileSafe8(ticker) {
-  try {
-    const data = await getProfile(ticker);
-    if (!data) return null;
-    return Array.isArray(data) ? data[0] ?? null : data;
-  } catch {
-    return null;
-  }
-}
-function calcSue(earningsData) {
-  if (!earningsData.length) return 0;
-  const recent = earningsData.find((e) => e.epsActual != null && e.epsEstimated != null);
-  if (!recent) return 0;
-  const { epsActual, epsEstimated } = recent;
-  if (Math.abs(epsEstimated) < 1e-3) return 0;
-  return (epsActual - epsEstimated) / Math.abs(epsEstimated);
-}
-async function runGrowthScout() {
-  const growthCandidates = [];
-  for (let i = 0; i < FULL_UNIVERSE.length; i += BATCH_SIZE8) {
-    const batch = FULL_UNIVERSE.slice(i, i + BATCH_SIZE8);
-    const [growthResults, earningsResults, profileResults] = await Promise.all([
-      Promise.allSettled(batch.map((t) => fetchGrowthSafe(t))),
-      Promise.allSettled(batch.map((t) => fetchEarningsSafe(t))),
-      Promise.allSettled(batch.map((t) => fetchProfileSafe8(t)))
-    ]);
-    for (let j = 0; j < batch.length; j++) {
-      const ticker = batch[j];
-      const growthResult = growthResults[j];
-      const earningsResult = earningsResults[j];
-      const profileResult = profileResults[j];
-      if (growthResult.status === "rejected" || !growthResult.value) continue;
-      if (profileResult.status === "rejected" || !profileResult.value) continue;
-      const growth = growthResult.value;
-      const profile = profileResult.value;
-      const earningsData = earningsResult.status === "fulfilled" ? earningsResult.value : [];
-      const revenueGrowth = growth.revenueGrowth ?? 0;
-      const epsGrowth = growth.epsGrowth ?? null;
-      if (revenueGrowth <= MIN_REVENUE_GROWTH) continue;
-      if (epsGrowth === null) continue;
-      const exclusion = isExcluded(ticker);
-      if (exclusion.excluded) continue;
-      const marketCap = profile.marketCap ?? profile.mktCap ?? 0;
-      if (marketCap < MIN_MARKET_CAP7 || marketCap > MAX_MARKET_CAP7) continue;
-      const sueScore = calcSue(earningsData);
-      const sueConfirmed = sueScore > 1;
-      const baseScore = getAgiAlignment(
-        profile.sector ?? "",
-        profile.industry ?? "",
-        profile.description ?? ""
-      );
-      const agiAlignmentScore = Math.min(100, baseScore);
-      const notes = sueConfirmed ? "Revenue growth >10% + positive EPS growth; SUE confirmed +5 Growth" : "Revenue growth >10% + positive EPS growth";
-      growthCandidates.push({
-        ticker,
-        companyName: profile.companyName ?? ticker,
-        marketCap,
-        sector: profile.sector ?? "Unknown",
-        industry: profile.industry ?? "Unknown",
-        agiAlignmentScore,
-        screeningNotes: notes,
-        screenType: "GROWTH_SCOUT",
-        revenueGrowth
-      });
-    }
-  }
-  growthCandidates.sort((a, b) => b.revenueGrowth - a.revenueGrowth);
-  return growthCandidates.slice(0, TOP_N6).map(({ revenueGrowth: _rg, ...rest }) => rest);
-}
-var BASE_UNIVERSE, HIGH_GROWTH_TICKERS, FULL_UNIVERSE, MIN_MARKET_CAP7, MAX_MARKET_CAP7, MIN_REVENUE_GROWTH, BATCH_SIZE8, TOP_N6;
-var init_growth_scout = __esm({
-  "src/lib/agents/broad-engine/growth-scout.ts"() {
-    "use strict";
-    init_fmp();
-    init_exclusion_list();
-    init_sector_map();
-    BASE_UNIVERSE = [
-      "VRT",
-      "CIEN",
-      "COHR",
-      "NTAP",
-      "EME",
-      "VST",
-      "ETR",
-      "AES",
-      "MRVL",
-      "ON",
-      "LPLA",
-      "MKTX",
-      "STRL",
-      "HIMS",
-      "ELF",
-      "CRDO",
-      "PSTG",
-      "NRG",
-      "GNRC",
-      "DRS",
-      "KTOS",
-      "BAH",
-      "LDOS",
-      "GXO",
-      "RXO",
-      "SITE",
-      "MLM",
-      "OTTR",
-      "ATO",
-      "NI"
-    ];
-    HIGH_GROWTH_TICKERS = [
-      "DDOG",
-      "ZS",
-      "NET",
-      "SNOW",
-      "MDB",
-      "HUBS",
-      "BILL",
-      "CFLT",
-      "GTLB",
-      "TOST",
-      "AXON",
-      "CRWD",
-      "S",
-      "PANW",
-      "SQ",
-      "SOFI",
-      "HOOD",
-      "NU",
-      "AFRM",
-      "RXRX"
-    ];
-    FULL_UNIVERSE = Array.from(/* @__PURE__ */ new Set([...BASE_UNIVERSE, ...HIGH_GROWTH_TICKERS]));
-    MIN_MARKET_CAP7 = 5e8;
-    MAX_MARKET_CAP7 = 5e10;
-    MIN_REVENUE_GROWTH = 0.1;
-    BATCH_SIZE8 = 5;
-    TOP_N6 = 15;
+    TOP_N = 30;
+    MAX_PER_SECTOR = 8;
   }
 });
 
@@ -40828,55 +40546,6 @@ var storage = createStorage();
 // src/lib/agents/scoring/composite-scorer.ts
 init_fmp();
 
-// server/lib/alphavantage.ts
-var AV_BASE = "https://www.alphavantage.co/query";
-async function avFetch(params) {
-  const key = process.env.ALPHA_VANTAGE_API_KEY;
-  if (!key) return null;
-  const url = new URL(AV_BASE);
-  url.searchParams.set("apikey", key);
-  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  try {
-    const res = await fetch(url.toString(), { signal: AbortSignal.timeout(15e3) });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data["Error Message"] || data["Note"] || data["Information"]) return null;
-    return data;
-  } catch {
-    return null;
-  }
-}
-async function getDailyPrices(ticker, outputsize = "full") {
-  const data = await avFetch({
-    function: "TIME_SERIES_DAILY",
-    symbol: ticker,
-    outputsize
-  });
-  if (!data) return [];
-  const timeSeries = data["Time Series (Daily)"] || {};
-  return Object.entries(timeSeries).map(([date2, vals]) => ({
-    date: date2,
-    open: parseFloat(vals["1. open"]),
-    high: parseFloat(vals["2. high"]),
-    low: parseFloat(vals["3. low"]),
-    close: parseFloat(vals["4. close"]),
-    volume: parseInt(vals["5. volume"])
-  })).sort((a, b) => b.date.localeCompare(a.date));
-}
-async function getRSI(ticker, period = 14) {
-  const data = await avFetch({
-    function: "RSI",
-    symbol: ticker,
-    interval: "daily",
-    time_period: String(period),
-    series_type: "close"
-  });
-  if (!data) return null;
-  const techData = data["Technical Analysis: RSI"] || {};
-  const latest = Object.values(techData)[0];
-  return latest ? parseFloat(latest["RSI"]) : null;
-}
-
 // src/lib/constants/rules.ts
 var RULES = {
   // Position limits
@@ -41153,12 +40822,12 @@ CRITICAL RULES:
 - The final composite score is the weighted sum
 
 SCORING WEIGHTS:
-- Financial Health: 25% (ROE, ROA, debt ratios, current ratio, FCF, EBITDA margins, net income trend)
-- Valuation: 20% (P/E, P/S, P/B, PEG, EV/EBITDA vs peers and 5yr avg)
-- Growth Trajectory: 20% (Revenue growth %, EPS growth %, guidance direction)
+- Growth Trajectory: 30% (Revenue growth %, EPS growth %, guidance direction, TAM expansion)
+- Macro Alignment: 20% (AGI thesis fit, sector tailwinds, rate sensitivity, secular trend)
+- Financial Health: 20% (ROE, ROA, debt ratios, current ratio, FCF, EBITDA margins, net income trend)
 - Technical Factors: 15% (Price vs MAs, Donchian position, volume trend, RSI)
-- News Sentiment: 10% (Analyst actions, insider activity, news tone)
-- Macro Alignment: 10% (AGI thesis fit, sector tailwinds, rate sensitivity)
+- Sentiment: 10% (Analyst actions, insider activity, news tone)
+- Valuation: 5% (P/E, P/S, P/B, PEG, EV/EBITDA \u2014 score relative to growth rate, NOT absolute multiples. High-growth companies deserve premium valuations)
 
 QUANT ADJUSTMENTS TO APPLY:
 - Momentum confirmed (12-1 month return > 10%): +5 pts to Technical base
@@ -41241,8 +40910,8 @@ async function analyzeStock(ticker) {
     getEarnings(upper),
     getUpgradesDowngrades(upper),
     getInsiderTrading(upper),
-    getDailyPrices(upper, "full"),
-    getDailyPrices("SPY", "compact")
+    getDailyPrices(upper),
+    getDailyPrices("SPY")
   ]);
   const val = (r) => r.status === "fulfilled" ? r.value : null;
   const profile = val(profileArr);
@@ -41314,38 +40983,55 @@ async function analyzeStock(ticker) {
       insiderTrades: Array.isArray(val(insider)) ? val(insider).slice(0, 10) : null
     }
   };
-  const raw = await callClaude({
-    system: SCORING_SYSTEM_PROMPT,
-    prompt: `Score this stock. Respond ONLY with JSON, no markdown.
+  let rawResponse = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      rawResponse = await callClaude({
+        system: SCORING_SYSTEM_PROMPT,
+        prompt: `Score this stock. Respond ONLY with JSON, no markdown.
 
 ${JSON.stringify(dataPackage, null, 2)}`
-  });
-  let scoring = null;
-  try {
-    const cleaned = raw.replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(cleaned);
-    if (parsed.rejected) {
-      return {
-        ticker: upper,
-        profile: companyProfile,
-        quantSignals,
-        scoring: null,
-        rejected: true,
-        rejectReason: parsed.rejectReason ?? "Rejected by scorer",
-        timestamp: (/* @__PURE__ */ new Date()).toISOString()
-      };
+      });
+      break;
+    } catch (err) {
+      const isRateLimit = err?.status === 429 || /rate.limit|overloaded|529/i.test(String(err?.message ?? ""));
+      if (isRateLimit && attempt === 0) {
+        console.warn(`[composite-scorer] Rate limit hit for ${upper}, retrying in 10s...`);
+        await new Promise((r) => setTimeout(r, 2e4));
+      } else {
+        console.error(`[composite-scorer] Claude call failed for ${upper}:`, err?.message ?? err);
+        break;
+      }
     }
-    scoring = {
-      factors: parsed.factors,
-      compositeScore: parsed.compositeScore,
-      rating: parsed.rating,
-      bullCase: parsed.bullCase ?? [],
-      bearCase: parsed.bearCase ?? [],
-      recommendation: parsed.recommendation ?? "",
-      agiAlignment: parsed.agiAlignment ?? ""
-    };
-  } catch {
-    console.error("[composite-scorer] Parse failed:", raw.slice(0, 200));
+  }
+  let scoring = null;
+  if (rawResponse) {
+    try {
+      const cleaned = rawResponse.replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+      if (parsed.rejected) {
+        return {
+          ticker: upper,
+          profile: companyProfile,
+          quantSignals,
+          scoring: null,
+          rejected: true,
+          rejectReason: parsed.rejectReason ?? "Rejected by scorer",
+          timestamp: (/* @__PURE__ */ new Date()).toISOString()
+        };
+      }
+      scoring = {
+        factors: parsed.factors,
+        compositeScore: parsed.compositeScore,
+        rating: parsed.rating,
+        bullCase: parsed.bullCase ?? [],
+        bearCase: parsed.bearCase ?? [],
+        recommendation: parsed.recommendation ?? "",
+        agiAlignment: parsed.agiAlignment ?? ""
+      };
+    } catch {
+      console.error("[composite-scorer] Parse failed:", rawResponse.slice(0, 200));
+    }
   }
   if (scoring) {
     try {
@@ -42022,461 +41708,7 @@ async function briefingRoute(req, res) {
 }
 
 // src/api/screen/route.ts
-init_compute_scout();
-
-// src/lib/agents/agi-engine/power-analyst.ts
-init_fmp();
-init_exclusion_list();
-init_sector_map();
-var POWER_TICKERS = [
-  "VST",
-  "CEG",
-  "ETR",
-  "NRG",
-  "AES",
-  "WTRG",
-  "MGEE",
-  "OTTR",
-  "ATO",
-  "NI",
-  "GNRC",
-  "AMRC",
-  "ARRY",
-  "HASI",
-  "BW",
-  "GEV",
-  "POWL",
-  "ETN",
-  "AMPS",
-  "NFE"
-];
-var MIN_MARKET_CAP2 = 1e9;
-var MAX_MARKET_CAP2 = 5e10;
-var MIN_LIQUIDITY2 = 5e6;
-var MIN_AGI_SCORE2 = 80;
-var BATCH_SIZE2 = 5;
-var TOP_N2 = 10;
-async function fetchProfileSafe2(ticker) {
-  try {
-    const data = await getProfile(ticker);
-    if (!data) return null;
-    return Array.isArray(data) ? data[0] ?? null : data;
-  } catch {
-    return null;
-  }
-}
-async function processBatch2(tickers) {
-  const results = await Promise.allSettled(tickers.map((t) => fetchProfileSafe2(t)));
-  return results.map((r) => r.status === "fulfilled" ? r.value : null);
-}
-async function runPowerAnalyst() {
-  const candidates = [];
-  for (let i = 0; i < POWER_TICKERS.length; i += BATCH_SIZE2) {
-    const batch = POWER_TICKERS.slice(i, i + BATCH_SIZE2);
-    const profiles = await processBatch2(batch);
-    for (let j = 0; j < batch.length; j++) {
-      const ticker = batch[j];
-      const profile = profiles[j];
-      if (!profile) continue;
-      const exclusion = isExcluded(ticker);
-      if (exclusion.excluded) continue;
-      const price = profile.price ?? 0;
-      const volAvg = profile.averageVolume ?? 0;
-      const marketCap = profile.marketCap ?? profile.mktCap ?? 0;
-      if (!price || price <= 0) continue;
-      if (marketCap < MIN_MARKET_CAP2 || marketCap > MAX_MARKET_CAP2) continue;
-      if (volAvg * price < MIN_LIQUIDITY2) continue;
-      const baseScore = getAgiAlignment(
-        profile.sector ?? "",
-        profile.industry ?? "",
-        profile.description ?? ""
-      );
-      const agiAlignmentScore = Math.max(MIN_AGI_SCORE2, baseScore);
-      candidates.push({
-        ticker,
-        companyName: profile.companyName ?? ticker,
-        marketCap,
-        sector: profile.sector ?? "Unknown",
-        industry: profile.industry ?? "Unknown",
-        agiAlignmentScore,
-        screeningNotes: "Power Grid + AI Infrastructure",
-        screenType: "AGI_POWER"
-      });
-    }
-  }
-  candidates.sort((a, b) => b.marketCap - a.marketCap);
-  return candidates.slice(0, TOP_N2);
-}
-
-// src/api/screen/route.ts
-init_semi_specialist();
-
-// src/lib/agents/agi-engine/defense-analyst.ts
-init_fmp();
-init_exclusion_list();
-init_sector_map();
-var DEFENSE_TICKERS = [
-  "PLTR",
-  "LDOS",
-  "SAIC",
-  "CACI",
-  "BAH",
-  "DRS",
-  "KTOS",
-  "RCAT",
-  "AVAV",
-  "HII",
-  "CWAN",
-  "BBAI",
-  "SPIR",
-  "TDG",
-  "AXON",
-  "S",
-  "CRWD"
-];
-var MIN_MARKET_CAP4 = 2e9;
-var MAX_MARKET_CAP4 = 5e10;
-var MIN_LIQUIDITY4 = 5e6;
-var MIN_AGI_SCORE4 = 75;
-var BATCH_SIZE4 = 5;
-var TOP_N4 = 8;
-async function fetchProfileSafe4(ticker) {
-  try {
-    const data = await getProfile(ticker);
-    if (!data) return null;
-    return Array.isArray(data) ? data[0] ?? null : data;
-  } catch {
-    return null;
-  }
-}
-async function processBatch4(tickers) {
-  const results = await Promise.allSettled(tickers.map((t) => fetchProfileSafe4(t)));
-  return results.map((r) => r.status === "fulfilled" ? r.value : null);
-}
-async function runDefenseAnalyst() {
-  const candidates = [];
-  for (let i = 0; i < DEFENSE_TICKERS.length; i += BATCH_SIZE4) {
-    const batch = DEFENSE_TICKERS.slice(i, i + BATCH_SIZE4);
-    const profiles = await processBatch4(batch);
-    for (let j = 0; j < batch.length; j++) {
-      const ticker = batch[j];
-      const profile = profiles[j];
-      if (!profile) continue;
-      const exclusion = isExcluded(ticker);
-      if (exclusion.excluded) continue;
-      const price = profile.price ?? 0;
-      const volAvg = profile.averageVolume ?? 0;
-      const marketCap = profile.marketCap ?? profile.mktCap ?? 0;
-      if (!price || price <= 0) continue;
-      if (marketCap < MIN_MARKET_CAP4 || marketCap > MAX_MARKET_CAP4) continue;
-      if (volAvg * price < MIN_LIQUIDITY4) continue;
-      const baseScore = getAgiAlignment(
-        profile.sector ?? "",
-        profile.industry ?? "",
-        profile.description ?? ""
-      );
-      const agiAlignmentScore = Math.max(MIN_AGI_SCORE4, baseScore);
-      candidates.push({
-        ticker,
-        companyName: profile.companyName ?? ticker,
-        marketCap,
-        sector: profile.sector ?? "Unknown",
-        industry: profile.industry ?? "Unknown",
-        agiAlignmentScore,
-        screeningNotes: "Defense AI + US Gov Contracts",
-        screenType: "AGI_DEFENSE"
-      });
-    }
-  }
-  candidates.sort((a, b) => b.marketCap - a.marketCap);
-  return candidates.slice(0, TOP_N4);
-}
-
-// src/lib/agents/agi-engine/geopolitical-risk.ts
-init_fmp();
-var BATCH_SIZE5 = 5;
-var CHINA_KEYWORDS = ["china", "chinese", "asia pacific"];
-var US_GOV_KEYWORDS = ["government", "federal", "defense contract", "department of defense"];
-var RARE_EARTH_KEYWORDS = ["rare earth", "lithium", "cobalt"];
-function descriptionContains(description, keywords) {
-  const lower = description.toLowerCase();
-  return keywords.some((kw) => lower.includes(kw));
-}
-async function fetchProfileSafe5(ticker) {
-  try {
-    const data = await getProfile(ticker);
-    if (!data) return null;
-    return Array.isArray(data) ? data[0] ?? null : data;
-  } catch {
-    return null;
-  }
-}
-async function applyGeopoliticalOverlay(candidates) {
-  const adjusted = [];
-  for (let i = 0; i < candidates.length; i += BATCH_SIZE5) {
-    const batch = candidates.slice(i, i + BATCH_SIZE5);
-    const profileResults = await Promise.allSettled(
-      batch.map((c) => fetchProfileSafe5(c.ticker))
-    );
-    for (let j = 0; j < batch.length; j++) {
-      const candidate = { ...batch[j] };
-      const profileResult = profileResults[j];
-      const profile = profileResult.status === "fulfilled" ? profileResult.value : null;
-      if (!profile) {
-        adjusted.push(candidate);
-        continue;
-      }
-      const description = profile.description ?? "";
-      const notes = [candidate.screeningNotes];
-      if (descriptionContains(description, CHINA_KEYWORDS)) {
-        candidate.agiAlignmentScore -= 7;
-        notes.push("China revenue risk");
-      }
-      if (descriptionContains(description, US_GOV_KEYWORDS)) {
-        candidate.agiAlignmentScore += 5;
-        notes.push("US gov revenue");
-      }
-      if (descriptionContains(description, RARE_EARTH_KEYWORDS)) {
-        notes.push("Supply chain risk: rare earth dependency");
-      }
-      candidate.agiAlignmentScore = Math.max(0, Math.min(100, candidate.agiAlignmentScore));
-      candidate.screeningNotes = notes.join("; ");
-      adjusted.push(candidate);
-    }
-  }
-  return adjusted;
-}
-
-// src/lib/agents/broad-engine/sector-rotation.ts
-init_fmp();
-init_exclusion_list();
-init_sector_map();
-var MIN_MARKET_CAP5 = 5e8;
-var MAX_MARKET_CAP5 = 5e10;
-var MIN_LIQUIDITY5 = 5e6;
-var BATCH_SIZE6 = 5;
-var TOP_CANDIDATES = 10;
-var SECTOR_CANDIDATE_MAP = {
-  Technology: ["CRDO", "ANET", "SMCI", "COHR", "MRVL", "ON", "PSTG", "DDOG", "ZS", "NET"],
-  Industrials: ["STRL", "EME", "PWR", "VELO", "GXO", "AWK", "DY", "ACM", "MYRG", "SITE"],
-  Healthcare: ["HIMS", "RXRX", "NVCR", "INSM", "FOLD", "PTGX", "ROIV", "BEAM", "RARE", "PRAX"],
-  Financials: ["LPLA", "MKTX", "IBKR", "HOOD", "SOFI", "NU", "AFRM", "SQ", "DAVE", "TOST"],
-  Energy: ["VST", "CEG", "NRG", "ETR", "AES", "OKE", "LNG", "CTRA", "AM", "NFE"],
-  "Consumer Discretionary": ["ONON", "CELH", "BROS", "DKNG", "RCL", "HLT", "LULU", "ELF", "ULTA", "BURL"],
-  Utilities: ["VST", "CEG", "ETR", "NRG", "AES", "WTRG", "GNRC", "GEV", "ETN", "NFE"]
-};
-var AGI_BOOSTED_SECTORS = /* @__PURE__ */ new Set(["Technology", "Utilities"]);
-async function fetchSectorPerformance3() {
-  const key = process.env.FMP_API_KEY;
-  if (!key) return [];
-  try {
-    const url = `https://financialmodelingprep.com/stable/sector-performance?apikey=${key}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(12e3) });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
-}
-async function fetchProfileSafe6(ticker) {
-  try {
-    const data = await getProfile(ticker);
-    if (!data) return null;
-    return Array.isArray(data) ? data[0] ?? null : data;
-  } catch {
-    return null;
-  }
-}
-async function runSectorRotation() {
-  const rawSectors = await fetchSectorPerformance3();
-  const sectorPerf = rawSectors.map((s) => ({
-    sector: s.sector,
-    change: typeof s.changesPercentage === "string" ? parseFloat(s.changesPercentage) : s.changesPercentage ?? 0
-  }));
-  const sectorWithBoost = sectorPerf.map((s) => ({
-    ...s,
-    boostedScore: s.change + (AGI_BOOSTED_SECTORS.has(s.sector) ? 0.5 : 0)
-  }));
-  sectorWithBoost.sort((a, b) => b.boostedScore - a.boostedScore);
-  const sectorRankings = sectorWithBoost.map((s) => ({
-    sector: s.sector,
-    score: s.change,
-    trend: s.change > 0.2 ? "UP" : s.change < -0.2 ? "DOWN" : "FLAT"
-  }));
-  const totalSectors = sectorRankings.length;
-  const overweight = sectorRankings.slice(0, 3).map((s) => s.sector);
-  const underweight = sectorRankings.slice(Math.max(0, totalSectors - 3)).map((s) => s.sector);
-  const neutralSectors = sectorRankings.slice(3, Math.max(3, totalSectors - 3)).map((s) => s.sector);
-  const topSectorNames = overweight.slice(0, 3);
-  const candidateTickers = /* @__PURE__ */ new Set();
-  for (const sectorName of topSectorNames) {
-    const tickers = SECTOR_CANDIDATE_MAP[sectorName] ?? [];
-    tickers.forEach((t) => candidateTickers.add(t));
-  }
-  const tickerArray = Array.from(candidateTickers);
-  const allProfiles = [];
-  for (let i = 0; i < tickerArray.length; i += BATCH_SIZE6) {
-    const batch = tickerArray.slice(i, i + BATCH_SIZE6);
-    const results = await Promise.allSettled(batch.map((t) => fetchProfileSafe6(t)));
-    for (let j = 0; j < batch.length; j++) {
-      const ticker = batch[j];
-      const result = results[j];
-      if (result.status === "rejected" || !result.value) continue;
-      const profile = result.value;
-      const exclusion = isExcluded(ticker);
-      if (exclusion.excluded) continue;
-      const price = profile.price ?? 0;
-      const volAvg = profile.averageVolume ?? 0;
-      const marketCap = profile.marketCap ?? profile.mktCap ?? 0;
-      if (!price || price <= 0) continue;
-      if (marketCap < MIN_MARKET_CAP5 || marketCap > MAX_MARKET_CAP5) continue;
-      if (volAvg * price < MIN_LIQUIDITY5) continue;
-      const agiAlignmentScore = getAgiAlignment(
-        profile.sector ?? "",
-        profile.industry ?? "",
-        profile.description ?? ""
-      );
-      allProfiles.push({
-        ticker,
-        companyName: profile.companyName ?? ticker,
-        marketCap,
-        sector: profile.sector ?? "Unknown",
-        industry: profile.industry ?? "Unknown",
-        agiAlignmentScore,
-        screeningNotes: `Sector Rotation: ${profile.sector ?? "Unknown"}`,
-        screenType: "SECTOR_ROTATION"
-      });
-    }
-  }
-  allProfiles.sort((a, b) => b.marketCap - a.marketCap);
-  const topSectorCandidates = allProfiles.slice(0, TOP_CANDIDATES);
-  return {
-    sectorRankings,
-    overweight,
-    underweight,
-    neutral: neutralSectors,
-    topSectorCandidates,
-    timestamp: (/* @__PURE__ */ new Date()).toISOString()
-  };
-}
-
-// src/api/screen/route.ts
-init_value_discovery();
-init_growth_scout();
-
-// src/lib/agents/broad-engine/catalyst-hunter.ts
-init_fmp();
-var BATCH_SIZE9 = 5;
-var SYSTEM_PROMPT2 = `You are a catalyst identification specialist. For each company provided, identify 2+ specific near-term catalysts (within 90 days) based on the data provided. Catalysts must be specific and verifiable: earnings dates, product launches, analyst days, FDA decisions, contract announcements, index additions. Never use em dashes or double hyphens. Respond in JSON array: [{ "ticker": string, "catalysts": [string], "hasSufficientCatalysts": boolean }]`;
-function getNextEarningsDate(earningsData) {
-  if (!Array.isArray(earningsData)) return null;
-  const today = /* @__PURE__ */ new Date();
-  today.setHours(0, 0, 0, 0);
-  for (const entry of earningsData) {
-    if (!entry.date) continue;
-    const d = new Date(entry.date);
-    if (d >= today && entry.epsActual == null) {
-      return entry.date;
-    }
-  }
-  return null;
-}
-function summarizeAnalystActions(upgradeData) {
-  if (!Array.isArray(upgradeData) || upgradeData.length === 0) return "No recent analyst actions";
-  const recent = upgradeData.slice(0, 5);
-  return recent.map((a) => {
-    const action = a.action ?? a.gradingAction ?? "Unknown action";
-    const firm = a.gradingCompany ?? a.firm ?? "Unknown firm";
-    const grade = a.newGrade ?? a.ratingTo ?? "";
-    return `${firm}: ${action}${grade ? ` to ${grade}` : ""}`;
-  }).join("; ");
-}
-async function fetchEarningsSafe2(ticker) {
-  try {
-    const data = await getEarnings(ticker);
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
-}
-async function fetchUpgradesSafe(ticker) {
-  try {
-    const data = await getUpgradesDowngrades(ticker);
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
-}
-async function runCatalystHunter(candidates) {
-  if (candidates.length === 0) return [];
-  const enriched = [];
-  for (let i = 0; i < candidates.length; i += BATCH_SIZE9) {
-    const batch = candidates.slice(i, i + BATCH_SIZE9);
-    const results = await Promise.allSettled(
-      batch.map(async (c) => {
-        const [earningsData, upgradesData] = await Promise.allSettled([
-          fetchEarningsSafe2(c.ticker),
-          fetchUpgradesSafe(c.ticker)
-        ]);
-        const earnings = earningsData.status === "fulfilled" ? earningsData.value : [];
-        const upgrades = upgradesData.status === "fulfilled" ? upgradesData.value : [];
-        return {
-          ticker: c.ticker,
-          companyName: c.companyName,
-          nextEarnings: getNextEarningsDate(earnings),
-          recentAnalystActions: summarizeAnalystActions(upgrades)
-        };
-      })
-    );
-    for (const result of results) {
-      if (result.status === "fulfilled") {
-        enriched.push(result.value);
-      }
-    }
-  }
-  let catalystMap = /* @__PURE__ */ new Map();
-  try {
-    const userMessage = `Analyze the following companies and identify near-term catalysts for each:
-
-${JSON.stringify(enriched, null, 2)}`;
-    const response = await callClaude({
-      system: SYSTEM_PROMPT2,
-      prompt: userMessage,
-      maxTokens: 3e3
-    });
-    const jsonMatch = response.match(/\[[\s\S]*\]/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      for (const item of parsed) {
-        if (item.ticker) {
-          catalystMap.set(item.ticker, item);
-        }
-      }
-    }
-  } catch {
-    return candidates;
-  }
-  const filtered = [];
-  for (const candidate of candidates) {
-    const catalystResult = catalystMap.get(candidate.ticker);
-    if (!catalystResult) {
-      filtered.push(candidate);
-      continue;
-    }
-    if (catalystResult.hasSufficientCatalysts === false) {
-      continue;
-    }
-    const catalystNote = catalystResult.catalysts?.length > 0 ? `Catalysts: ${catalystResult.catalysts.join("; ")}` : "";
-    filtered.push({
-      ...candidate,
-      screeningNotes: catalystNote ? `${candidate.screeningNotes}; ${catalystNote}` : candidate.screeningNotes
-    });
-  }
-  return filtered;
-}
-
-// src/api/screen/route.ts
+init_discovery();
 async function batchScore(tickers, batchSize = 5) {
   const results = /* @__PURE__ */ new Map();
   for (let i = 0; i < tickers.length; i += batchSize) {
@@ -42485,99 +41717,71 @@ async function batchScore(tickers, batchSize = 5) {
     settled.forEach((r, idx) => {
       if (r.status === "fulfilled") results.set(batch[idx], r.value);
     });
-    if (i + batchSize < tickers.length) await new Promise((r) => setTimeout(r, 500));
+    if (i + batchSize < tickers.length) await new Promise((r) => setTimeout(r, 3e3));
   }
   return results;
 }
+function buildResult(ticker, analysis, meta) {
+  return {
+    ticker,
+    name: analysis?.profile?.companyName ?? ticker,
+    sector: analysis?.profile?.sector ?? null,
+    industry: analysis?.profile?.industry ?? null,
+    marketCap: analysis?.profile?.marketCap ?? null,
+    marketCapB: analysis?.profile?.marketCap ? `$${(analysis.profile.marketCap / 1e9).toFixed(1)}B` : "?",
+    agiAlignmentScore: meta?.agiAlignmentScore ?? 0,
+    screenType: meta?.screenType ?? "direct",
+    screeningNotes: meta?.screeningNotes ?? (analysis?.quantSignals?.signalSummary ?? null),
+    signalCount: meta?.signalCount ?? 1,
+    price: analysis?.profile?.price ?? null,
+    changePct: 0,
+    score: analysis?.scoring?.compositeScore ?? null,
+    rating: analysis?.scoring?.rating ?? null,
+    rejected: analysis?.rejected ?? false,
+    rejectReason: analysis?.rejectReason ?? null,
+    quantSignals: analysis?.quantSignals ?? null
+  };
+}
 async function screenRoute(req, res) {
   try {
-    console.log("[/api/screen/v2] Starting full MAPO screen...");
-    const [
-      agiComputeResult,
-      agiPowerResult,
-      agiSemiResult,
-      agiDefenseResult,
-      broadSectorResult,
-      broadValueResult,
-      broadGrowthResult
-    ] = await Promise.allSettled([
-      runComputeScout(),
-      runPowerAnalyst(),
-      runSemiSpecialist(),
-      runDefenseAnalyst(),
-      runSectorRotation().then((r) => r.topSectorCandidates),
-      runValueDiscovery(),
-      runGrowthScout()
-    ]);
-    const val = (r) => r.status === "fulfilled" ? r.value : null;
-    const agiCandidates = [
-      ...val(agiComputeResult) ?? [],
-      ...val(agiPowerResult) ?? [],
-      ...val(agiSemiResult) ?? [],
-      ...val(agiDefenseResult) ?? []
-    ];
-    const broadCandidates = [
-      ...val(broadSectorResult) ?? [],
-      ...val(broadValueResult) ?? [],
-      ...val(broadGrowthResult) ?? []
-    ];
-    console.log(`[/api/screen/v2] AGI: ${agiCandidates.length}, Broad: ${broadCandidates.length}`);
-    const [overlaidAgi, filteredBroad] = await Promise.all([
-      applyGeopoliticalOverlay(agiCandidates),
-      runCatalystHunter(broadCandidates)
-    ]);
-    const tickerCount = /* @__PURE__ */ new Map();
-    const tickerMeta = /* @__PURE__ */ new Map();
-    for (const c of [...overlaidAgi, ...filteredBroad]) {
-      const t = c.ticker.toUpperCase();
-      tickerCount.set(t, (tickerCount.get(t) ?? 0) + 1);
-      if (!tickerMeta.has(t)) tickerMeta.set(t, c);
-      else {
-        const existing = tickerMeta.get(t);
-        tickerMeta.set(t, {
-          ...existing,
-          agiAlignmentScore: Math.max(existing.agiAlignmentScore, c.agiAlignmentScore),
-          screeningNotes: [existing.screeningNotes, c.screeningNotes].filter(Boolean).join(" + "),
-          screenType: [existing.screenType, c.screenType].filter(Boolean).join("+")
-        });
-      }
+    const { tickers: requestTickers } = req.body ?? {};
+    if (Array.isArray(requestTickers) && requestTickers.length > 0) {
+      const upperTickers = requestTickers.map((t) => t.toUpperCase()).slice(0, 30);
+      console.log(`[screen/v2] Fast path: scoring ${upperTickers.length} tickers`);
+      const exclusionResults2 = await Promise.allSettled(
+        upperTickers.map(async (t) => ({ t, ok: (await checkExclusion(t)).passed }))
+      );
+      const allowed2 = new Set(
+        exclusionResults2.filter((r) => r.status === "fulfilled" && r.value.ok).map((r) => r.value.t)
+      );
+      const toScore2 = upperTickers.filter((t) => allowed2.has(t));
+      const scores2 = await batchScore(toScore2);
+      const results2 = toScore2.map((t) => buildResult(t, scores2.get(t))).filter((r) => !r.rejected).sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+      console.log(`[screen/v2] Fast path done: ${results2.length} results`);
+      return res.json(results2);
     }
+    console.log("[screen/v2] Starting full discovery...");
+    const { candidates, stats } = await runDiscovery();
+    console.log(`[screen/v2] Discovery: ${stats.total} universe \u2192 ${stats.passed} candidates (${stats.excluded} excluded, ${stats.filtered} filtered)`);
     const exclusionResults = await Promise.allSettled(
-      Array.from(tickerMeta.keys()).map(async (t) => ({ t, ok: (await checkExclusion(t)).passed }))
+      candidates.map(async (c) => ({ t: c.ticker, ok: (await checkExclusion(c.ticker)).passed }))
     );
     const allowed = new Set(
       exclusionResults.filter((r) => r.status === "fulfilled" && r.value.ok).map((r) => r.value.t)
     );
-    const top30 = Array.from(tickerMeta.entries()).filter(([t]) => allowed.has(t)).sort(([a], [b]) => (tickerCount.get(b) ?? 0) - (tickerCount.get(a) ?? 0)).slice(0, 30).map(([, meta]) => meta);
-    console.log(`[/api/screen/v2] Scoring ${top30.length} candidates...`);
-    const scores = await batchScore(top30.map((c) => c.ticker));
-    const finalResults = top30.map((candidate) => {
-      const analysis = scores.get(candidate.ticker);
-      const signalCount = tickerCount.get(candidate.ticker) ?? 1;
-      return {
-        ticker: candidate.ticker,
-        name: candidate.companyName,
-        sector: candidate.sector,
-        industry: candidate.industry,
-        marketCap: candidate.marketCap,
-        marketCapB: candidate.marketCap ? `$${(candidate.marketCap / 1e9).toFixed(1)}B` : "?",
-        agiAlignmentScore: candidate.agiAlignmentScore,
-        screenType: candidate.screenType,
-        screeningNotes: candidate.screeningNotes,
-        signalCount,
-        price: analysis?.profile?.price ?? null,
-        changePct: 0,
-        score: analysis?.scoring?.compositeScore ?? null,
-        rating: analysis?.scoring?.rating ?? null,
-        rejected: analysis?.rejected ?? false,
-        rejectReason: analysis?.rejectReason ?? null,
-        quantSignals: analysis?.quantSignals ?? null
-      };
-    }).filter((r) => !r.rejected).sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-    console.log(`[/api/screen/v2] Done. ${finalResults.length} scored candidates.`);
-    res.json(finalResults);
+    const toScore = candidates.filter((c) => allowed.has(c.ticker));
+    console.log(`[screen/v2] After exclusion: ${toScore.length} candidates`);
+    const scores = await batchScore(toScore.map((c) => c.ticker));
+    const results = toScore.map((c) => buildResult(c.ticker, scores.get(c.ticker), {
+      screenType: c.screenType,
+      screeningNotes: c.screeningNotes,
+      agiAlignmentScore: c.agiAlignmentScore,
+      signalCount: 1
+    })).filter((r) => !r.rejected).sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    console.log(`[screen/v2] Done: ${results.length} scored candidates`);
+    res.json(results);
   } catch (err) {
-    console.error("[/api/screen/v2]", err);
+    console.error("[screen/v2]", err);
     res.status(500).json({ error: err.message });
   }
 }
@@ -42637,28 +41841,9 @@ Neutral: [sectors]
 // src/api/rebalance/route.ts
 async function getTopCandidatesForRebalance() {
   try {
-    const { runComputeScout: runComputeScout2 } = await Promise.resolve().then(() => (init_compute_scout(), compute_scout_exports));
-    const { runSemiSpecialist: runSemiSpecialist2 } = await Promise.resolve().then(() => (init_semi_specialist(), semi_specialist_exports));
-    const { runValueDiscovery: runValueDiscovery2 } = await Promise.resolve().then(() => (init_value_discovery(), value_discovery_exports));
-    const { runGrowthScout: runGrowthScout2 } = await Promise.resolve().then(() => (init_growth_scout(), growth_scout_exports));
-    const [compute, semi, value, growth] = await Promise.allSettled([
-      runComputeScout2(),
-      runSemiSpecialist2(),
-      runValueDiscovery2(),
-      runGrowthScout2()
-    ]);
-    const all = [
-      ...compute.status === "fulfilled" ? compute.value : [],
-      ...semi.status === "fulfilled" ? semi.value : [],
-      ...value.status === "fulfilled" ? value.value : [],
-      ...growth.status === "fulfilled" ? growth.value : []
-    ];
-    const seen = /* @__PURE__ */ new Set();
-    return all.filter((c) => {
-      if (seen.has(c.ticker)) return false;
-      seen.add(c.ticker);
-      return true;
-    }).slice(0, 20);
+    const { runDiscovery: runDiscovery2 } = await Promise.resolve().then(() => (init_discovery(), discovery_exports));
+    const { candidates } = await runDiscovery2();
+    return candidates.slice(0, 20);
   } catch {
     return [];
   }
@@ -42980,7 +42165,7 @@ function isWithinLast48Hours(dateStr) {
   const diffMs = now - target;
   return diffMs >= 0 && diffMs <= 48 * 60 * 60 * 1e3;
 }
-function calcSue2(actual, estimated) {
+function calcSue(actual, estimated) {
   if (estimated === 0) return 0;
   return (actual - estimated) / Math.abs(estimated);
 }
@@ -43015,7 +42200,7 @@ async function runEarningsMonitor(holdings2) {
       }
       if (isWithinLast48Hours(date2) && epsActual != null) {
         const estimated = epsEstimated ?? 0;
-        const surprisePct = estimated !== 0 ? calcSue2(epsActual, estimated) : 0;
+        const surprisePct = estimated !== 0 ? calcSue(epsActual, estimated) : 0;
         const sueScore = surprisePct;
         let flag = "NORMAL";
         if (surprisePct < -0.1) {
@@ -50282,6 +49467,7 @@ var import_fs2 = require("fs");
 var import_path38 = require("path");
 
 // server/liveData.ts
+init_fmp();
 var FINNHUB_BASE = "https://finnhub.io/api/v1";
 var cache = /* @__PURE__ */ new Map();
 async function cachedAsync(key, ttlMs, fn) {
@@ -50301,35 +49487,61 @@ async function finnhub(path3) {
   return res.json();
 }
 async function fetchLiveQuotes(rawTickers) {
-  if (rawTickers.length === 0 || !process.env.FINNHUB_API_KEY) return [];
+  if (rawTickers.length === 0) return [];
   const tickers = rawTickers.map((t) => t.replace(/[^A-Z0-9.\-]/gi, "").toUpperCase()).filter((t) => t.length > 0 && t.length <= 10);
-  const marketStatusResult = await Promise.allSettled([
-    finnhub("/stock/market-status?exchange=US")
-  ]);
-  const statusData = marketStatusResult[0].status === "fulfilled" ? marketStatusResult[0].value : null;
-  const marketStatus = statusData?.isOpen === true ? "open" : statusData?.isOpen === false ? "closed" : "unknown";
+  let marketStatus = "unknown";
+  if (process.env.FINNHUB_API_KEY) {
+    try {
+      const statusData = await finnhub("/stock/market-status?exchange=US");
+      marketStatus = statusData?.isOpen === true ? "open" : statusData?.isOpen === false ? "closed" : "unknown";
+    } catch {
+    }
+  }
   const cacheKey = `quotes:${[...tickers].sort().join(",")}`;
   return cachedAsync(cacheKey, 6e4, async () => {
     const results = await Promise.allSettled(
       tickers.map(async (symbol) => {
         try {
-          const data = await finnhub(`/quote?symbol=${symbol}`);
-          if (!data || !data.c || data.c === 0) return null;
-          return {
-            symbol,
-            name: symbol,
-            price: data.c,
-            change: data.d ?? 0,
-            changesPercentage: data.dp ?? 0,
-            previousClose: data.pc ?? 0,
-            dayLow: data.l ?? 0,
-            dayHigh: data.h ?? 0,
-            yearLow: 0,
-            yearHigh: 0,
-            volume: 0,
-            marketCap: 0,
-            marketStatus
-          };
+          const fmpData = await getFMPQuote(symbol);
+          const fmp = Array.isArray(fmpData) ? fmpData[0] : fmpData;
+          if (fmp && fmp.price && fmp.price > 0) {
+            return {
+              symbol,
+              name: fmp.name || symbol,
+              price: fmp.price,
+              change: fmp.change ?? 0,
+              changesPercentage: fmp.changesPercentage ?? fmp.changePercentage ?? 0,
+              previousClose: fmp.previousClose ?? 0,
+              dayLow: fmp.dayLow ?? 0,
+              dayHigh: fmp.dayHigh ?? 0,
+              yearLow: fmp.yearLow ?? 0,
+              yearHigh: fmp.yearHigh ?? 0,
+              volume: fmp.volume ?? fmp.avgVolume ?? 0,
+              marketCap: fmp.marketCap ?? 0,
+              marketStatus
+            };
+          }
+          if (process.env.FINNHUB_API_KEY) {
+            const data = await finnhub(`/quote?symbol=${symbol}`);
+            if (data && data.c && data.c > 0) {
+              return {
+                symbol,
+                name: symbol,
+                price: data.c,
+                change: data.d ?? 0,
+                changesPercentage: data.dp ?? 0,
+                previousClose: data.pc ?? 0,
+                dayLow: data.l ?? 0,
+                dayHigh: data.h ?? 0,
+                yearLow: 0,
+                yearHigh: 0,
+                volume: 0,
+                marketCap: 0,
+                marketStatus
+              };
+            }
+          }
+          return null;
         } catch {
           return null;
         }
@@ -50430,7 +49642,15 @@ async function fetchMarketSentiment() {
 }
 async function fetchMarketPulse() {
   return cachedAsync("market-pulse", 3e5, async () => {
-    const SYMBOLS = ["SPY", "QQQ", "IWM", "VIX", "GLD", "TLT"];
+    const SYMBOLS = ["SPY", "QQQ", "IWM", "^VIX", "GLD", "TLT"];
+    const DISPLAY_SYMBOLS = {
+      "SPY": "SPY",
+      "QQQ": "QQQ",
+      "IWM": "IWM",
+      "^VIX": "VIX",
+      "GLD": "GLD",
+      "TLT": "TLT"
+    };
     const LABELS = {
       SPY: "S&P 500",
       QQQ: "NASDAQ",
@@ -50440,8 +49660,11 @@ async function fetchMarketPulse() {
       TLT: "20Y Bond"
     };
     const [quotesRes, statusRes, fgRes] = await Promise.allSettled([
-      Promise.all(SYMBOLS.map((s) => finnhub(`/quote?symbol=${s}`))),
-      finnhub("/stock/market-status?exchange=US"),
+      Promise.all(SYMBOLS.map(async (s) => {
+        const data = await getFMPQuote(s);
+        return Array.isArray(data) ? data[0] : data;
+      })),
+      process.env.FINNHUB_API_KEY ? finnhub("/stock/market-status?exchange=US") : Promise.resolve(null),
       fetch("https://production.dataviz.cnn.io/index/fearandgreed/graphdata", {
         headers: { "User-Agent": "Mozilla/5.0" },
         signal: AbortSignal.timeout(5e3)
@@ -50450,11 +49673,12 @@ async function fetchMarketPulse() {
     const rawQuotes = quotesRes.status === "fulfilled" ? quotesRes.value : [];
     const indices = SYMBOLS.map((sym, i) => {
       const q = rawQuotes[i];
+      const displaySym = DISPLAY_SYMBOLS[sym] || sym;
       return {
-        symbol: sym,
-        label: LABELS[sym],
-        price: q?.c ?? 0,
-        changePct: q?.dp ?? 0
+        symbol: displaySym,
+        label: LABELS[displaySym],
+        price: q?.price ?? 0,
+        changePct: q?.changesPercentage ?? q?.changePercentage ?? 0
       };
     });
     const marketStatus = statusRes.status === "fulfilled" ? statusRes.value?.isOpen ? "open" : "closed" : "unknown";
@@ -50463,8 +49687,8 @@ async function fetchMarketPulse() {
       fgScore = fgRes.value?.fear_and_greed?.score ?? null;
     }
     if (fgScore === null) {
-      const vixPct = rawQuotes[3]?.c ?? 20;
-      const spyDp2 = rawQuotes[0]?.dp ?? 0;
+      const vixPct = rawQuotes[3]?.price ?? 20;
+      const spyDp2 = rawQuotes[0]?.changesPercentage ?? 0;
       const vixScore = Math.max(10, Math.min(90, 90 - (vixPct - 10) * 2.67));
       const trendNudge = Math.min(15, Math.max(-15, spyDp2 * 10));
       fgScore = Math.round(Math.max(0, Math.min(100, vixScore + trendNudge)));
@@ -50479,9 +49703,9 @@ async function fetchMarketPulse() {
     const bullPct = Math.round(15 + score / 100 * 50);
     const bearPct = Math.round(60 - score / 100 * 50);
     const neutPct = 100 - bullPct - bearPct;
-    const spyDp = rawQuotes[0]?.dp ?? 0;
-    const vixVal = rawQuotes[3]?.c ?? 0;
-    const bondDp = rawQuotes[5]?.dp ?? 0;
+    const spyDp = rawQuotes[0]?.changesPercentage ?? 0;
+    const vixVal = rawQuotes[3]?.price ?? 0;
+    const bondDp = rawQuotes[5]?.changesPercentage ?? 0;
     let context = "";
     if (vixVal > 30) context = "High volatility regime \u2014 elevated tail risk";
     else if (vixVal > 20) context = "Elevated uncertainty, risk-off posture";
@@ -50532,6 +49756,55 @@ async function fetchPortfolioNews(rawTickers) {
 
 // server/routes.ts
 init_fmp();
+
+// server/lib/alphavantage.ts
+var AV_BASE = "https://www.alphavantage.co/query";
+async function avFetch(params) {
+  const key = process.env.ALPHA_VANTAGE_API_KEY;
+  if (!key) return null;
+  const url = new URL(AV_BASE);
+  url.searchParams.set("apikey", key);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  try {
+    const res = await fetch(url.toString(), { signal: AbortSignal.timeout(15e3) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data["Error Message"] || data["Note"] || data["Information"]) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+async function getDailyPrices2(ticker, outputsize = "full") {
+  const data = await avFetch({
+    function: "TIME_SERIES_DAILY",
+    symbol: ticker,
+    outputsize
+  });
+  if (!data) return [];
+  const timeSeries = data["Time Series (Daily)"] || {};
+  return Object.entries(timeSeries).map(([date2, vals]) => ({
+    date: date2,
+    open: parseFloat(vals["1. open"]),
+    high: parseFloat(vals["2. high"]),
+    low: parseFloat(vals["3. low"]),
+    close: parseFloat(vals["4. close"]),
+    volume: parseInt(vals["5. volume"])
+  })).sort((a, b) => b.date.localeCompare(a.date));
+}
+async function getRSI(ticker, period = 14) {
+  const data = await avFetch({
+    function: "RSI",
+    symbol: ticker,
+    interval: "daily",
+    time_period: String(period),
+    series_type: "close"
+  });
+  if (!data) return null;
+  const techData = data["Technical Analysis: RSI"] || {};
+  const latest = Object.values(techData)[0];
+  return latest ? parseFloat(latest["RSI"]) : null;
+}
 
 // server/lib/quantSignals.ts
 function calcMomentum2(bars) {
@@ -51417,7 +50690,7 @@ RESPONSE INSTRUCTIONS:
         getUpgradesDowngrades(sym),
         getInsiderTrading(sym),
         getFMPQuote(sym),
-        getDailyPrices(sym, "full"),
+        getDailyPrices2(sym, "full"),
         getRSI(sym, 14)
       ]);
       const ok = (r) => r.status === "fulfilled" ? r.value : null;
@@ -51443,7 +50716,7 @@ RESPONSE INSTRUCTIONS:
       const marketCap = profileData?.mktCap ?? fmpQuoteData?.marketCap ?? 0;
       let spBars = [];
       try {
-        spBars = await getDailyPrices("SPY", "compact");
+        spBars = await getDailyPrices2("SPY", "compact");
       } catch {
       }
       const momentum = calcMomentum2(bars);
