@@ -1,9 +1,9 @@
 /**
  * MAPO Dynamic Discovery Agent
- * Uses FMP stock screener API to build a fresh universe every run.
+ * Uses FMP company-screener API to build a fresh universe every run.
  * No hardcoded ticker lists — the market defines the universe.
  *
- * Flow: FMP screener (by sector) → exclusion → AGI alignment scoring → top 30
+ * Flow: FMP screener (by sector) → filter ETFs → exclusion → AGI alignment → diversify → top 30
  */
 import { screenStocks } from "../../../server/lib/fmp.js";
 import { isExcluded } from "../constants/exclusion-list.js";
@@ -17,12 +17,8 @@ const SECTORS_TO_SCAN = [
   "Industrials",
   "Utilities",
   "Communication Services",
-  "Financial Services",
   "Healthcare",
   "Energy",
-  "Basic Materials",
-  "Consumer Cyclical",
-  "Consumer Defensive",
 ];
 
 /* ── Config ──────────────────────────────────────────────────────────────── */
@@ -31,6 +27,8 @@ const MIN_MARKET_CAP = 500_000_000;
 const MAX_MARKET_CAP = 50_000_000_000;
 const MIN_LIQUIDITY = 5_000_000;
 const TOP_N = 30;
+// Max candidates per sector to ensure diversity
+const MAX_PER_SECTOR = 8;
 
 /* ── Main discovery function ─────────────────────────────────────────────── */
 
@@ -40,9 +38,9 @@ export interface DiscoveryResult {
 }
 
 export async function runDiscovery(): Promise<DiscoveryResult> {
-  console.log("[discovery] Scanning FMP stock screener across sectors...");
+  console.log("[discovery] Scanning FMP company-screener across sectors...");
 
-  // Query all sectors in parallel — each returns up to 1000 stocks
+  // Query all sectors in parallel
   const sectorResults = await Promise.allSettled(
     SECTORS_TO_SCAN.map(sector =>
       screenStocks({
@@ -82,19 +80,25 @@ export async function runDiscovery(): Promise<DiscoveryResult> {
   for (const stock of unique) {
     const ticker = (stock.symbol ?? "").toUpperCase();
 
+    // Skip ETFs, funds, and ADRs
+    if (stock.isEtf || stock.isFund || stock.isAdr) { filtered++; continue; }
+
     // Exclusion check
     const exclusion = isExcluded(ticker);
     if (exclusion.excluded) { excluded++; continue; }
 
     const marketCap: number = stock.marketCap ?? 0;
-    const price: number = stock.price ?? stock.lastAnnualDividend ?? 0;
-    const volume: number = stock.volume ?? stock.avgVolume ?? 0;
+    const price: number = stock.price ?? 0;
+    const volume: number = stock.volume ?? 0;
 
-    // Market cap bounds (redundant with screener params but defensive)
+    // Market cap bounds
     if (marketCap < MIN_MARKET_CAP || marketCap > MAX_MARKET_CAP) { filtered++; continue; }
 
     // Liquidity filter
     if (price > 0 && volume > 0 && volume * price < MIN_LIQUIDITY) { filtered++; continue; }
+
+    // Must be actively trading
+    if (stock.isActivelyTrading === false) { filtered++; continue; }
 
     // AGI alignment score from sector/industry
     const agiScore = getAgiAlignment(
@@ -110,12 +114,12 @@ export async function runDiscovery(): Promise<DiscoveryResult> {
       sector: stock.sector ?? "Unknown",
       industry: stock.industry ?? "Unknown",
       agiAlignmentScore: agiScore,
-      screeningNotes: stock.sector ?? "BROAD",
+      screeningNotes: stock.industry ?? stock.sector ?? "BROAD",
       screenType: stock.sector ?? "BROAD",
     });
   }
 
-  // Sort: highest AGI alignment first, then largest market cap
+  // Sort by AGI alignment descending, then market cap descending
   candidates.sort((a, b) => {
     if (b.agiAlignmentScore !== a.agiAlignmentScore) {
       return b.agiAlignmentScore - a.agiAlignmentScore;
@@ -123,17 +127,28 @@ export async function runDiscovery(): Promise<DiscoveryResult> {
     return b.marketCap - a.marketCap;
   });
 
-  const topCandidates = candidates.slice(0, TOP_N);
+  // Diversify: cap per sector so the top 30 isn't all semis or defense
+  const sectorCount = new Map<string, number>();
+  const diversified: CandidateTicker[] = [];
 
-  console.log(`[discovery] ${unique.length} unique → ${excluded} excluded, ${filtered} filtered → ${topCandidates.length} candidates`);
+  for (const c of candidates) {
+    const sector = c.sector;
+    const count = sectorCount.get(sector) ?? 0;
+    if (count >= MAX_PER_SECTOR) continue;
+    sectorCount.set(sector, count + 1);
+    diversified.push(c);
+    if (diversified.length >= TOP_N) break;
+  }
+
+  console.log(`[discovery] ${unique.length} unique → ${excluded} excluded, ${filtered} filtered → ${diversified.length} candidates`);
 
   return {
-    candidates: topCandidates,
+    candidates: diversified,
     stats: {
       total: unique.length,
       excluded,
       filtered,
-      passed: topCandidates.length,
+      passed: diversified.length,
     },
   };
 }
