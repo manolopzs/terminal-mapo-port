@@ -32,8 +32,7 @@ import { JournalTab } from "@/pages/JournalTab";
 import { useHoldings, usePortfolios, useSummary, useLiveQuotes, useLiveEarnings, useLiveSentiment, useLiveNews, useAnalytics } from "@/hooks/use-portfolio";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { queryClient } from "@/lib/queryClient";
-import { Loader2, Bot, LogOut, Plus, ArrowRightLeft, BarChart2, Globe, Search, Star, RefreshCw, BookOpen } from "lucide-react";
-import { logout } from "@/lib/auth";
+import { Loader2, Bot, Plus, ArrowRightLeft, BarChart2, Globe, Search, Star, RefreshCw, BookOpen } from "lucide-react";
 
 type TabId = "PORTFOLIO" | "MARKET" | "SCREENER" | "MAPO" | "REBALANCE" | "JOURNAL" | "TRADES" | "SETTINGS";
 

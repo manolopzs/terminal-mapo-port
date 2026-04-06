@@ -54,8 +54,6 @@ const INITIAL_AGENTS: AgentState[] = [
   // risk
   { id: 'drawdown-monitor',   name: 'DRAWDOWN MONITOR',   layer: 'risk', hint: 'Max drawdown tracking',           status: 'idle', lastRun: null, lastResult: null },
   { id: 'portfolio-validator', name: 'PORTFOLIO VALIDATOR', layer: 'risk', hint: 'Constraint checking',            status: 'idle', lastRun: null, lastResult: null },
-  { id: 'position-sizer',     name: 'POSITION SIZER',     layer: 'risk', hint: 'Kelly / vol sizing',              status: 'idle', lastRun: null, lastResult: null },
-  { id: 'correlation-guard',  name: 'CORRELATION GUARD',  layer: 'risk', hint: 'Pair correlation limits',         status: 'idle', lastRun: null, lastResult: null },
 ];
 
 // ─── Internal store ───────────────────────────────────────────────────────────

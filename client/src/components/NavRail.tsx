@@ -2,12 +2,12 @@ import { useState } from "react";
 import {
   LayoutGrid, TrendingUp, Search, Star, RefreshCw,
   BookOpenCheck, ScrollText, Settings, Plus,
-  ArrowRightLeft, LogOut, BookOpen, ChevronDown,
+  ArrowRightLeft, BookOpen, ChevronDown,
   Trash2, FolderPlus,
 } from "lucide-react";
 import { usePortfolios, useCreatePortfolio, useDeletePortfolio } from "@/hooks/use-portfolio";
 import { useToast } from "@/hooks/use-toast";
-import { logout } from "@/lib/auth";
+
 
 type TabId = "PORTFOLIO" | "MARKET" | "SCREENER" | "MAPO" | "REBALANCE" | "JOURNAL" | "TRADES" | "SETTINGS";
 
@@ -256,17 +256,6 @@ export function NavRail({
         )}
       </div>
 
-      {/* Logout */}
-      <Tip label="Logout">
-        <button
-          onClick={() => { logout(); window.location.reload(); }}
-          style={{ ...actionBtnStyle, marginTop: 2 }}
-          onMouseEnter={e => { e.currentTarget.style.color = "var(--color-red)"; e.currentTarget.style.background = "rgba(255,68,88,0.06)"; }}
-          onMouseLeave={e => { e.currentTarget.style.color = "#3A4A5C"; e.currentTarget.style.background = "transparent"; }}
-        >
-          <LogOut size={13} strokeWidth={1.8} />
-        </button>
-      </Tip>
     </div>
   );
 }

@@ -8,12 +8,12 @@ CRITICAL RULES:
 - The final composite score is the weighted sum
 
 SCORING WEIGHTS:
-- Financial Health: 25% (ROE, ROA, debt ratios, current ratio, FCF, EBITDA margins, net income trend)
-- Valuation: 20% (P/E, P/S, P/B, PEG, EV/EBITDA vs peers and 5yr avg)
-- Growth Trajectory: 20% (Revenue growth %, EPS growth %, guidance direction)
+- Growth Trajectory: 30% (Revenue growth %, EPS growth %, guidance direction, TAM expansion)
+- Macro Alignment: 20% (AGI thesis fit, sector tailwinds, rate sensitivity, secular trend)
+- Financial Health: 20% (ROE, ROA, debt ratios, current ratio, FCF, EBITDA margins, net income trend)
 - Technical Factors: 15% (Price vs MAs, Donchian position, volume trend, RSI)
-- News Sentiment: 10% (Analyst actions, insider activity, news tone)
-- Macro Alignment: 10% (AGI thesis fit, sector tailwinds, rate sensitivity)
+- Sentiment: 10% (Analyst actions, insider activity, news tone)
+- Valuation: 5% (P/E, P/S, P/B, PEG, EV/EBITDA — score relative to growth rate, NOT absolute multiples. High-growth companies deserve premium valuations)
 
 QUANT ADJUSTMENTS TO APPLY:
 - Momentum confirmed (12-1 month return > 10%): +5 pts to Technical base
