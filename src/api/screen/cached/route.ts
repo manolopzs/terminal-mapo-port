@@ -19,6 +19,14 @@ export async function screenCachedRoute(_req: Request, res: Response): Promise<v
 
     if (error) throw new Error(error.message);
 
+    // Derive the most recent updated_at across all rows
+    let latestUpdatedAt: string | null = null;
+    for (const row of data ?? []) {
+      if (row.updated_at && (!latestUpdatedAt || row.updated_at > latestUpdatedAt)) {
+        latestUpdatedAt = row.updated_at;
+      }
+    }
+
     const results = (data ?? []).map((row: any) => ({
       ticker: row.ticker,
       name: row.ticker,
@@ -37,9 +45,10 @@ export async function screenCachedRoute(_req: Request, res: Response): Promise<v
       rejected: false,
       rejectReason: null,
       quantSignals: null,
+      factors: row.factors ?? null,
     }));
 
-    res.json(results);
+    res.json({ results, cached: true, updated_at: latestUpdatedAt });
   } catch (err: any) {
     console.error("[screen/cached]", err);
     res.status(500).json({ error: err.message });

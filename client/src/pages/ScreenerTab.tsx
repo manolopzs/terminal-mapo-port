@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Zap, RotateCcw, Database } from "lucide-react";
+import { Search, Zap, RotateCcw, Database, Check, X, ChevronDown, ChevronRight } from "lucide-react";
 import { startAgent, completeAgent, errorAgent, addLog, setLastOperation } from "@/lib/agent-bus";
 
 type ScreenMode = "idle" | "deploying" | "results";
@@ -57,6 +57,38 @@ const PULSE_STYLE = `
 }
 `;
 
+const FACTOR_KEYS: { key: string; label: string }[] = [
+  { key: "growth", label: "GROWTH" },
+  { key: "macroAlignment", label: "MACRO" },
+  { key: "financialHealth", label: "FIN HEALTH" },
+  { key: "technical", label: "TECHNICAL" },
+  { key: "sentiment", label: "SENTIMENT" },
+  { key: "valuation", label: "VALUATION" },
+];
+
+const QUANT_SIGNAL_KEYS: { key: string; label: string }[] = [
+  { key: "momentum", label: "Momentum" },
+  { key: "goldenCross", label: "Golden Cross" },
+  { key: "sue", label: "SUE" },
+  { key: "revisions", label: "Revisions" },
+  { key: "beta", label: "Beta" },
+  { key: "valueFactor", label: "Value Factor" },
+  { key: "donchian", label: "Donchian" },
+];
+
+function factorBarColor(score: number): string {
+  if (score >= 65) return "#00E6A8";
+  if (score >= 40) return "#F0883E";
+  return "#FF4458";
+}
+
+function isSignalActive(key: string, signal: any): boolean {
+  if (!signal) return false;
+  if (key === "beta") return signal.lowVol === true;
+  if (key === "donchian") return signal.valid === true && !signal.reject;
+  return signal.confirmed === true;
+}
+
 function injectStyle() {
   if (typeof document !== "undefined" && !document.getElementById("mapo-screener-style")) {
     const el = document.createElement("style");
@@ -77,6 +109,8 @@ export function ScreenerTab() {
   const [screenLoading, setScreenLoading] = useState(false);
   const [deployProgress, setDeployProgress] = useState(0);
   const [deployProgressLabel, setDeployProgressLabel] = useState("");
+  const [expandedTicker, setExpandedTicker] = useState<string | null>(null);
+  const [cachedUpdatedAt, setCachedUpdatedAt] = useState<string | null>(null);
 
   async function handleDeployAgents() {
     let tickers: string[] = [];
@@ -95,6 +129,8 @@ export function ScreenerTab() {
     setScreenError(null);
     setScreenResults([]);
     setDeployProgress(0);
+    setExpandedTicker(null);
+    setCachedUpdatedAt(null);
     setDeployProgressLabel(tickers.length > 0 ? `Scoring ${tickers.length} tickers...` : `Scanning 1,700+ stocks...`);
 
     startAgent("discovery");
@@ -168,6 +204,8 @@ export function ScreenerTab() {
     setScreenTickers([]);
     setDeployProgress(50);
     setDeployProgressLabel("Loading cached results...");
+    setExpandedTicker(null);
+    setCachedUpdatedAt(null);
 
     try {
       const res = await fetch("/api/screen/v2", {
@@ -183,6 +221,7 @@ export function ScreenerTab() {
 
       const data = await res.json();
       const results: any[] = Array.isArray(data) ? data : data.results ?? [];
+      if (data.updated_at) setCachedUpdatedAt(data.updated_at);
 
       setDeployProgress(100);
       setDeployProgressLabel("Cached results loaded.");
@@ -209,6 +248,8 @@ export function ScreenerTab() {
     setScreenTickers([]);
     setDeployProgress(0);
     setDeployProgressLabel("");
+    setExpandedTicker(null);
+    setCachedUpdatedAt(null);
   }
 
   // ─── Idle view: deploy agents interface ───────────────────────────────────
@@ -451,6 +492,11 @@ export function ScreenerTab() {
           <span style={{ fontSize: 9, color: "#3A4A5C", fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: 1 }}>
             — {screenResults.length} RESULTS
           </span>
+          {cachedUpdatedAt && (
+            <span style={{ fontSize: 8, color: "#2E3E52", fontFamily: "'JetBrains Mono', monospace", letterSpacing: 0.5, marginLeft: 6 }}>
+              CACHED {new Date(cachedUpdatedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
           <div style={{ flex: 1 }} />
 
           {/* Summary counts */}
@@ -501,27 +547,129 @@ export function ScreenerTab() {
             const actionColor = aiActionColor(rating);
             const signalCount = result.signalCount ?? result.quantSignals?.compositeCount ?? result.quantSignals?.signals?.length ?? 0;
             const keySignal = result.keySignal ?? result.signal ?? result.screeningNotes ?? (signalCount > 0 ? `${signalCount} quant signals` : "—");
+            const isExpanded = expandedTicker === ticker;
+            const factors = result.factors ?? result.scoring?.factors ?? null;
+            const quantSignals = result.quantSignals ?? null;
+            const hasDetail = factors || quantSignals;
 
             return (
-              <div key={ticker} style={{
-                display: "grid", gridTemplateColumns: "90px 80px 110px 1fr 110px",
-                padding: "9px 16px", borderBottom: "1px solid rgba(28,40,64,0.5)", alignItems: "center",
-                background: action === "BUY" ? "rgba(0,230,168,0.025)" : action === "AVOID" ? "rgba(255,68,88,0.025)" : "transparent",
-                transition: "background 0.1s",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = action === "BUY" ? "rgba(0,230,168,0.06)" : action === "AVOID" ? "rgba(255,68,88,0.06)" : "var(--color-primary-a05)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = action === "BUY" ? "rgba(0,230,168,0.025)" : action === "AVOID" ? "rgba(255,68,88,0.025)" : "transparent"; }}
-              >
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#C9D1D9", fontFamily: "'JetBrains Mono', monospace", letterSpacing: 0.5 }}>{ticker}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: actionColor, fontFamily: "'JetBrains Mono', monospace" }}>{Math.round(score)}</span>
-                  <span style={{ fontSize: 8, fontWeight: 700, color: "var(--color-primary)", fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: 0.8, background: "var(--color-primary-a08)", border: "1px solid var(--color-primary-a20)", borderRadius: 2, padding: "1px 4px" }}>MAPO AI</span>
+              <div key={ticker}>
+                <div
+                  style={{
+                    display: "grid", gridTemplateColumns: "90px 80px 110px 1fr 110px",
+                    padding: "9px 16px", borderBottom: isExpanded ? "none" : "1px solid rgba(28,40,64,0.5)", alignItems: "center",
+                    background: action === "BUY" ? "rgba(0,230,168,0.025)" : action === "AVOID" ? "rgba(255,68,88,0.025)" : "transparent",
+                    transition: "background 0.1s",
+                    cursor: hasDetail ? "pointer" : "default",
+                  }}
+                  onClick={() => { if (hasDetail) setExpandedTicker(isExpanded ? null : ticker); }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = action === "BUY" ? "rgba(0,230,168,0.06)" : action === "AVOID" ? "rgba(255,68,88,0.06)" : "var(--color-primary-a05)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = action === "BUY" ? "rgba(0,230,168,0.025)" : action === "AVOID" ? "rgba(255,68,88,0.025)" : "transparent"; }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    {hasDetail && (isExpanded
+                      ? <ChevronDown size={10} color="#4A5A6E" style={{ flexShrink: 0 }} />
+                      : <ChevronRight size={10} color="#2E3E52" style={{ flexShrink: 0 }} />
+                    )}
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#C9D1D9", fontFamily: "'JetBrains Mono', monospace", letterSpacing: 0.5 }}>{ticker}</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: actionColor, fontFamily: "'JetBrains Mono', monospace" }}>{Math.round(score)}</span>
+                    <span style={{ fontSize: 8, fontWeight: 700, color: "var(--color-primary)", fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: 0.8, background: "var(--color-primary-a08)", border: "1px solid var(--color-primary-a20)", borderRadius: 2, padding: "1px 4px" }}>MAPO AI</span>
+                  </div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: actionColor, fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: 1, textTransform: "uppercase" }}>{rating.toUpperCase()}</div>
+                  <div style={{ fontSize: 10, color: "#5A6B80", fontFamily: "'Inter', system-ui, sans-serif", paddingRight: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{keySignal}</div>
+                  <div>
+                    <span style={{ fontSize: 10, padding: "3px 9px", background: `${actionColor}12`, border: `1px solid ${actionColor}35`, borderRadius: 3, color: actionColor, fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>{action}</span>
+                  </div>
                 </div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: actionColor, fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: 1, textTransform: "uppercase" }}>{rating.toUpperCase()}</div>
-                <div style={{ fontSize: 10, color: "#5A6B80", fontFamily: "'Inter', system-ui, sans-serif", paddingRight: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{keySignal}</div>
-                <div>
-                  <span style={{ fontSize: 10, padding: "3px 9px", background: `${actionColor}12`, border: `1px solid ${actionColor}35`, borderRadius: 3, color: actionColor, fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>{action}</span>
-                </div>
+
+                {/* Expandable detail panel */}
+                {isExpanded && (
+                  <div style={{
+                    background: "#060A12",
+                    borderLeft: "2px solid var(--color-primary)",
+                    borderBottom: "1px solid rgba(28,40,64,0.5)",
+                    padding: "12px 20px 14px 20px",
+                    display: "flex",
+                    gap: 32,
+                  }}>
+                    {/* Factor bars */}
+                    {factors && (
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: 1.5, color: "#4A5A6E", fontFamily: "'Inter', system-ui, sans-serif", textTransform: "uppercase", marginBottom: 8 }}>
+                          Factor Breakdown
+                        </div>
+                        {FACTOR_KEYS.map(({ key, label }) => {
+                          const f = (factors as any)[key];
+                          const val = f?.adjusted ?? f?.base ?? 0;
+                          const color = factorBarColor(val);
+                          return (
+                            <div key={key} style={{ marginBottom: 6 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                                <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: 1, color: "#5A6B80", fontFamily: "'JetBrains Mono', monospace" }}>{label}</span>
+                                <span style={{ fontSize: 8, fontWeight: 700, color, fontFamily: "'JetBrains Mono', monospace" }}>{Math.round(val)}</span>
+                              </div>
+                              <div style={{ height: 4, background: "#1C2840", borderRadius: 2, overflow: "hidden" }}>
+                                <div style={{ height: "100%", width: `${Math.min(val, 100)}%`, background: `linear-gradient(90deg, ${color}99, ${color})`, borderRadius: 2, transition: "width 0.3s ease" }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Quant signals */}
+                    {quantSignals && (
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: 1.5, color: "#4A5A6E", fontFamily: "'Inter', system-ui, sans-serif", textTransform: "uppercase", marginBottom: 8 }}>
+                          Quant Signals
+                        </div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                          {QUANT_SIGNAL_KEYS.map(({ key, label }) => {
+                            const signal = (quantSignals as any)[key];
+                            const active = isSignalActive(key, signal);
+                            return (
+                              <div key={key} style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 3,
+                                padding: "2px 7px",
+                                borderRadius: 3,
+                                background: active ? "rgba(0,230,168,0.08)" : "rgba(90,107,128,0.08)",
+                                border: `1px solid ${active ? "rgba(0,230,168,0.25)" : "rgba(90,107,128,0.15)"}`,
+                              }}>
+                                {active
+                                  ? <Check size={8} color="#00E6A8" strokeWidth={3} />
+                                  : <X size={8} color="#3A4A5C" strokeWidth={2} />
+                                }
+                                <span style={{
+                                  fontSize: 8,
+                                  fontWeight: 600,
+                                  fontFamily: "'JetBrains Mono', monospace",
+                                  letterSpacing: 0.3,
+                                  color: active ? "#00E6A8" : "#3A4A5C",
+                                }}>{label}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {quantSignals.compositeCount != null && (
+                          <div style={{ marginTop: 6, fontSize: 8, color: "#4A5A6E", fontFamily: "'JetBrains Mono', monospace" }}>
+                            {quantSignals.compositeCount}/7 signals active
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* No detail available fallback */}
+                    {!factors && !quantSignals && (
+                      <div style={{ fontSize: 9, color: "#2E3E52", fontFamily: "'Inter', system-ui, sans-serif", fontStyle: "italic" }}>
+                        No detailed breakdown available.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

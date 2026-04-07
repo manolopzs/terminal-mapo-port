@@ -13,6 +13,44 @@ export interface RebalancePosition {
   currentPrice: number;
 }
 
+export interface ValidationCheck {
+  rule: string;
+  passed: boolean;
+  detail: string;
+}
+
+export interface ValidationResult {
+  passed: boolean;
+  checks: ValidationCheck[];
+}
+
+export interface MacroResult {
+  regime: "RISK_ON" | "RISK_OFF" | "NEUTRAL";
+  keyEvents: string[];
+  sectorRanking?: Array<{ sector: string; change: number }>;
+  agiThesisPulse?: string;
+  timestamp?: string;
+}
+
+export interface AgiResult {
+  status: "ACCELERATING" | "STABLE" | "DECELERATING";
+  confidenceLevel: number;
+  keyDevelopments?: string[];
+  capexTracker?: string;
+  implicationsForPortfolio?: string;
+  timestamp?: string;
+}
+
+export interface RebalanceContext {
+  validationStatus?: ValidationResult;
+  macroRegime?: string;
+  agiThesisStatus?: string;
+  portfolioValue?: number;
+  cash?: number;
+  cashPct?: number;
+  constraints?: Record<string, number>;
+}
+
 export interface RebalanceData {
   positions: RebalancePosition[];
   totalValue: number;
@@ -23,6 +61,10 @@ export interface RebalanceData {
   cashActionAmount: number;
   maxDrawdownAlert: string | null;
   concentrationAlerts: string[];
+  memo?: string;
+  macro?: MacroResult | null;
+  agi?: AgiResult | null;
+  context?: RebalanceContext | null;
 }
 
 export function useRebalance(portfolioId: string) {

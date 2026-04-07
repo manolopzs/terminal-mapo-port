@@ -40,6 +40,7 @@ function buildResult(ticker: string, analysis: any, meta?: { screenType?: string
     rejected: analysis?.rejected ?? false,
     rejectReason: analysis?.rejectReason ?? null,
     quantSignals: analysis?.quantSignals ?? null,
+    factors: analysis?.scoring?.factors ?? null,
   };
 }
 

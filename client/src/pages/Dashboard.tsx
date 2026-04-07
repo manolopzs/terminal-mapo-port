@@ -3,6 +3,8 @@ import { Header } from "@/components/Header";
 import { TickerTape } from "@/components/TickerTape";
 import { HoldingsTable } from "@/components/HoldingsTable";
 import { PerformanceChart } from "@/components/PerformanceChart";
+import { CorrelationMatrix } from "@/components/CorrelationMatrix";
+import { VolatilityBars } from "@/components/VolatilityBars";
 import { MarketPulse } from "@/components/MarketPulse";
 import { SectorAllocation } from "@/components/SectorAllocation";
 import { EarningsCalendar } from "@/components/EarningsCalendar";
@@ -311,6 +313,14 @@ export default function Dashboard() {
               {/* Drawdown Alerts */}
               <div style={{ padding: "12px 16px", flexShrink: 0, borderTop: "1px solid #1C2840" }}>
                 <DrawdownAlerts />
+              </div>
+              {/* Correlation Matrix */}
+              <div style={{ height: 280, flexShrink: 0, borderTop: "1px solid #1C2840" }}>
+                <CorrelationMatrix holdings={holdingsData} correlationData={analytics?.correlation} top6Tickers={analytics?.top6Tickers} />
+              </div>
+              {/* Volatility Bars */}
+              <div style={{ height: 280, flexShrink: 0, borderTop: "1px solid #1C2840" }}>
+                <VolatilityBars holdings={holdingsData} volatilityData={analytics?.volatility} />
               </div>
               {/* Morning Briefing */}
               <div style={{ padding: "12px 16px", flexShrink: 0, borderTop: "1px solid #1C2840" }}>
@@ -646,7 +656,7 @@ export default function Dashboard() {
           style={{
             display: activeTab === "PORTFOLIO" ? "grid" : "none",
             gridTemplateColumns: "1.4fr 1.8fr 1.2fr",
-            gridTemplateRows: "1fr 1fr",
+            gridTemplateRows: "1fr 1fr 0.8fr",
             gap: 0,
             minHeight: 0,
             background: "#0A0E1A",
@@ -680,6 +690,21 @@ export default function Dashboard() {
           {/* Row 2, Col 3: Sector Allocation */}
           <div className="flex flex-col" style={{ overflow: "hidden" }}>
             <SectorAllocation holdings={holdingsData} totalValue={totalValue} />
+          </div>
+
+          {/* Row 3, Col 1: Correlation Matrix */}
+          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", overflow: "hidden" }}>
+            <CorrelationMatrix holdings={holdingsData} correlationData={analytics?.correlation} top6Tickers={analytics?.top6Tickers} />
+          </div>
+
+          {/* Row 3, Col 2: Volatility Bars */}
+          <div className="flex flex-col" style={{ borderRight: "1px solid #1C2840", overflow: "hidden" }}>
+            <VolatilityBars holdings={holdingsData} volatilityData={analytics?.volatility} />
+          </div>
+
+          {/* Row 3, Col 3: Drawdown Alerts */}
+          <div className="flex flex-col" style={{ overflow: "auto" }}>
+            <DrawdownAlerts />
           </div>
         </div>
 

@@ -41351,6 +41351,12 @@ async function screenCachedRoute(_req, res) {
   try {
     const { data, error } = await supabase2.from("screener_cache").select("*").order("score", { ascending: false });
     if (error) throw new Error(error.message);
+    let latestUpdatedAt = null;
+    for (const row of data ?? []) {
+      if (row.updated_at && (!latestUpdatedAt || row.updated_at > latestUpdatedAt)) {
+        latestUpdatedAt = row.updated_at;
+      }
+    }
     const results = (data ?? []).map((row) => ({
       ticker: row.ticker,
       name: row.ticker,
@@ -41368,9 +41374,10 @@ async function screenCachedRoute(_req, res) {
       rating: row.rating,
       rejected: false,
       rejectReason: null,
-      quantSignals: null
+      quantSignals: null,
+      factors: row.factors ?? null
     }));
-    res.json(results);
+    res.json({ results, cached: true, updated_at: latestUpdatedAt });
   } catch (err) {
     console.error("[screen/cached]", err);
     res.status(500).json({ error: err.message });
@@ -41408,7 +41415,8 @@ function buildResult(ticker, analysis, meta) {
     rating: analysis?.scoring?.rating ?? null,
     rejected: analysis?.rejected ?? false,
     rejectReason: analysis?.rejectReason ?? null,
-    quantSignals: analysis?.quantSignals ?? null
+    quantSignals: analysis?.quantSignals ?? null,
+    factors: analysis?.scoring?.factors ?? null
   };
 }
 async function screenRoute(req, res) {

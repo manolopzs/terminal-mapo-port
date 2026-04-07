@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useRebalance, type RebalancePosition } from "@/hooks/use-rebalance";
+import { useRebalance, type RebalancePosition, type ValidationCheck } from "@/hooks/use-rebalance";
 import { queryClient } from "@/lib/queryClient";
 import { RefreshCw, AlertTriangle, TrendingUp, TrendingDown, Minus, Loader2, Play, X, Check } from "lucide-react";
 import {
@@ -70,6 +70,349 @@ function Spinner() {
         flexShrink: 0,
       }}
     />
+  );
+}
+
+// --- Memo rendering helpers ---
+
+const ACTION_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  BUY: { bg: "rgba(0,200,83,0.12)", border: "rgba(0,200,83,0.4)", text: "#00E6A8" },
+  ADD: { bg: "rgba(0,200,83,0.12)", border: "rgba(0,200,83,0.4)", text: "#00E6A8" },
+  SELL: { bg: "rgba(255,77,77,0.12)", border: "rgba(255,77,77,0.4)", text: "#FF4458" },
+  REDUCE: { bg: "rgba(255,77,77,0.12)", border: "rgba(255,77,77,0.4)", text: "#FF4458" },
+  TRIM: { bg: "rgba(255,77,77,0.12)", border: "rgba(255,77,77,0.4)", text: "#FF4458" },
+  HOLD: { bg: "rgba(240,136,62,0.12)", border: "rgba(240,136,62,0.4)", text: "#F0883E" },
+};
+
+function highlightActionKeywords(text: string): React.ReactNode[] {
+  const actionPattern = /\b(BUY|SELL|HOLD|REDUCE|ADD|TRIM)\b/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = actionPattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(renderInlineFormatting(text.slice(lastIndex, match.index), `pre-${lastIndex}`));
+    }
+    const keyword = match[1];
+    const colors = ACTION_COLORS[keyword] || ACTION_COLORS.HOLD;
+    parts.push(
+      <span
+        key={`action-${match.index}`}
+        style={{
+          background: colors.bg,
+          border: `1px solid ${colors.border}`,
+          color: colors.text,
+          borderRadius: 2,
+          padding: "1px 5px",
+          fontSize: 9,
+          fontWeight: 700,
+          letterSpacing: 1,
+          fontFamily: "monospace",
+        }}
+      >
+        {keyword}
+      </span>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    parts.push(renderInlineFormatting(text.slice(lastIndex), `post-${lastIndex}`));
+  }
+  return parts.length > 0 ? parts : [renderInlineFormatting(text, "full")];
+}
+
+function renderInlineFormatting(text: string, keyPrefix: string): React.ReactNode {
+  // Handle **bold** text
+  const boldPattern = /\*\*(.+?)\*\*/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = boldPattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(<span key={`${keyPrefix}-t-${lastIndex}`}>{text.slice(lastIndex, match.index)}</span>);
+    }
+    parts.push(
+      <span key={`${keyPrefix}-b-${match.index}`} style={{ fontWeight: 700, color: "#C9D1D9" }}>
+        {match[1]}
+      </span>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    parts.push(<span key={`${keyPrefix}-e-${lastIndex}`}>{text.slice(lastIndex)}</span>);
+  }
+  return parts.length === 1 ? parts[0] : <>{parts}</>;
+}
+
+function isTableRow(line: string): boolean {
+  return line.trim().startsWith("|") && line.trim().endsWith("|");
+}
+
+function isTableSeparator(line: string): boolean {
+  return /^\|[\s\-:|]+\|$/.test(line.trim());
+}
+
+function parseTableCells(line: string): string[] {
+  return line.split("|").slice(1, -1).map(c => c.trim());
+}
+
+function MemoRenderer({ memo }: { memo: string }) {
+  const lines = memo.split("\n");
+  const elements: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // Skip empty lines
+    if (!trimmed) {
+      i++;
+      continue;
+    }
+
+    // ## or ### headers
+    if (trimmed.startsWith("## ") || trimmed.startsWith("### ")) {
+      const level = trimmed.startsWith("### ") ? 3 : 2;
+      const text = trimmed.replace(/^#{2,3}\s+/, "");
+      elements.push(
+        <div
+          key={`h-${i}`}
+          style={{
+            background: "#0A0E18",
+            borderLeft: `3px solid ${level === 2 ? "var(--color-primary)" : "#2E3E52"}`,
+            padding: level === 2 ? "10px 14px" : "7px 14px",
+            marginTop: elements.length > 0 ? 14 : 0,
+            marginBottom: 8,
+            borderRadius: 2,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "monospace",
+              fontSize: level === 2 ? 11 : 10,
+              fontWeight: 700,
+              letterSpacing: level === 2 ? 2 : 1.5,
+              textTransform: "uppercase",
+              color: level === 2 ? "var(--color-primary)" : "#C9D1D9",
+            }}
+          >
+            {text}
+          </span>
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // Table blocks
+    if (isTableRow(trimmed)) {
+      const tableRows: string[] = [];
+      while (i < lines.length && isTableRow(lines[i].trim())) {
+        tableRows.push(lines[i].trim());
+        i++;
+      }
+      // Separate header, separator, body
+      const headerRow = tableRows[0] ? parseTableCells(tableRows[0]) : [];
+      const bodyRows = tableRows.filter((r, idx) => idx > 0 && !isTableSeparator(r)).map(parseTableCells);
+
+      elements.push(
+        <div key={`table-${i}`} style={{ overflowX: "auto", marginBottom: 8 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", background: "#070B14", border: "1px solid #1C2840", borderRadius: 3 }}>
+            {headerRow.length > 0 && (
+              <thead>
+                <tr style={{ background: "#0B0F1A" }}>
+                  {headerRow.map((cell, ci) => (
+                    <th
+                      key={ci}
+                      style={{
+                        padding: "4px 8px",
+                        fontSize: 9,
+                        fontWeight: 700,
+                        letterSpacing: 1.5,
+                        textTransform: "uppercase",
+                        color: "#4A5A6E",
+                        fontFamily: "monospace",
+                        borderBottom: "1px solid #1C2840",
+                        textAlign: "left",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {cell}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+            )}
+            <tbody>
+              {bodyRows.map((row, ri) => (
+                <tr key={ri} style={{ borderBottom: "1px solid #0B0F1A" }}>
+                  {row.map((cell, ci) => (
+                    <td
+                      key={ci}
+                      style={{
+                        padding: "4px 8px",
+                        fontSize: 10,
+                        fontFamily: "monospace",
+                        color: "#C9D1D9",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {highlightActionKeywords(cell)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+      continue;
+    }
+
+    // Bullet points
+    if (/^[-*]\s/.test(trimmed)) {
+      const bullets: string[] = [];
+      while (i < lines.length && /^[-*]\s/.test(lines[i].trim())) {
+        bullets.push(lines[i].trim().replace(/^[-*]\s+/, ""));
+        i++;
+      }
+      elements.push(
+        <div key={`bullets-${i}`} style={{ marginBottom: 8, paddingLeft: 4 }}>
+          {bullets.map((b, bi) => (
+            <div
+              key={bi}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 8,
+                marginBottom: 3,
+                fontFamily: "monospace",
+                fontSize: 10,
+                color: "#8B949E",
+                lineHeight: "1.5",
+              }}
+            >
+              <span style={{ color: "#4A5A6E", flexShrink: 0, marginTop: 1 }}>&#9656;</span>
+              <span>{highlightActionKeywords(b)}</span>
+            </div>
+          ))}
+        </div>
+      );
+      continue;
+    }
+
+    // Regular paragraph text
+    elements.push(
+      <div
+        key={`p-${i}`}
+        style={{
+          fontFamily: "monospace",
+          fontSize: 10,
+          color: "#8B949E",
+          lineHeight: "1.6",
+          marginBottom: 6,
+        }}
+      >
+        {highlightActionKeywords(trimmed)}
+      </div>
+    );
+    i++;
+  }
+
+  return <div>{elements}</div>;
+}
+
+function ConstraintsChecklist({ checks }: { checks: ValidationCheck[] }) {
+  return (
+    <div style={{ display: "grid", gap: 4 }}>
+      {checks.map((check, i) => (
+        <div
+          key={i}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            background: check.passed ? "rgba(0,200,83,0.04)" : "rgba(255,77,77,0.04)",
+            border: `1px solid ${check.passed ? "rgba(0,200,83,0.15)" : "rgba(255,77,77,0.15)"}`,
+            borderLeft: `3px solid ${check.passed ? "var(--color-green)" : "var(--color-red)"}`,
+            borderRadius: 2,
+            padding: "5px 10px",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 700,
+              fontFamily: "monospace",
+              letterSpacing: 1,
+              color: check.passed ? "var(--color-green)" : "var(--color-red)",
+              minWidth: 32,
+            }}
+          >
+            {check.passed ? "PASS" : "FAIL"}
+          </span>
+          <span
+            style={{
+              fontSize: 9,
+              fontFamily: "monospace",
+              color: "#C9D1D9",
+              flex: 1,
+            }}
+          >
+            {check.rule}
+          </span>
+          <span
+            style={{
+              fontSize: 9,
+              fontFamily: "monospace",
+              color: "#4A5A6E",
+              textAlign: "right",
+            }}
+          >
+            {check.detail}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RegimeBadge({ label, value, colorMap }: {
+  label: string;
+  value: string | undefined | null;
+  colorMap: Record<string, string>;
+}) {
+  const val = value || "UNKNOWN";
+  const color = colorMap[val] || "#4A5A6E";
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <span style={{ fontSize: 9, color: "#4A5A6E", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace" }}>
+        {label}
+      </span>
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 5,
+          background: `${color}15`,
+          border: `1px solid ${color}40`,
+          color: color,
+          borderRadius: 2,
+          padding: "3px 8px",
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: 1.5,
+          fontFamily: "monospace",
+          width: "fit-content",
+        }}
+      >
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, boxShadow: `0 0 6px ${color}` }} />
+        {val.replace(/_/g, " ")}
+      </span>
+    </div>
   );
 }
 
@@ -249,7 +592,7 @@ export function RebalanceTab({ portfolioId }: Props) {
     );
   }
 
-  const { positions, totalValue, cashValue, cashPct, targetCashPct, cashAction, cashActionAmount, maxDrawdownAlert, concentrationAlerts } = data;
+  const { positions, totalValue, cashValue, cashPct, targetCashPct, cashAction, cashActionAmount, maxDrawdownAlert, concentrationAlerts, memo, macro, agi, context } = data;
 
   const targetsSum = positions.reduce((sum, p) => sum + (targets[p.ticker] ?? p.targetPct), 0);
   const targetsSumOk = Math.abs(targetsSum - 100) < 1;
@@ -1041,6 +1384,131 @@ export function RebalanceTab({ portfolioId }: Props) {
               )}
             </div>
 
+            {/* Macro + AGI Context Badges */}
+            {(macro || agi) && (
+              <>
+                <div
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: 2,
+                    color: "#C9D1D9",
+                    background: "#0B0F1A",
+                    borderBottom: "1px solid #1C2840",
+                    padding: "8px 14px",
+                    flexShrink: 0,
+                    fontFamily: "monospace",
+                  }}
+                >
+                  Intelligence Context
+                </div>
+                <div style={{ padding: "14px", borderBottom: "1px solid #1C2840" }}>
+                  <div style={{ display: "flex", gap: 20, marginBottom: 12 }}>
+                    {macro && (
+                      <RegimeBadge
+                        label="Macro Regime"
+                        value={macro.regime}
+                        colorMap={{ RISK_ON: "#00E6A8", RISK_OFF: "#FF4458", NEUTRAL: "#F0883E" }}
+                      />
+                    )}
+                    {agi && (
+                      <RegimeBadge
+                        label="AGI Thesis"
+                        value={agi.status}
+                        colorMap={{ ACCELERATING: "#00E6A8", STABLE: "#F0883E", DECELERATING: "#FF4458" }}
+                      />
+                    )}
+                    {agi && agi.confidenceLevel != null && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <span style={{ fontSize: 9, color: "#4A5A6E", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "monospace" }}>
+                          AGI Confidence
+                        </span>
+                        <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "monospace", color: "#C9D1D9" }}>
+                          {agi.confidenceLevel}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  {/* Key events / developments */}
+                  {((macro?.keyEvents && macro.keyEvents.length > 0) || (agi?.keyDevelopments && agi.keyDevelopments.length > 0)) && (
+                    <div style={{ marginTop: 4 }}>
+                      {macro?.keyEvents && macro.keyEvents.length > 0 && (
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "#4A5A6E", fontFamily: "monospace", marginBottom: 4 }}>
+                            Key Macro Events
+                          </div>
+                          {macro.keyEvents.map((evt, i) => (
+                            <div
+                              key={i}
+                              style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 2, fontFamily: "monospace", fontSize: 9, color: "#8B949E", lineHeight: "1.5" }}
+                            >
+                              <span style={{ color: "#4A5A6E", flexShrink: 0 }}>&#9656;</span>
+                              <span>{evt}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {agi?.keyDevelopments && agi.keyDevelopments.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "#4A5A6E", fontFamily: "monospace", marginBottom: 4 }}>
+                            Key AGI Developments
+                          </div>
+                          {agi.keyDevelopments.map((dev, i) => (
+                            <div
+                              key={i}
+                              style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 2, fontFamily: "monospace", fontSize: 9, color: "#8B949E", lineHeight: "1.5" }}
+                            >
+                              <span style={{ color: "#4A5A6E", flexShrink: 0 }}>&#9656;</span>
+                              <span>{dev}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Constraints Checklist */}
+            {context?.validationStatus?.checks && context.validationStatus.checks.length > 0 && (
+              <>
+                <div
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: 2,
+                    color: "#C9D1D9",
+                    background: "#0B0F1A",
+                    borderBottom: "1px solid #1C2840",
+                    padding: "8px 14px",
+                    flexShrink: 0,
+                    fontFamily: "monospace",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <span>Constraints Validation</span>
+                  <span
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 700,
+                      letterSpacing: 1,
+                      color: context.validationStatus.passed ? "var(--color-green)" : "var(--color-red)",
+                    }}
+                  >
+                    {context.validationStatus.passed ? "ALL PASS" : "VIOLATIONS DETECTED"}
+                  </span>
+                </div>
+                <div style={{ padding: "10px 14px", borderBottom: "1px solid #1C2840" }}>
+                  <ConstraintsChecklist checks={context.validationStatus.checks} />
+                </div>
+              </>
+            )}
+
             {/* Cash section */}
             <div
               style={{
@@ -1183,6 +1651,41 @@ export function RebalanceTab({ portfolioId }: Props) {
                 </div>
               </div>
             </div>
+
+            {/* Claude Memo */}
+            {memo && (
+              <>
+                <div
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: 2,
+                    color: "#C9D1D9",
+                    background: "#0B0F1A",
+                    borderBottom: "1px solid #1C2840",
+                    padding: "8px 14px",
+                    flexShrink: 0,
+                    fontFamily: "monospace",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--color-primary)", boxShadow: "0 0 6px var(--color-primary)" }} />
+                  Claude Portfolio Construction Memo
+                </div>
+                <div
+                  data-rebalance="memo-section"
+                  style={{
+                    padding: "14px",
+                    borderBottom: "1px solid #1C2840",
+                  }}
+                >
+                  <MemoRenderer memo={memo} />
+                </div>
+              </>
+            )}
 
           </div>
         </div>
