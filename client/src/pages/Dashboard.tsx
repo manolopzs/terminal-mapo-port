@@ -463,6 +463,32 @@ export default function Dashboard() {
           >
             {[
               {
+                label: "VALUE",
+                value: summary
+                  ? `$${summary.totalValue.toLocaleString("en-US", { maximumFractionDigits: 0 })}`
+                  : "—",
+                color: "var(--color-primary)",
+                bold: true,
+              },
+              {
+                label: "DAY",
+                value: summary
+                  ? `${summary.dayChange >= 0 ? "+" : ""}$${Math.abs(summary.dayChange).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${summary.dayChangePct >= 0 ? "+" : ""}${summary.dayChangePct.toFixed(2)}%)`
+                  : "—",
+                color: summary
+                  ? summary.dayChange >= 0 ? "var(--color-green)" : "var(--color-red)"
+                  : "#3A4A5C",
+              },
+              {
+                label: "P&L",
+                value: summary
+                  ? `${summary.totalGainLoss >= 0 ? "+" : ""}$${Math.abs(summary.totalGainLoss).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${summary.totalGainLossPct >= 0 ? "+" : ""}${summary.totalGainLossPct.toFixed(2)}%)`
+                  : "—",
+                color: summary
+                  ? summary.totalGainLoss >= 0 ? "var(--color-green)" : "var(--color-red)"
+                  : "#3A4A5C",
+              },
+              {
                 label: "POS",
                 value: summary ? String(summary.holdingsCount) : "—",
                 color: "#8B949E",

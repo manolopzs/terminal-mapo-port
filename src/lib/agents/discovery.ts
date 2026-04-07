@@ -27,8 +27,9 @@ const MIN_MARKET_CAP = 500_000_000;
 const MAX_MARKET_CAP = 50_000_000_000;
 const MIN_LIQUIDITY = 5_000_000;
 const TOP_N = 30;
-// Max candidates per sector to ensure diversity
+// Max candidates per sector/industry to ensure diversity
 const MAX_PER_SECTOR = 8;
+const MAX_PER_INDUSTRY = 4;
 
 /* ── Main discovery function ─────────────────────────────────────────────── */
 
@@ -127,15 +128,20 @@ export async function runDiscovery(): Promise<DiscoveryResult> {
     return b.marketCap - a.marketCap;
   });
 
-  // Diversify: cap per sector so the top 30 isn't all semis or defense
+  // Diversify: cap per sector AND per industry so the top 30 isn't all semis or defense
   const sectorCount = new Map<string, number>();
+  const industryCount = new Map<string, number>();
   const diversified: CandidateTicker[] = [];
 
   for (const c of candidates) {
     const sector = c.sector;
-    const count = sectorCount.get(sector) ?? 0;
-    if (count >= MAX_PER_SECTOR) continue;
-    sectorCount.set(sector, count + 1);
+    const industry = c.industry;
+    const sc = sectorCount.get(sector) ?? 0;
+    const ic = industryCount.get(industry) ?? 0;
+    if (sc >= MAX_PER_SECTOR) continue;
+    if (ic >= MAX_PER_INDUSTRY) continue;
+    sectorCount.set(sector, sc + 1);
+    industryCount.set(industry, ic + 1);
     diversified.push(c);
     if (diversified.length >= TOP_N) break;
   }

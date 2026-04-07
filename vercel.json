@@ -20,6 +20,7 @@
   "crons": [
     { "path": "/api/cron/morning", "schedule": "30 13 * * 1-5" },
     { "path": "/api/cron/drawdown", "schedule": "30 14-21 * * 1-5" },
-    { "path": "/api/cron/earnings", "schedule": "0 12 * * 0" }
+    { "path": "/api/cron/earnings", "schedule": "0 12 * * 0" },
+    { "path": "/api/cron/screen", "schedule": "30 21 * * 1-5" }
   ]
 }

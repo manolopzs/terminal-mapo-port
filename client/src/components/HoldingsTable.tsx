@@ -30,13 +30,16 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
       <div className="flex-1 overflow-auto" style={{ padding: 0 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 420 }}>
           <colgroup>
-            <col style={{ width: "30%" }} />
-            <col style={{ width: "17%" }} />
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "13%" }} />
-            <col style={{ width: "11%" }} />
-            <col style={{ width: "11%" }} />
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "12%" }} />
             <col style={{ width: "7%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "6%" }} />
+            <col style={{ width: "6%" }} />
             <col style={{ width: "2%" }} />
           </colgroup>
           <thead>
@@ -49,7 +52,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                 borderBottom: "1px solid #1C2840",
               }}
             >
-              {["TICKER", "VALUE", "QTY", "PRICE", "DAY%", "P&L%", "ALLOC", ""].map((h) => (
+              {["TICKER", "VALUE", "QTY", "ENTRY", "PRICE", "P&L $", "P&L%", "DAY%", "ALLOC", "SECTOR", ""].map((h) => (
                 <th
                   key={h || "actions"}
                   style={{
@@ -117,7 +120,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                     </div>
                   </td>
 
-                  {/* VALUE + avg cost */}
+                  {/* VALUE */}
                   <td style={{ padding: "6px 6px", textAlign: "right" }}>
                     <div
                       className="font-mono tabular-nums"
@@ -129,17 +132,6 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                       }}
                     >
                       ${(h.value ?? 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}
-                    </div>
-                    <div
-                      className="font-mono tabular-nums"
-                      style={{
-                        fontSize: 9,
-                        color: "#3A4A5C",
-                        lineHeight: 1.1,
-                        marginTop: 1,
-                      }}
-                    >
-                      avg ${avgCost.toFixed(2)}
                     </div>
                   </td>
 
@@ -155,6 +147,14 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                         : (h.quantity ?? 0).toFixed(2)}
                   </td>
 
+                  {/* ENTRY (avg cost) */}
+                  <td
+                    className="font-mono tabular-nums"
+                    style={{ fontSize: 10, color: "#5A6B80", padding: "6px 6px", textAlign: "right" }}
+                  >
+                    ${avgCost.toFixed(2)}
+                  </td>
+
                   {/* PRICE */}
                   <td
                     className="font-mono tabular-nums"
@@ -163,19 +163,22 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                     ${(h.price ?? 0).toFixed(2)}
                   </td>
 
-                  {/* DAY% */}
+                  {/* P&L $ */}
                   <td
                     className="font-mono tabular-nums"
                     style={{
                       fontSize: 10,
-                      color: chgColor,
+                      fontWeight: 600,
+                      color: pnlColor,
                       padding: "6px 6px",
                       textAlign: "right",
-                      fontWeight: 600,
                     }}
                   >
-                    {chgPct >= 0 ? "+" : ""}
-                    {chgPct.toFixed(2)}%
+                    {(h.gainLoss ?? 0) >= 0 ? "+" : ""}$
+                    {Math.abs(h.gainLoss ?? 0).toLocaleString("en-US", {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    })}
                   </td>
 
                   {/* P&L% */}
@@ -191,6 +194,21 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                   >
                     {pnlPct >= 0 ? "+" : ""}
                     {pnlPct.toFixed(1)}%
+                  </td>
+
+                  {/* DAY% */}
+                  <td
+                    className="font-mono tabular-nums"
+                    style={{
+                      fontSize: 10,
+                      color: chgColor,
+                      padding: "6px 6px",
+                      textAlign: "right",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {chgPct >= 0 ? "+" : ""}
+                    {chgPct.toFixed(2)}%
                   </td>
 
                   {/* ALLOC% with mini bar */}
@@ -225,6 +243,23 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                         }}
                       />
                     </div>
+                  </td>
+
+                  {/* SECTOR */}
+                  <td
+                    style={{
+                      fontSize: 9,
+                      color: "#4A5A6E",
+                      padding: "6px 6px",
+                      textAlign: "right",
+                      fontFamily: "'Inter', system-ui, sans-serif",
+                      letterSpacing: 0.3,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {h.sector ?? "—"}
                   </td>
 
                   {/* DELETE */}

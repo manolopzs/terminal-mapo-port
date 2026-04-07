@@ -56,6 +56,12 @@ interface AnalysisResult {
 }
 
 // Flat view model used internally after mapping
+interface FactorDetail {
+  base: number;
+  adjusted: number;
+  notes: string;
+}
+
 interface MappedResult {
   ticker: string;
   score: number;
@@ -68,6 +74,14 @@ interface MappedResult {
     sentiment: number;
     macroFit: number;
   };
+  factorDetails: {
+    financialHealth: FactorDetail;
+    valuation: FactorDetail;
+    growth: FactorDetail;
+    technical: FactorDetail;
+    sentiment: FactorDetail;
+    macroFit: FactorDetail;
+  } | null;
   thesis: string;
   catalysts: string[];
   risks: string[];
@@ -99,6 +113,7 @@ function mapResult(raw: AnalysisResult): MappedResult {
       score: 0,
       signal: "AVOID",
       factors: { financialHealth: 0, valuation: 0, growth: 0, technical: 0, sentiment: 0, macroFit: 0 },
+      factorDetails: null,
       thesis: raw.rejectReason ?? "No scoring data available.",
       catalysts: [],
       risks: [],
@@ -121,10 +136,18 @@ function mapResult(raw: AnalysisResult): MappedResult {
       sentiment: scoring.factors.sentiment.adjusted,
       macroFit: scoring.factors.macroAlignment.adjusted,
     },
+    factorDetails: {
+      financialHealth: scoring.factors.financialHealth,
+      valuation: scoring.factors.valuation,
+      growth: scoring.factors.growth,
+      technical: scoring.factors.technical,
+      sentiment: scoring.factors.sentiment,
+      macroFit: scoring.factors.macroAlignment,
+    },
     thesis: scoring.recommendation,
-    catalysts: scoring.bullCase,
-    risks: scoring.bearCase,
-    entryNote: scoring.agiAlignment,
+    catalysts: scoring.bullCase ?? [],
+    risks: scoring.bearCase ?? [],
+    entryNote: scoring.agiAlignment ?? "",
     quantSignals: raw.quantSignals,
     rejected: raw.rejected,
     rejectReason: raw.rejectReason,
@@ -146,8 +169,14 @@ function saveScoreHistory(history: ScoreHistoryEntry[]) {
 
 function scoreColor(score: number): string {
   if (score >= 65) return "var(--color-green)";
-  if (score >= 50) return "var(--color-orange)";
+  if (score >= 40) return "var(--color-orange)";
   return "var(--color-red)";
+}
+
+function factorBarColor(score: number): string {
+  if (score >= 65) return "#00E6A8";
+  if (score >= 40) return "#F0883E";
+  return "#FF4458";
 }
 
 function signalBg(signal: string): { bg: string; border: string; color: string } {
@@ -158,12 +187,12 @@ function signalBg(signal: string): { bg: string; border: string; color: string }
 }
 
 const FACTORS: { key: keyof MappedResult["factors"]; label: string; weight: number }[] = [
-  { key: "financialHealth", label: "Financial Health", weight: 25 },
-  { key: "valuation",       label: "Valuation",        weight: 20 },
-  { key: "growth",          label: "Growth",           weight: 20 },
-  { key: "technical",       label: "Technical",        weight: 15 },
-  { key: "sentiment",       label: "Sentiment",        weight: 10 },
-  { key: "macroFit",        label: "Macro Fit",        weight: 10 },
+  { key: "growth",          label: "Growth",            weight: 30 },
+  { key: "macroFit",        label: "Macro Alignment",   weight: 20 },
+  { key: "financialHealth", label: "Financial Health",   weight: 20 },
+  { key: "technical",       label: "Technical",          weight: 15 },
+  { key: "sentiment",       label: "Sentiment",          weight: 10 },
+  { key: "valuation",       label: "Valuation",          weight: 5  },
 ];
 
 // ─── Staged analysis sub-components ──────────────────────────────────────────
@@ -292,12 +321,12 @@ function StagedAnalysisView({ ticker, stage, elapsed }: { ticker: string; stage:
       {/* Stage 3: Scoring with Claude */}
       <div style={{ marginBottom: 12 }}>
         <StageHeader n={3} label="SCORING WITH CLAUDE" status={s3} />
-        <StageItem prefix="├─" label="Financial Health (25%)" status={s3} />
-        <StageItem prefix="├─" label="Valuation (20%)"        status={s3} />
-        <StageItem prefix="├─" label="Growth (20%)"           status={s3} />
-        <StageItem prefix="├─" label="Technical (15%)"        status={s3} />
-        <StageItem prefix="├─" label="Sentiment (10%)"        status={s3} />
-        <StageItem prefix="└─" label="Macro Fit (10%)"        status={s3} />
+        <StageItem prefix="├─" label="Growth (30%)"            status={s3} />
+        <StageItem prefix="├─" label="Macro Alignment (20%)"  status={s3} />
+        <StageItem prefix="├─" label="Financial Health (20%)"  status={s3} />
+        <StageItem prefix="├─" label="Technical (15%)"         status={s3} />
+        <StageItem prefix="├─" label="Sentiment (10%)"         status={s3} />
+        <StageItem prefix="└─" label="Valuation (5%)"          status={s3} />
       </div>
 
       {/* Stage 4: Validating Signals */}
@@ -692,7 +721,7 @@ export function MAPOScoreTab() {
                   fontFamily: "JetBrains Mono, monospace",
                 }}
               >
-                Financial Health (25%) · Valuation (20%) · Growth (20%) · Technical (15%) · Sentiment (10%) · Macro Fit (10%)
+                Growth (30%) · Macro Alignment (20%) · Financial Health (20%) · Technical (15%) · Sentiment (10%) · Valuation (5%)
               </div>
 
               {history.length > 0 && (
@@ -891,37 +920,70 @@ export function MAPOScoreTab() {
                       {result.ticker}
                     </div>
 
-                    {/* Circular score */}
-                    <div
-                      style={{
-                        width: 100,
-                        height: 100,
-                        borderRadius: "50%",
-                        border: `4px solid ${scoreColor(result.score)}`,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        margin: "0 auto 16px",
-                        boxShadow: `0 0 24px ${scoreColor(result.score)}30`,
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: 28,
-                          fontWeight: 700,
-                          color: scoreColor(result.score),
-                          fontFamily: "JetBrains Mono, monospace",
-                          fontVariantNumeric: "tabular-nums",
-                          lineHeight: 1,
-                        }}
-                      >
-                        {result.score}
-                      </div>
-                      <div style={{ fontSize: 9, color: "#8B949E", letterSpacing: 1, textTransform: "uppercase" }}>
-                        /100
-                      </div>
-                    </div>
+                    {/* Circular score with SVG ring */}
+                    {(() => {
+                      const radius = 52;
+                      const stroke = 5;
+                      const circumference = 2 * Math.PI * radius;
+                      const progress = Math.min(result.score, 100) / 100;
+                      const dashOffset = circumference * (1 - progress);
+                      const color = scoreColor(result.score);
+                      const size = (radius + stroke) * 2;
+                      return (
+                        <div style={{ position: "relative", width: size, height: size, margin: "0 auto 16px" }}>
+                          <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+                            {/* Background track */}
+                            <circle
+                              cx={radius + stroke}
+                              cy={radius + stroke}
+                              r={radius}
+                              fill="none"
+                              stroke="#1C2840"
+                              strokeWidth={stroke}
+                            />
+                            {/* Progress arc */}
+                            <circle
+                              cx={radius + stroke}
+                              cy={radius + stroke}
+                              r={radius}
+                              fill="none"
+                              stroke={color}
+                              strokeWidth={stroke}
+                              strokeLinecap="round"
+                              strokeDasharray={circumference}
+                              strokeDashoffset={dashOffset}
+                              style={{ transition: "stroke-dashoffset 1s ease, stroke 0.4s ease", filter: `drop-shadow(0 0 6px ${color})` }}
+                            />
+                          </svg>
+                          <div
+                            style={{
+                              position: "absolute",
+                              inset: 0,
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontSize: 32,
+                                fontWeight: 700,
+                                color,
+                                fontFamily: "JetBrains Mono, monospace",
+                                fontVariantNumeric: "tabular-nums",
+                                lineHeight: 1,
+                              }}
+                            >
+                              {result.score}
+                            </div>
+                            <div style={{ fontSize: 9, color: "#8B949E", letterSpacing: 1, textTransform: "uppercase", marginTop: 2 }}>
+                              /100
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Signal badge */}
                     {sig && (
@@ -1012,59 +1074,86 @@ export function MAPOScoreTab() {
                     <div
                       style={{
                         fontSize: 10,
-                        color: "#8B949E",
+                        color: "var(--color-primary)",
                         letterSpacing: 2,
                         textTransform: "uppercase",
-                        marginBottom: 12,
+                        marginBottom: 14,
                         fontFamily: "JetBrains Mono, monospace",
+                        fontWeight: 700,
                       }}
                     >
                       Factor Breakdown
                     </div>
                     {FACTORS.map(({ key, label, weight }) => {
-                      const val = result.factors[key];
-                      const color = val >= 65 ? "var(--color-green)" : val >= 50 ? "var(--color-orange)" : "var(--color-red)";
+                      const val = result.factors[key] ?? 0;
+                      const color = factorBarColor(val);
+                      const detail = result.factorDetails?.[key];
                       return (
-                        <div key={key} style={{ marginBottom: 10 }}>
+                        <div key={key} style={{ marginBottom: 14 }}>
                           <div
                             style={{
                               display: "flex",
                               justifyContent: "space-between",
-                              marginBottom: 3,
-                              alignItems: "center",
+                              marginBottom: 4,
+                              alignItems: "baseline",
                             }}
                           >
-                            <span style={{ fontSize: 9, color: "#8B949E", fontFamily: "JetBrains Mono, monospace" }}>
+                            <span style={{ fontSize: 10, color: "#C9D1D9", fontFamily: "Inter, sans-serif", fontWeight: 500 }}>
                               {label}
                             </span>
-                            <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                              <span style={{ fontSize: 9, color: "#4A5A6E", fontFamily: "JetBrains Mono, monospace" }}>
-                                {weight}%
-                              </span>
+                            <span style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
                               <span
                                 style={{
                                   fontSize: 9,
-                                  fontWeight: 700,
-                                  color,
+                                  color: "#4A5A6E",
                                   fontFamily: "JetBrains Mono, monospace",
                                   fontVariantNumeric: "tabular-nums",
                                 }}
                               >
-                                {val}/100
+                                {weight}%
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  color,
+                                  fontFamily: "JetBrains Mono, monospace",
+                                  fontVariantNumeric: "tabular-nums",
+                                  minWidth: 32,
+                                  textAlign: "right",
+                                }}
+                              >
+                                {val}
                               </span>
                             </span>
                           </div>
-                          <div style={{ height: 4, background: "#1C2840", borderRadius: 2 }}>
+                          {/* Bar */}
+                          <div style={{ height: 6, background: "#1C2840", borderRadius: 3, overflow: "hidden" }}>
                             <div
                               style={{
                                 height: "100%",
-                                width: `${val}%`,
-                                background: color,
-                                borderRadius: 2,
-                                transition: "width 0.6s ease",
+                                width: `${Math.min(val, 100)}%`,
+                                background: `linear-gradient(90deg, ${color}CC, ${color})`,
+                                borderRadius: 3,
+                                transition: "width 0.8s cubic-bezier(0.22, 1, 0.36, 1)",
+                                boxShadow: `0 0 8px ${color}40`,
                               }}
                             />
                           </div>
+                          {/* Notes */}
+                          {detail?.notes && (
+                            <div
+                              style={{
+                                fontSize: 9,
+                                color: "#5A6B80",
+                                fontFamily: "Inter, sans-serif",
+                                marginTop: 3,
+                                lineHeight: 1.5,
+                              }}
+                            >
+                              {detail.notes}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -1073,40 +1162,15 @@ export function MAPOScoreTab() {
 
                 {/* Right: Analysis */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {/* Thesis */}
-                  <div
-                    style={{
-                      background: "#0B0F1A",
-                      border: "1px solid #1C2840",
-                      borderRadius: 4,
-                      padding: 16,
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 10,
-                        color: "var(--color-primary)",
-                        letterSpacing: 2,
-                        textTransform: "uppercase",
-                        marginBottom: 8,
-                        fontFamily: "JetBrains Mono, monospace",
-                      }}
-                    >
-                      Investment Thesis
-                    </div>
-                    <div style={{ fontSize: 10, color: "#C9D1D9", lineHeight: 1.7 }}>
-                      {result.thesis}
-                    </div>
-                  </div>
-
-                  {/* Catalysts + Risks */}
+                  {/* Bull Case + Bear Case */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div
                       style={{
                         background: "#0B0F1A",
-                        border: "1px solid #1C2840",
+                        border: "1px solid rgba(0,230,168,0.15)",
                         borderRadius: 4,
                         padding: 16,
+                        borderTop: "2px solid rgba(0,230,168,0.4)",
                       }}
                     >
                       <div
@@ -1115,34 +1179,40 @@ export function MAPOScoreTab() {
                           color: "var(--color-green)",
                           letterSpacing: 2,
                           textTransform: "uppercase",
-                          marginBottom: 8,
+                          marginBottom: 10,
                           fontFamily: "JetBrains Mono, monospace",
+                          fontWeight: 700,
                         }}
                       >
-                        Catalysts
+                        Bull Case
                       </div>
-                      {result.catalysts.map((c, i) => (
+                      {(result.catalysts ?? []).length > 0 ? result.catalysts.map((c, i) => (
                         <div
                           key={i}
                           style={{
                             fontSize: 10,
-                            color: "#8B949E",
+                            color: "#C9D1D9",
                             lineHeight: 1.7,
                             display: "flex",
-                            gap: 6,
+                            gap: 8,
+                            marginBottom: 4,
+                            fontFamily: "Inter, sans-serif",
                           }}
                         >
-                          <span style={{ color: "var(--color-green)", flexShrink: 0 }}>+</span>
-                          {c}
+                          <span style={{ color: "var(--color-green)", flexShrink: 0, fontFamily: "JetBrains Mono, monospace", fontSize: 11 }}>+</span>
+                          <span>{c}</span>
                         </div>
-                      ))}
+                      )) : (
+                        <div style={{ fontSize: 10, color: "#4A5A6E", fontStyle: "italic" }}>No bull case provided</div>
+                      )}
                     </div>
                     <div
                       style={{
                         background: "#0B0F1A",
-                        border: "1px solid #1C2840",
+                        border: "1px solid rgba(255,68,88,0.15)",
                         borderRadius: 4,
                         padding: 16,
+                        borderTop: "2px solid rgba(255,68,88,0.4)",
                       }}
                     >
                       <div
@@ -1151,31 +1221,66 @@ export function MAPOScoreTab() {
                           color: "var(--color-red)",
                           letterSpacing: 2,
                           textTransform: "uppercase",
-                          marginBottom: 8,
+                          marginBottom: 10,
                           fontFamily: "JetBrains Mono, monospace",
+                          fontWeight: 700,
                         }}
                       >
-                        Key Risks
+                        Bear Case
                       </div>
-                      {result.risks.map((r, i) => (
+                      {(result.risks ?? []).length > 0 ? result.risks.map((r, i) => (
                         <div
                           key={i}
                           style={{
                             fontSize: 10,
-                            color: "#8B949E",
+                            color: "#C9D1D9",
                             lineHeight: 1.7,
                             display: "flex",
-                            gap: 6,
+                            gap: 8,
+                            marginBottom: 4,
+                            fontFamily: "Inter, sans-serif",
                           }}
                         >
-                          <span style={{ color: "var(--color-red)", flexShrink: 0 }}>−</span>
-                          {r}
+                          <span style={{ color: "var(--color-red)", flexShrink: 0, fontFamily: "JetBrains Mono, monospace", fontSize: 11 }}>-</span>
+                          <span>{r}</span>
                         </div>
-                      ))}
+                      )) : (
+                        <div style={{ fontSize: 10, color: "#4A5A6E", fontStyle: "italic" }}>No bear case provided</div>
+                      )}
                     </div>
                   </div>
 
-                  {/* Entry note (AGI alignment) */}
+                  {/* Recommendation */}
+                  {result.thesis && (
+                    <div
+                      style={{
+                        background: "#0B0F1A",
+                        border: "1px solid #1C2840",
+                        borderRadius: 4,
+                        padding: 16,
+                        borderLeft: "3px solid var(--color-primary)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 10,
+                          color: "var(--color-primary)",
+                          letterSpacing: 2,
+                          textTransform: "uppercase",
+                          marginBottom: 8,
+                          fontFamily: "JetBrains Mono, monospace",
+                          fontWeight: 700,
+                        }}
+                      >
+                        Recommendation
+                      </div>
+                      <div style={{ fontSize: 11, color: "#C9D1D9", lineHeight: 1.7, fontFamily: "Inter, sans-serif" }}>
+                        {result.thesis}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* AGI Alignment */}
                   {result.entryNote && (
                     <div
                       style={{
@@ -1193,11 +1298,12 @@ export function MAPOScoreTab() {
                           textTransform: "uppercase",
                           marginBottom: 8,
                           fontFamily: "JetBrains Mono, monospace",
+                          fontWeight: 700,
                         }}
                       >
-                        Entry / Action Note
+                        AGI Alignment
                       </div>
-                      <div style={{ fontSize: 10, color: "#C9D1D9", lineHeight: 1.7 }}>
+                      <div style={{ fontSize: 11, color: "#C9D1D9", lineHeight: 1.7, fontFamily: "Inter, sans-serif" }}>
                         {result.entryNote}
                       </div>
                     </div>

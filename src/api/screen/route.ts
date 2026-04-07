@@ -6,6 +6,7 @@ import type { Request, Response } from "express";
 import { runDiscovery } from "../../lib/agents/discovery.js";
 import { checkExclusion } from "../../lib/agents/risk/exclusion-guard.js";
 import { analyzeStock } from "../../lib/agents/scoring/composite-scorer.js";
+import { screenCachedRoute } from "./cached/route.js";
 
 async function batchScore(tickers: string[], batchSize = 5): Promise<Map<string, any>> {
   const results = new Map<string, any>();
@@ -44,7 +45,10 @@ function buildResult(ticker: string, analysis: any, meta?: { screenType?: string
 
 export async function screenRoute(req: Request, res: Response): Promise<void> {
   try {
-    const { tickers: requestTickers } = req.body ?? {};
+    const { tickers: requestTickers, cached } = req.body ?? {};
+
+    if (cached) { await screenCachedRoute(req, res); return; }
+
 
     // ── Fast path: caller provides tickers, score them directly ──────────
     if (Array.isArray(requestTickers) && requestTickers.length > 0) {

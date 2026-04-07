@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Zap, RotateCcw } from "lucide-react";
+import { Search, Zap, RotateCcw, Database } from "lucide-react";
 import { startAgent, completeAgent, errorAgent, addLog, setLastOperation } from "@/lib/agent-bus";
 
 type ScreenMode = "idle" | "deploying" | "results";
@@ -160,6 +160,47 @@ export function ScreenerTab() {
     }
   }
 
+  async function handleCachedResults() {
+    setScreenMode("deploying");
+    setScreenLoading(true);
+    setScreenError(null);
+    setScreenResults([]);
+    setScreenTickers([]);
+    setDeployProgress(50);
+    setDeployProgressLabel("Loading cached results...");
+
+    try {
+      const res = await fetch("/api/screen/v2", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cached: true }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "Unknown error");
+        throw new Error(`API error ${res.status}: ${text}`);
+      }
+
+      const data = await res.json();
+      const results: any[] = Array.isArray(data) ? data : data.results ?? [];
+
+      setDeployProgress(100);
+      setDeployProgressLabel("Cached results loaded.");
+      setScreenResults(results);
+      addLog({ agentName: "SCREENER", message: `Cached results: ${results.length} stocks`, type: "success" });
+
+      setTimeout(() => {
+        setScreenMode("results");
+        setScreenLoading(false);
+      }, 300);
+    } catch (err: any) {
+      const msg = err?.message ?? "Unknown error";
+      setScreenError(msg);
+      setScreenLoading(false);
+      addLog({ agentName: "SCREENER", message: `Cached load failed: ${msg}`, type: "error" });
+    }
+  }
+
   function handleReset() {
     setScreenMode("idle");
     setScreenResults([]);
@@ -233,6 +274,32 @@ export function ScreenerTab() {
           >
             <Zap size={12} />
             DEPLOY AGENTS
+          </button>
+          <button
+            onClick={handleCachedResults}
+            style={{
+              padding: "10px 18px",
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: 1.5,
+              textTransform: "uppercase",
+              background: "rgba(0,230,168,0.06)",
+              border: "1px solid rgba(0,230,168,0.3)",
+              borderRadius: 4,
+              color: "var(--color-green)",
+              fontFamily: "'Inter', system-ui, sans-serif",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              flexShrink: 0,
+              transition: "all 0.12s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(0,230,168,0.14)"; e.currentTarget.style.borderColor = "rgba(0,230,168,0.5)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(0,230,168,0.06)"; e.currentTarget.style.borderColor = "rgba(0,230,168,0.3)"; }}
+          >
+            <Database size={12} />
+            CACHED RESULTS
           </button>
         </div>
 

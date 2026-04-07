@@ -28575,70 +28575,194 @@ var init_exclusion_list = __esm({
 // src/lib/constants/sector-map.ts
 function getAgiAlignment(sector, industry, description) {
   const text2 = `${sector} ${industry} ${description}`.toLowerCase();
-  for (const [key, def] of Object.entries(AGI_SECTORS)) {
-    if (key === "SUPER_MEGA_CAP" || key === "CONSUMER_DISC" || key === "COMMERCIAL_RE") continue;
-    const matched = def.keywords.some((kw) => text2.includes(kw));
-    if (matched) {
-      const [lo, hi] = def.alignmentRange;
-      return Math.round((lo + hi) / 2);
+  let bestScore = -1;
+  for (const cat of AGI_KEYWORD_CATEGORIES) {
+    const hits = cat.keywords.filter((kw) => text2.includes(kw)).length;
+    if (hits === 0) continue;
+    const [lo, hi] = cat.range;
+    const maxPossible = cat.keywords.length;
+    const ratio = Math.min(hits / Math.max(maxPossible * 0.4, 1), 1);
+    const score = Math.round(lo + ratio * (hi - lo));
+    if (score > bestScore) {
+      bestScore = score;
     }
   }
-  return 50;
+  return bestScore > 0 ? bestScore : 40;
 }
-var AGI_SECTORS;
+var AGI_KEYWORD_CATEGORIES;
 var init_sector_map = __esm({
   "src/lib/constants/sector-map.ts"() {
     "use strict";
-    AGI_SECTORS = {
-      COMPUTE_INFRA: {
-        signal: "STRONG_OW",
-        alignmentRange: [85, 100],
-        keywords: ["data center", "cooling", "networking", "fiber optics", "server rack", "colocation"],
-        description: "Data center builders, cooling, networking, fiber optics"
+    AGI_KEYWORD_CATEGORIES = [
+      {
+        name: "AI Infrastructure",
+        range: [90, 100],
+        keywords: [
+          "data center",
+          "cloud computing",
+          "gpu",
+          "hpc",
+          "ai chip",
+          "colocation",
+          "server rack",
+          "cooling",
+          "fiber optics",
+          "networking equipment",
+          "high performance computing"
+        ]
       },
-      POWER_GRID: {
-        signal: "STRONG_OW",
-        alignmentRange: [85, 100],
-        keywords: ["utility", "transformer", "power management", "grid", "electrical infrastructure"],
-        description: "Utilities + grid upgrades serving AI clusters"
+      {
+        name: "Cybersecurity",
+        range: [80, 90],
+        keywords: [
+          "cybersecurity",
+          "zero trust",
+          "identity management",
+          "endpoint security",
+          "threat detection",
+          "network security",
+          "information security",
+          "encryption",
+          "security software"
+        ]
       },
-      SEMICONDUCTORS_NON_MEGA: {
-        signal: "OW",
-        alignmentRange: [70, 95],
-        keywords: ["semiconductor", "memory", "interface chip", "optical", "power semi"],
-        description: "$5B-$50B range, AI-exposed, NOT NVDA/AMD"
+      {
+        name: "Power/Grid for AI",
+        range: [80, 95],
+        keywords: [
+          "utility",
+          "nuclear",
+          "power management",
+          "grid",
+          "transformer",
+          "natural gas",
+          "electrical infrastructure",
+          "power generation",
+          "independent power",
+          "electric utility",
+          "gas utility",
+          "nuclear energy",
+          "power distribution"
+        ]
       },
-      DEFENSE_AI: {
-        signal: "MOD_OW",
-        alignmentRange: [75, 90],
-        keywords: ["defense", "cybersecurity", "government", "national security"],
-        description: "US-China AI competition, gov contracts"
+      {
+        name: "Semiconductors",
+        range: [75, 90],
+        keywords: [
+          "semiconductor",
+          "memory",
+          "chip",
+          "wafer",
+          "foundry",
+          "interface chip",
+          "optical",
+          "power semi",
+          "analog",
+          "integrated circuit",
+          "fabless",
+          "eda",
+          "lithography"
+        ]
       },
-      ENTERPRISE_AI: {
-        signal: "SELECTIVE",
-        alignmentRange: [60, 85],
-        keywords: ["enterprise software", "AI SaaS", "analytics", "automation"],
-        description: "Real AI revenue, proven monetization"
+      {
+        name: "Defense/Gov AI",
+        range: [75, 85],
+        keywords: [
+          "defense",
+          "government",
+          "military",
+          "intelligence",
+          "national security",
+          "aerospace & defense",
+          "gov contract",
+          "defense electronics",
+          "c4isr"
+        ]
       },
-      CONSUMER_DISC: {
-        signal: "UW",
-        alignmentRange: [20, 49],
-        keywords: [],
-        description: "Trade-down risk, AI disruption exposure"
+      {
+        name: "Enterprise Software",
+        range: [70, 85],
+        keywords: [
+          "saas",
+          "cloud software",
+          "analytics",
+          "automation",
+          "ai platform",
+          "enterprise software",
+          "machine learning",
+          "data analytics",
+          "business intelligence",
+          "erp",
+          "crm",
+          "devops",
+          "infrastructure software"
+        ]
       },
-      COMMERCIAL_RE: {
-        signal: "UW",
-        alignmentRange: [20, 49],
-        keywords: [],
-        description: "Office vacancy, refinancing stress"
+      {
+        name: "Fintech",
+        range: [60, 75],
+        keywords: [
+          "fintech",
+          "payments",
+          "digital banking",
+          "trading platform",
+          "financial technology",
+          "payment processing",
+          "digital payments",
+          "blockchain",
+          "insurtech"
+        ]
       },
-      SUPER_MEGA_CAP: {
-        signal: "AVOID",
-        alignmentRange: [0, 30],
-        keywords: [],
-        description: ">$500B, efficiently priced, low alpha"
+      {
+        name: "Healthcare Tech",
+        range: [55, 70],
+        keywords: [
+          "medtech",
+          "biotech",
+          "diagnostics",
+          "digital health",
+          "health information",
+          "telemedicine",
+          "medical device",
+          "genomics",
+          "precision medicine",
+          "health technology"
+        ]
+      },
+      {
+        name: "Clean Energy",
+        range: [50, 65],
+        keywords: [
+          "solar",
+          "wind",
+          "battery",
+          "ev",
+          "hydrogen",
+          "renewable",
+          "energy storage",
+          "electric vehicle",
+          "clean energy",
+          "fuel cell"
+        ]
+      },
+      {
+        name: "Traditional",
+        range: [30, 50],
+        keywords: [
+          "retail",
+          "consumer",
+          "media",
+          "real estate",
+          "restaurant",
+          "apparel",
+          "food",
+          "beverage",
+          "hospitality",
+          "leisure",
+          "entertainment"
+        ]
       }
-    };
+    ];
   }
 });
 
@@ -28726,12 +28850,17 @@ async function runDiscovery() {
     return b.marketCap - a.marketCap;
   });
   const sectorCount = /* @__PURE__ */ new Map();
+  const industryCount = /* @__PURE__ */ new Map();
   const diversified = [];
   for (const c of candidates) {
     const sector = c.sector;
-    const count = sectorCount.get(sector) ?? 0;
-    if (count >= MAX_PER_SECTOR) continue;
-    sectorCount.set(sector, count + 1);
+    const industry = c.industry;
+    const sc = sectorCount.get(sector) ?? 0;
+    const ic = industryCount.get(industry) ?? 0;
+    if (sc >= MAX_PER_SECTOR) continue;
+    if (ic >= MAX_PER_INDUSTRY) continue;
+    sectorCount.set(sector, sc + 1);
+    industryCount.set(industry, ic + 1);
     diversified.push(c);
     if (diversified.length >= TOP_N) break;
   }
@@ -28746,7 +28875,7 @@ async function runDiscovery() {
     }
   };
 }
-var SECTORS_TO_SCAN, MIN_MARKET_CAP, MAX_MARKET_CAP, MIN_LIQUIDITY, TOP_N, MAX_PER_SECTOR;
+var SECTORS_TO_SCAN, MIN_MARKET_CAP, MAX_MARKET_CAP, MIN_LIQUIDITY, TOP_N, MAX_PER_SECTOR, MAX_PER_INDUSTRY;
 var init_discovery = __esm({
   "src/lib/agents/discovery.ts"() {
     "use strict";
@@ -28766,6 +28895,7 @@ var init_discovery = __esm({
     MIN_LIQUIDITY = 5e6;
     TOP_N = 30;
     MAX_PER_SECTOR = 8;
+    MAX_PER_INDUSTRY = 4;
   }
 });
 
@@ -41199,6 +41329,55 @@ async function briefingRoute(req, res) {
 
 // src/api/screen/route.ts
 init_discovery();
+
+// src/lib/supabase.ts
+var import_supabase_js2 = require("@supabase/supabase-js");
+var isSupabaseEnabled2 = !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY);
+if (!isSupabaseEnabled2) {
+  console.warn("[supabase] SUPABASE_URL or SUPABASE_ANON_KEY not set. Supabase disabled.");
+}
+var supabase2 = isSupabaseEnabled2 ? (0, import_supabase_js2.createClient)(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY,
+  { auth: { persistSession: false } }
+) : null;
+
+// src/api/screen/cached/route.ts
+async function screenCachedRoute(_req, res) {
+  if (!isSupabaseEnabled2) {
+    res.status(503).json({ error: "Supabase not configured" });
+    return;
+  }
+  try {
+    const { data, error } = await supabase2.from("screener_cache").select("*").order("score", { ascending: false });
+    if (error) throw new Error(error.message);
+    const results = (data ?? []).map((row) => ({
+      ticker: row.ticker,
+      name: row.ticker,
+      sector: row.sector,
+      industry: row.industry,
+      marketCap: row.market_cap,
+      marketCapB: row.market_cap ? `$${(row.market_cap / 1e9).toFixed(1)}B` : "?",
+      agiAlignmentScore: 0,
+      screenType: "cached",
+      screeningNotes: row.screening_notes,
+      signalCount: 1,
+      price: null,
+      changePct: 0,
+      score: row.score,
+      rating: row.rating,
+      rejected: false,
+      rejectReason: null,
+      quantSignals: null
+    }));
+    res.json(results);
+  } catch (err) {
+    console.error("[screen/cached]", err);
+    res.status(500).json({ error: err.message });
+  }
+}
+
+// src/api/screen/route.ts
 async function batchScore(tickers, batchSize = 5) {
   const results = /* @__PURE__ */ new Map();
   for (let i = 0; i < tickers.length; i += batchSize) {
@@ -41234,7 +41413,11 @@ function buildResult(ticker, analysis, meta) {
 }
 async function screenRoute(req, res) {
   try {
-    const { tickers: requestTickers } = req.body ?? {};
+    const { tickers: requestTickers, cached } = req.body ?? {};
+    if (cached) {
+      await screenCachedRoute(req, res);
+      return;
+    }
     if (Array.isArray(requestTickers) && requestTickers.length > 0) {
       const upperTickers = requestTickers.map((t) => t.toUpperCase()).slice(0, 30);
       console.log(`[screen/v2] Fast path: scoring ${upperTickers.length} tickers`);
@@ -41492,18 +41675,6 @@ async function sendAlert(message, severity) {
     console.log(`[FALLBACK][${severity}] ${message}`);
   }
 }
-
-// src/lib/supabase.ts
-var import_supabase_js2 = require("@supabase/supabase-js");
-var isSupabaseEnabled2 = !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY);
-if (!isSupabaseEnabled2) {
-  console.warn("[supabase] SUPABASE_URL or SUPABASE_ANON_KEY not set. Supabase disabled.");
-}
-var supabase2 = isSupabaseEnabled2 ? (0, import_supabase_js2.createClient)(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY,
-  { auth: { persistSession: false } }
-) : null;
 
 // src/api/cron/morning/route.ts
 function verifyCron(req) {
@@ -41789,6 +41960,73 @@ ${lines}`, "INFO");
     console.error("[cron/earnings]", err);
     await sendAlert(`MAPO Earnings Cron FAILED: ${err.message}`, "CRITICAL").catch(() => {
     });
+    res.status(500).json({ error: err.message });
+  }
+}
+
+// src/api/cron/screen/route.ts
+init_discovery();
+function verifyCron4(req) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return true;
+  const auth = req.headers["x-cron-secret"] ?? req.headers["authorization"];
+  return auth === `Bearer ${secret}` || auth === secret;
+}
+async function batchScore2(tickers, batchSize = 5) {
+  const results = /* @__PURE__ */ new Map();
+  for (let i = 0; i < tickers.length; i += batchSize) {
+    const batch = tickers.slice(i, i + batchSize);
+    const settled = await Promise.allSettled(batch.map((t) => analyzeStock(t)));
+    settled.forEach((r, idx) => {
+      if (r.status === "fulfilled") results.set(batch[idx], r.value);
+    });
+    if (i + batchSize < tickers.length) await new Promise((r) => setTimeout(r, 3e3));
+  }
+  return results;
+}
+async function cronScreenRoute(req, res) {
+  if (!verifyCron4(req)) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  if (!isSupabaseEnabled2) {
+    console.log("[cron/screen] Supabase not configured, skipping.");
+    res.json({ ok: true, skipped: true, reason: "supabase_disabled" });
+    return;
+  }
+  try {
+    console.log("[cron/screen] Starting discovery...");
+    const { candidates } = await runDiscovery();
+    const tickers = candidates.map((c) => c.ticker).slice(0, 30);
+    console.log(`[cron/screen] Discovery returned ${tickers.length} candidates, scoring...`);
+    const scores = await batchScore2(tickers);
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    let upserted = 0;
+    for (const ticker of Array.from(scores.keys())) {
+      const analysis = scores.get(ticker);
+      const candidate = candidates.find((c) => c.ticker === ticker);
+      const row = {
+        ticker,
+        score: analysis?.scoring?.compositeScore ?? null,
+        rating: analysis?.scoring?.rating ?? null,
+        factors: analysis?.scoring?.factors ?? null,
+        sector: analysis?.profile?.sector ?? null,
+        industry: analysis?.profile?.industry ?? null,
+        market_cap: analysis?.profile?.marketCap ?? null,
+        screening_notes: candidate?.screeningNotes ?? (analysis?.quantSignals?.signalSummary ?? null),
+        updated_at: now
+      };
+      const { error } = await supabase2.from("screener_cache").upsert(row, { onConflict: "ticker" });
+      if (error) {
+        console.error(`[cron/screen] Upsert failed for ${ticker}:`, error.message);
+      } else {
+        upserted++;
+      }
+    }
+    console.log(`[cron/screen] Done: ${upserted}/${scores.size} cached.`);
+    res.json({ ok: true, discovered: tickers.length, scored: scores.size, cached: upserted });
+  } catch (err) {
+    console.error("[cron/screen]", err);
     res.status(500).json({ error: err.message });
   }
 }
@@ -49435,6 +49673,7 @@ async function registerRoutes(httpServer, app2) {
   app2.get("/api/cron/morning", cronMorningRoute);
   app2.get("/api/cron/drawdown", cronDrawdownRoute);
   app2.get("/api/cron/earnings", cronEarningsRoute);
+  app2.get("/api/cron/screen", cronScreenRoute);
   app2.post("/api/portfolio/update", portfolioUpdateRoute);
   app2.get("/api/portfolios", async (_req, res) => {
     const portfolios2 = await storage.getPortfolios();
