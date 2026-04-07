@@ -22,8 +22,8 @@ export async function checkExclusion(ticker: string): Promise<ExclusionResult> {
 
   // Check cooldown list (tickers that hit 25% drawdown forced exit)
   try {
-    const supabase = getSupabase();
-    const { data: cooldown } = await supabase
+    const sb = getSupabase();
+    const { data: cooldown } = await sb
       .from("cooldown_list")
       .select("*")
       .eq("ticker", upper)

@@ -64,7 +64,7 @@ export async function cronEarningsRoute(req: Request, res: Response): Promise<vo
             message: msg,
             severity: "WARNING",
           });
-        } catch { /* non-fatal */ }
+        } catch (e) { console.warn("[cron/earnings] Failed to persist alert to Supabase:", e); }
       }
     }
 

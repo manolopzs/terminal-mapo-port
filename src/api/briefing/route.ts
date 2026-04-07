@@ -13,7 +13,12 @@ import { runSituationalAwareness } from "../../lib/agents/agi-engine/situational
 
 export async function briefingRoute(req: Request, res: Response): Promise<void> {
   try {
-    const holdings = await getHoldings();
+    let holdings: Awaited<ReturnType<typeof getHoldings>> = [];
+    try {
+      holdings = await getHoldings();
+    } catch {
+      holdings = [];
+    }
     const tickers = holdings.map(h => h.ticker);
 
     // Fetch macro context + portfolio data in parallel

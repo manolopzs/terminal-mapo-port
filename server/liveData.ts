@@ -4,6 +4,8 @@
  * Set FINNHUB_API_KEY environment variable to enable live data.
  */
 
+import { getFMPQuote } from "./lib/fmp";
+
 const FINNHUB_BASE = "https://finnhub.io/api/v1";
 
 // In-memory cache with TTL
@@ -44,41 +46,71 @@ export interface LiveQuote {
 }
 
 export async function fetchLiveQuotes(rawTickers: string[]): Promise<LiveQuote[]> {
-  if (rawTickers.length === 0 || !process.env.FINNHUB_API_KEY) return [];
+  if (rawTickers.length === 0) return [];
 
   const tickers = rawTickers
     .map(t => t.replace(/[^A-Z0-9.\-]/gi, "").toUpperCase())
     .filter(t => t.length > 0 && t.length <= 10);
 
   // Fetch real market status once, share across all quotes
-  const marketStatusResult = await Promise.allSettled([
-    finnhub("/stock/market-status?exchange=US"),
-  ]);
-  const statusData = marketStatusResult[0].status === "fulfilled" ? marketStatusResult[0].value : null;
-  const marketStatus = statusData?.isOpen === true ? "open" : statusData?.isOpen === false ? "closed" : "unknown";
+  let marketStatus = "unknown";
+  if (process.env.FINNHUB_API_KEY) {
+    try {
+      const statusData = await finnhub("/stock/market-status?exchange=US");
+      marketStatus = statusData?.isOpen === true ? "open" : statusData?.isOpen === false ? "closed" : "unknown";
+    } catch {}
+  }
 
   const cacheKey = `quotes:${[...tickers].sort().join(",")}`;
   return cachedAsync(cacheKey, 60_000, async () => {
+    // Use FMP as primary source — it returns yearHigh, yearLow, volume, marketCap
+    // Fall back to Finnhub for tickers where FMP returns nothing
     const results = await Promise.allSettled(
       tickers.map(async (symbol): Promise<LiveQuote | null> => {
         try {
-          const data = await finnhub(`/quote?symbol=${symbol}`);
-          if (!data || !data.c || data.c === 0) return null;
-          return {
-            symbol,
-            name: symbol,
-            price: data.c,
-            change: data.d ?? 0,
-            changesPercentage: data.dp ?? 0,
-            previousClose: data.pc ?? 0,
-            dayLow: data.l ?? 0,
-            dayHigh: data.h ?? 0,
-            yearLow: 0,
-            yearHigh: 0,
-            volume: 0,
-            marketCap: 0,
-            marketStatus,
-          };
+          // Try FMP first (returns enriched data with all fields)
+          const fmpData = await getFMPQuote(symbol);
+          const fmp = Array.isArray(fmpData) ? fmpData[0] : fmpData;
+          if (fmp && fmp.price && fmp.price > 0) {
+            return {
+              symbol,
+              name: fmp.name || symbol,
+              price: fmp.price,
+              change: fmp.change ?? 0,
+              changesPercentage: fmp.changesPercentage ?? fmp.changePercentage ?? 0,
+              previousClose: fmp.previousClose ?? 0,
+              dayLow: fmp.dayLow ?? 0,
+              dayHigh: fmp.dayHigh ?? 0,
+              yearLow: fmp.yearLow ?? 0,
+              yearHigh: fmp.yearHigh ?? 0,
+              volume: fmp.volume ?? fmp.avgVolume ?? 0,
+              marketCap: fmp.marketCap ?? 0,
+              marketStatus,
+            };
+          }
+
+          // Fallback to Finnhub if FMP didn't return data
+          if (process.env.FINNHUB_API_KEY) {
+            const data = await finnhub(`/quote?symbol=${symbol}`);
+            if (data && data.c && data.c > 0) {
+              return {
+                symbol,
+                name: symbol,
+                price: data.c,
+                change: data.d ?? 0,
+                changesPercentage: data.dp ?? 0,
+                previousClose: data.pc ?? 0,
+                dayLow: data.l ?? 0,
+                dayHigh: data.h ?? 0,
+                yearLow: 0,
+                yearHigh: 0,
+                volume: 0,
+                marketCap: 0,
+                marketStatus,
+              };
+            }
+          }
+          return null;
         } catch {
           return null;
         }
@@ -242,15 +274,21 @@ export interface MarketPulseData {
 
 export async function fetchMarketPulse(): Promise<MarketPulseData> {
   return cachedAsync("market-pulse", 300_000, async () => {
-    const SYMBOLS = ["SPY", "QQQ", "IWM", "VIX", "GLD", "TLT"];
+    const SYMBOLS = ["SPY", "QQQ", "IWM", "^VIX", "GLD", "TLT"];
+    const DISPLAY_SYMBOLS: Record<string, string> = {
+      "SPY": "SPY", "QQQ": "QQQ", "IWM": "IWM", "^VIX": "VIX", "GLD": "GLD", "TLT": "TLT",
+    };
     const LABELS: Record<string, string> = {
       SPY: "S&P 500", QQQ: "NASDAQ", IWM: "Russell 2K", VIX: "VIX", GLD: "Gold", TLT: "20Y Bond",
     };
 
-    // Fetch index quotes + market status + CNN Fear & Greed in parallel
+    // Fetch index quotes via FMP (handles VIX via ^VIX) + market status + CNN Fear & Greed
     const [quotesRes, statusRes, fgRes] = await Promise.allSettled([
-      Promise.all(SYMBOLS.map(s => finnhub(`/quote?symbol=${s}`))),
-      finnhub("/stock/market-status?exchange=US"),
+      Promise.all(SYMBOLS.map(async s => {
+        const data = await getFMPQuote(s);
+        return Array.isArray(data) ? data[0] : data;
+      })),
+      process.env.FINNHUB_API_KEY ? finnhub("/stock/market-status?exchange=US") : Promise.resolve(null),
       fetch("https://production.dataviz.cnn.io/index/fearandgreed/graphdata", {
         headers: { "User-Agent": "Mozilla/5.0" },
         signal: AbortSignal.timeout(5000),
@@ -261,11 +299,12 @@ export async function fetchMarketPulse(): Promise<MarketPulseData> {
     const rawQuotes = quotesRes.status === "fulfilled" ? quotesRes.value : [];
     const indices = SYMBOLS.map((sym, i) => {
       const q = rawQuotes[i];
+      const displaySym = DISPLAY_SYMBOLS[sym] || sym;
       return {
-        symbol: sym,
-        label: LABELS[sym],
-        price: q?.c ?? 0,
-        changePct: q?.dp ?? 0,
+        symbol: displaySym,
+        label: LABELS[displaySym],
+        price: q?.price ?? 0,
+        changePct: q?.changesPercentage ?? q?.changePercentage ?? 0,
       };
     });
 
@@ -281,8 +320,8 @@ export async function fetchMarketPulse(): Promise<MarketPulseData> {
 
     // Fallback: derive score from VIX + SPY change
     if (fgScore === null) {
-      const vixPct = rawQuotes[3]?.c ?? 20; // VIX current
-      const spyDp = rawQuotes[0]?.dp ?? 0;
+      const vixPct = rawQuotes[3]?.price ?? 20; // VIX current
+      const spyDp = rawQuotes[0]?.changesPercentage ?? 0;
       // VIX 10 → score 90 (greed), VIX 40 → score 10 (fear)
       const vixScore = Math.max(10, Math.min(90, 90 - (vixPct - 10) * 2.67));
       // SPY trend nudge: ±0.5% day change shifts score ±10
@@ -306,9 +345,9 @@ export async function fetchMarketPulse(): Promise<MarketPulseData> {
     const neutPct = 100 - bullPct - bearPct;
 
     // Context line
-    const spyDp = rawQuotes[0]?.dp ?? 0;
-    const vixVal = rawQuotes[3]?.c ?? 0;
-    const bondDp = rawQuotes[5]?.dp ?? 0;
+    const spyDp = rawQuotes[0]?.changesPercentage ?? 0;
+    const vixVal = rawQuotes[3]?.price ?? 0;
+    const bondDp = rawQuotes[5]?.changesPercentage ?? 0;
     let context = "";
     if (vixVal > 30) context = "High volatility regime — elevated tail risk";
     else if (vixVal > 20) context = "Elevated uncertainty, risk-off posture";

@@ -51,7 +51,8 @@ export function enrichHoldings(
 export function calcPortfolioMetrics(
   enriched: EnrichedHolding[],
   cash: number,
-  startingCapital: number
+  startingCapital: number,
+  quotes?: Array<{ symbol: string; changesPercentage?: number; beta?: number }>,
 ): PortfolioMetrics {
   const investedValue = enriched.reduce((s, h) => s + h.value, 0);
   const totalValue = investedValue + cash;
@@ -60,8 +61,12 @@ export function calcPortfolioMetrics(
     startingCapital > 0 ? ((totalValue - startingCapital) / startingCapital) * 100 : 0;
 
   const dayChangePct =
-    enriched.length > 0
-      ? enriched.reduce((s, h) => s + h.weightPct * 0, 0) // placeholder: requires prev close
+    enriched.length > 0 && totalValue > 0
+      ? enriched.reduce((s, h) => {
+          const q = quotes?.find(q => q.symbol === h.ticker);
+          const changePct = q?.changesPercentage ?? 0;
+          return s + (h.value / totalValue) * changePct;
+        }, 0)
       : 0;
 
   // Weighted beta (holdings only)
@@ -69,7 +74,9 @@ export function calcPortfolioMetrics(
     investedValue > 0
       ? enriched.reduce((s, h) => {
           const w = h.value / investedValue;
-          return s + w * 1; // beta=1 until we have it stored
+          const q = quotes?.find(q => q.symbol === h.ticker);
+          const beta = (q && typeof q.beta === "number") ? q.beta : 1;
+          return s + w * beta;
         }, 0)
       : 1;
 

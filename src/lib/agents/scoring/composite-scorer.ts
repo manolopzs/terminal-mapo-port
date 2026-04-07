@@ -73,7 +73,8 @@ export async function analyzeStock(ticker: string): Promise<AnalysisResult> {
     r.status === "fulfilled" ? r.value : null;
 
   const profile = val(profileArr);
-  const companyProfile = Array.isArray(profile) ? profile[0] : profile;
+  const unwrapped = Array.isArray(profile) ? profile[0] : profile;
+  const companyProfile = unwrapped && typeof unwrapped === "object" && "symbol" in unwrapped ? unwrapped : null;
   const quote = await fmp.getFMPQuote(upper);
   const currentPrice = (Array.isArray(quote) ? quote[0]?.price : null) ?? val(avBars)?.[0]?.close ?? 0;
   const avgVolume = (Array.isArray(quote) ? quote[0]?.avgVolume : 0) ?? 0;
@@ -221,7 +222,8 @@ export async function analyzeStock(ticker: string): Promise<AnalysisResult> {
     profile: companyProfile,
     quantSignals,
     scoring,
-    rejected: false,
+    rejected: scoring === null,
+    rejectReason: scoring === null ? "Claude scoring unavailable" : undefined,
     timestamp: new Date().toISOString(),
   };
 }

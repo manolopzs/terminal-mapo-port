@@ -33,654 +33,6 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// node_modules/ms/index.js
-var require_ms = __commonJS({
-  "node_modules/ms/index.js"(exports2, module2) {
-    var s = 1e3;
-    var m = s * 60;
-    var h = m * 60;
-    var d = h * 24;
-    var w = d * 7;
-    var y = d * 365.25;
-    module2.exports = function(val, options) {
-      options = options || {};
-      var type = typeof val;
-      if (type === "string" && val.length > 0) {
-        return parse(val);
-      } else if (type === "number" && isFinite(val)) {
-        return options.long ? fmtLong(val) : fmtShort(val);
-      }
-      throw new Error(
-        "val is not a non-empty string or a valid number. val=" + JSON.stringify(val)
-      );
-    };
-    function parse(str2) {
-      str2 = String(str2);
-      if (str2.length > 100) {
-        return;
-      }
-      var match = /^(-?(?:\d+)?\.?\d+) *(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|w|years?|yrs?|y)?$/i.exec(
-        str2
-      );
-      if (!match) {
-        return;
-      }
-      var n = parseFloat(match[1]);
-      var type = (match[2] || "ms").toLowerCase();
-      switch (type) {
-        case "years":
-        case "year":
-        case "yrs":
-        case "yr":
-        case "y":
-          return n * y;
-        case "weeks":
-        case "week":
-        case "w":
-          return n * w;
-        case "days":
-        case "day":
-        case "d":
-          return n * d;
-        case "hours":
-        case "hour":
-        case "hrs":
-        case "hr":
-        case "h":
-          return n * h;
-        case "minutes":
-        case "minute":
-        case "mins":
-        case "min":
-        case "m":
-          return n * m;
-        case "seconds":
-        case "second":
-        case "secs":
-        case "sec":
-        case "s":
-          return n * s;
-        case "milliseconds":
-        case "millisecond":
-        case "msecs":
-        case "msec":
-        case "ms":
-          return n;
-        default:
-          return void 0;
-      }
-    }
-    function fmtShort(ms) {
-      var msAbs = Math.abs(ms);
-      if (msAbs >= d) {
-        return Math.round(ms / d) + "d";
-      }
-      if (msAbs >= h) {
-        return Math.round(ms / h) + "h";
-      }
-      if (msAbs >= m) {
-        return Math.round(ms / m) + "m";
-      }
-      if (msAbs >= s) {
-        return Math.round(ms / s) + "s";
-      }
-      return ms + "ms";
-    }
-    function fmtLong(ms) {
-      var msAbs = Math.abs(ms);
-      if (msAbs >= d) {
-        return plural(ms, msAbs, d, "day");
-      }
-      if (msAbs >= h) {
-        return plural(ms, msAbs, h, "hour");
-      }
-      if (msAbs >= m) {
-        return plural(ms, msAbs, m, "minute");
-      }
-      if (msAbs >= s) {
-        return plural(ms, msAbs, s, "second");
-      }
-      return ms + " ms";
-    }
-    function plural(ms, msAbs, n, name) {
-      var isPlural = msAbs >= n * 1.5;
-      return Math.round(ms / n) + " " + name + (isPlural ? "s" : "");
-    }
-  }
-});
-
-// node_modules/debug/src/common.js
-var require_common = __commonJS({
-  "node_modules/debug/src/common.js"(exports2, module2) {
-    function setup(env) {
-      createDebug.debug = createDebug;
-      createDebug.default = createDebug;
-      createDebug.coerce = coerce2;
-      createDebug.disable = disable;
-      createDebug.enable = enable;
-      createDebug.enabled = enabled;
-      createDebug.humanize = require_ms();
-      createDebug.destroy = destroy;
-      Object.keys(env).forEach((key) => {
-        createDebug[key] = env[key];
-      });
-      createDebug.names = [];
-      createDebug.skips = [];
-      createDebug.formatters = {};
-      function selectColor(namespace) {
-        let hash = 0;
-        for (let i = 0; i < namespace.length; i++) {
-          hash = (hash << 5) - hash + namespace.charCodeAt(i);
-          hash |= 0;
-        }
-        return createDebug.colors[Math.abs(hash) % createDebug.colors.length];
-      }
-      createDebug.selectColor = selectColor;
-      function createDebug(namespace) {
-        let prevTime;
-        let enableOverride = null;
-        let namespacesCache;
-        let enabledCache;
-        function debug(...args) {
-          if (!debug.enabled) {
-            return;
-          }
-          const self = debug;
-          const curr = Number(/* @__PURE__ */ new Date());
-          const ms = curr - (prevTime || curr);
-          self.diff = ms;
-          self.prev = prevTime;
-          self.curr = curr;
-          prevTime = curr;
-          args[0] = createDebug.coerce(args[0]);
-          if (typeof args[0] !== "string") {
-            args.unshift("%O");
-          }
-          let index = 0;
-          args[0] = args[0].replace(/%([a-zA-Z%])/g, (match, format) => {
-            if (match === "%%") {
-              return "%";
-            }
-            index++;
-            const formatter = createDebug.formatters[format];
-            if (typeof formatter === "function") {
-              const val = args[index];
-              match = formatter.call(self, val);
-              args.splice(index, 1);
-              index--;
-            }
-            return match;
-          });
-          createDebug.formatArgs.call(self, args);
-          const logFn = self.log || createDebug.log;
-          logFn.apply(self, args);
-        }
-        debug.namespace = namespace;
-        debug.useColors = createDebug.useColors();
-        debug.color = createDebug.selectColor(namespace);
-        debug.extend = extend;
-        debug.destroy = createDebug.destroy;
-        Object.defineProperty(debug, "enabled", {
-          enumerable: true,
-          configurable: false,
-          get: () => {
-            if (enableOverride !== null) {
-              return enableOverride;
-            }
-            if (namespacesCache !== createDebug.namespaces) {
-              namespacesCache = createDebug.namespaces;
-              enabledCache = createDebug.enabled(namespace);
-            }
-            return enabledCache;
-          },
-          set: (v) => {
-            enableOverride = v;
-          }
-        });
-        if (typeof createDebug.init === "function") {
-          createDebug.init(debug);
-        }
-        return debug;
-      }
-      function extend(namespace, delimiter) {
-        const newDebug = createDebug(this.namespace + (typeof delimiter === "undefined" ? ":" : delimiter) + namespace);
-        newDebug.log = this.log;
-        return newDebug;
-      }
-      function enable(namespaces) {
-        createDebug.save(namespaces);
-        createDebug.namespaces = namespaces;
-        createDebug.names = [];
-        createDebug.skips = [];
-        const split = (typeof namespaces === "string" ? namespaces : "").trim().replace(/\s+/g, ",").split(",").filter(Boolean);
-        for (const ns of split) {
-          if (ns[0] === "-") {
-            createDebug.skips.push(ns.slice(1));
-          } else {
-            createDebug.names.push(ns);
-          }
-        }
-      }
-      function matchesTemplate(search, template) {
-        let searchIndex = 0;
-        let templateIndex = 0;
-        let starIndex = -1;
-        let matchIndex = 0;
-        while (searchIndex < search.length) {
-          if (templateIndex < template.length && (template[templateIndex] === search[searchIndex] || template[templateIndex] === "*")) {
-            if (template[templateIndex] === "*") {
-              starIndex = templateIndex;
-              matchIndex = searchIndex;
-              templateIndex++;
-            } else {
-              searchIndex++;
-              templateIndex++;
-            }
-          } else if (starIndex !== -1) {
-            templateIndex = starIndex + 1;
-            matchIndex++;
-            searchIndex = matchIndex;
-          } else {
-            return false;
-          }
-        }
-        while (templateIndex < template.length && template[templateIndex] === "*") {
-          templateIndex++;
-        }
-        return templateIndex === template.length;
-      }
-      function disable() {
-        const namespaces = [
-          ...createDebug.names,
-          ...createDebug.skips.map((namespace) => "-" + namespace)
-        ].join(",");
-        createDebug.enable("");
-        return namespaces;
-      }
-      function enabled(name) {
-        for (const skip of createDebug.skips) {
-          if (matchesTemplate(name, skip)) {
-            return false;
-          }
-        }
-        for (const ns of createDebug.names) {
-          if (matchesTemplate(name, ns)) {
-            return true;
-          }
-        }
-        return false;
-      }
-      function coerce2(val) {
-        if (val instanceof Error) {
-          return val.stack || val.message;
-        }
-        return val;
-      }
-      function destroy() {
-        console.warn("Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.");
-      }
-      createDebug.enable(createDebug.load());
-      return createDebug;
-    }
-    module2.exports = setup;
-  }
-});
-
-// node_modules/debug/src/browser.js
-var require_browser = __commonJS({
-  "node_modules/debug/src/browser.js"(exports2, module2) {
-    exports2.formatArgs = formatArgs;
-    exports2.save = save;
-    exports2.load = load;
-    exports2.useColors = useColors;
-    exports2.storage = localstorage();
-    exports2.destroy = /* @__PURE__ */ (() => {
-      let warned = false;
-      return () => {
-        if (!warned) {
-          warned = true;
-          console.warn("Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.");
-        }
-      };
-    })();
-    exports2.colors = [
-      "#0000CC",
-      "#0000FF",
-      "#0033CC",
-      "#0033FF",
-      "#0066CC",
-      "#0066FF",
-      "#0099CC",
-      "#0099FF",
-      "#00CC00",
-      "#00CC33",
-      "#00CC66",
-      "#00CC99",
-      "#00CCCC",
-      "#00CCFF",
-      "#3300CC",
-      "#3300FF",
-      "#3333CC",
-      "#3333FF",
-      "#3366CC",
-      "#3366FF",
-      "#3399CC",
-      "#3399FF",
-      "#33CC00",
-      "#33CC33",
-      "#33CC66",
-      "#33CC99",
-      "#33CCCC",
-      "#33CCFF",
-      "#6600CC",
-      "#6600FF",
-      "#6633CC",
-      "#6633FF",
-      "#66CC00",
-      "#66CC33",
-      "#9900CC",
-      "#9900FF",
-      "#9933CC",
-      "#9933FF",
-      "#99CC00",
-      "#99CC33",
-      "#CC0000",
-      "#CC0033",
-      "#CC0066",
-      "#CC0099",
-      "#CC00CC",
-      "#CC00FF",
-      "#CC3300",
-      "#CC3333",
-      "#CC3366",
-      "#CC3399",
-      "#CC33CC",
-      "#CC33FF",
-      "#CC6600",
-      "#CC6633",
-      "#CC9900",
-      "#CC9933",
-      "#CCCC00",
-      "#CCCC33",
-      "#FF0000",
-      "#FF0033",
-      "#FF0066",
-      "#FF0099",
-      "#FF00CC",
-      "#FF00FF",
-      "#FF3300",
-      "#FF3333",
-      "#FF3366",
-      "#FF3399",
-      "#FF33CC",
-      "#FF33FF",
-      "#FF6600",
-      "#FF6633",
-      "#FF9900",
-      "#FF9933",
-      "#FFCC00",
-      "#FFCC33"
-    ];
-    function useColors() {
-      if (typeof window !== "undefined" && window.process && (window.process.type === "renderer" || window.process.__nwjs)) {
-        return true;
-      }
-      if (typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/)) {
-        return false;
-      }
-      let m;
-      return typeof document !== "undefined" && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance || // Is firebug? http://stackoverflow.com/a/398120/376773
-      typeof window !== "undefined" && window.console && (window.console.firebug || window.console.exception && window.console.table) || // Is firefox >= v31?
-      // https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
-      typeof navigator !== "undefined" && navigator.userAgent && (m = navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/)) && parseInt(m[1], 10) >= 31 || // Double check webkit in userAgent just in case we are in a worker
-      typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/);
-    }
-    function formatArgs(args) {
-      args[0] = (this.useColors ? "%c" : "") + this.namespace + (this.useColors ? " %c" : " ") + args[0] + (this.useColors ? "%c " : " ") + "+" + module2.exports.humanize(this.diff);
-      if (!this.useColors) {
-        return;
-      }
-      const c = "color: " + this.color;
-      args.splice(1, 0, c, "color: inherit");
-      let index = 0;
-      let lastC = 0;
-      args[0].replace(/%[a-zA-Z%]/g, (match) => {
-        if (match === "%%") {
-          return;
-        }
-        index++;
-        if (match === "%c") {
-          lastC = index;
-        }
-      });
-      args.splice(lastC, 0, c);
-    }
-    exports2.log = console.debug || console.log || (() => {
-    });
-    function save(namespaces) {
-      try {
-        if (namespaces) {
-          exports2.storage.setItem("debug", namespaces);
-        } else {
-          exports2.storage.removeItem("debug");
-        }
-      } catch (error) {
-      }
-    }
-    function load() {
-      let r;
-      try {
-        r = exports2.storage.getItem("debug") || exports2.storage.getItem("DEBUG");
-      } catch (error) {
-      }
-      if (!r && typeof process !== "undefined" && "env" in process) {
-        r = process.env.DEBUG;
-      }
-      return r;
-    }
-    function localstorage() {
-      try {
-        return localStorage;
-      } catch (error) {
-      }
-    }
-    module2.exports = require_common()(exports2);
-    var { formatters: formatters2 } = module2.exports;
-    formatters2.j = function(v) {
-      try {
-        return JSON.stringify(v);
-      } catch (error) {
-        return "[UnexpectedJSONParseError]: " + error.message;
-      }
-    };
-  }
-});
-
-// node_modules/debug/src/node.js
-var require_node = __commonJS({
-  "node_modules/debug/src/node.js"(exports2, module2) {
-    var tty = require("tty");
-    var util2 = require("util");
-    exports2.init = init;
-    exports2.log = log;
-    exports2.formatArgs = formatArgs;
-    exports2.save = save;
-    exports2.load = load;
-    exports2.useColors = useColors;
-    exports2.destroy = util2.deprecate(
-      () => {
-      },
-      "Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`."
-    );
-    exports2.colors = [6, 2, 3, 4, 5, 1];
-    try {
-      const supportsColor = require("supports-color");
-      if (supportsColor && (supportsColor.stderr || supportsColor).level >= 2) {
-        exports2.colors = [
-          20,
-          21,
-          26,
-          27,
-          32,
-          33,
-          38,
-          39,
-          40,
-          41,
-          42,
-          43,
-          44,
-          45,
-          56,
-          57,
-          62,
-          63,
-          68,
-          69,
-          74,
-          75,
-          76,
-          77,
-          78,
-          79,
-          80,
-          81,
-          92,
-          93,
-          98,
-          99,
-          112,
-          113,
-          128,
-          129,
-          134,
-          135,
-          148,
-          149,
-          160,
-          161,
-          162,
-          163,
-          164,
-          165,
-          166,
-          167,
-          168,
-          169,
-          170,
-          171,
-          172,
-          173,
-          178,
-          179,
-          184,
-          185,
-          196,
-          197,
-          198,
-          199,
-          200,
-          201,
-          202,
-          203,
-          204,
-          205,
-          206,
-          207,
-          208,
-          209,
-          214,
-          215,
-          220,
-          221
-        ];
-      }
-    } catch (error) {
-    }
-    exports2.inspectOpts = Object.keys(process.env).filter((key) => {
-      return /^debug_/i.test(key);
-    }).reduce((obj, key) => {
-      const prop = key.substring(6).toLowerCase().replace(/_([a-z])/g, (_, k) => {
-        return k.toUpperCase();
-      });
-      let val = process.env[key];
-      if (/^(yes|on|true|enabled)$/i.test(val)) {
-        val = true;
-      } else if (/^(no|off|false|disabled)$/i.test(val)) {
-        val = false;
-      } else if (val === "null") {
-        val = null;
-      } else {
-        val = Number(val);
-      }
-      obj[prop] = val;
-      return obj;
-    }, {});
-    function useColors() {
-      return "colors" in exports2.inspectOpts ? Boolean(exports2.inspectOpts.colors) : tty.isatty(process.stderr.fd);
-    }
-    function formatArgs(args) {
-      const { namespace: name, useColors: useColors2 } = this;
-      if (useColors2) {
-        const c = this.color;
-        const colorCode = "\x1B[3" + (c < 8 ? c : "8;5;" + c);
-        const prefix = `  ${colorCode};1m${name} \x1B[0m`;
-        args[0] = prefix + args[0].split("\n").join("\n" + prefix);
-        args.push(colorCode + "m+" + module2.exports.humanize(this.diff) + "\x1B[0m");
-      } else {
-        args[0] = getDate() + name + " " + args[0];
-      }
-    }
-    function getDate() {
-      if (exports2.inspectOpts.hideDate) {
-        return "";
-      }
-      return (/* @__PURE__ */ new Date()).toISOString() + " ";
-    }
-    function log(...args) {
-      return process.stderr.write(util2.formatWithOptions(exports2.inspectOpts, ...args) + "\n");
-    }
-    function save(namespaces) {
-      if (namespaces) {
-        process.env.DEBUG = namespaces;
-      } else {
-        delete process.env.DEBUG;
-      }
-    }
-    function load() {
-      return process.env.DEBUG;
-    }
-    function init(debug) {
-      debug.inspectOpts = {};
-      const keys = Object.keys(exports2.inspectOpts);
-      for (let i = 0; i < keys.length; i++) {
-        debug.inspectOpts[keys[i]] = exports2.inspectOpts[keys[i]];
-      }
-    }
-    module2.exports = require_common()(exports2);
-    var { formatters: formatters2 } = module2.exports;
-    formatters2.o = function(v) {
-      this.inspectOpts.colors = this.useColors;
-      return util2.inspect(v, this.inspectOpts).split("\n").map((str2) => str2.trim()).join(" ");
-    };
-    formatters2.O = function(v) {
-      this.inspectOpts.colors = this.useColors;
-      return util2.inspect(v, this.inspectOpts);
-    };
-  }
-});
-
-// node_modules/debug/src/index.js
-var require_src = __commonJS({
-  "node_modules/debug/src/index.js"(exports2, module2) {
-    if (typeof process === "undefined" || process.type === "renderer" || process.browser === true || process.__nwjs) {
-      module2.exports = require_browser();
-    } else {
-      module2.exports = require_node();
-    }
-  }
-});
-
 // node_modules/depd/index.js
 var require_depd = __commonJS({
   "node_modules/depd/index.js"(exports2, module2) {
@@ -15616,7 +14968,7 @@ var require_read = __commonJS({
 var require_json = __commonJS({
   "node_modules/body-parser/lib/types/json.js"(exports2, module2) {
     "use strict";
-    var debug = require_src()("body-parser:json");
+    var debug = require("debug")("body-parser:json");
     var read = require_read();
     var { normalizeOptions } = require_utils();
     module2.exports = json2;
@@ -15698,7 +15050,7 @@ var require_json = __commonJS({
 var require_raw = __commonJS({
   "node_modules/body-parser/lib/types/raw.js"(exports2, module2) {
     "use strict";
-    var debug = require_src()("body-parser:raw");
+    var debug = require("debug")("body-parser:raw");
     var read = require_read();
     var { normalizeOptions, passthrough } = require_utils();
     module2.exports = raw;
@@ -15720,7 +15072,7 @@ var require_raw = __commonJS({
 var require_text = __commonJS({
   "node_modules/body-parser/lib/types/text.js"(exports2, module2) {
     "use strict";
-    var debug = require_src()("body-parser:text");
+    var debug = require("debug")("body-parser:text");
     var read = require_read();
     var { normalizeOptions, passthrough } = require_utils();
     module2.exports = text2;
@@ -18251,7 +17603,7 @@ var require_urlencoded = __commonJS({
   "node_modules/body-parser/lib/types/urlencoded.js"(exports2, module2) {
     "use strict";
     var createError = require_http_errors();
-    var debug = require_src()("body-parser:urlencoded");
+    var debug = require("debug")("body-parser:urlencoded");
     var read = require_read();
     var qs = require_lib2();
     var { normalizeOptions } = require_utils();
@@ -18538,7 +17890,7 @@ var require_parseurl = __commonJS({
 var require_finalhandler = __commonJS({
   "node_modules/finalhandler/index.js"(exports2, module2) {
     "use strict";
-    var debug = require_src()("finalhandler");
+    var debug = require("debug")("finalhandler");
     var encodeUrl = require_encodeurl();
     var escapeHtml = require_escape_html();
     var onFinished = require_on_finished();
@@ -18665,7 +18017,7 @@ var require_finalhandler = __commonJS({
 var require_view = __commonJS({
   "node_modules/express/lib/view.js"(exports2, module2) {
     "use strict";
-    var debug = require_src()("express:view");
+    var debug = require("debug")("express:view");
     var path3 = require("node:path");
     var fs2 = require("node:fs");
     var dirname = path3.dirname;
@@ -20198,7 +19550,7 @@ var require_layer = __commonJS({
     "use strict";
     var isPromise = require_is_promise();
     var pathRegexp = require_dist();
-    var debug = require_src()("router:layer");
+    var debug = require("debug")("router:layer");
     var deprecate = require_depd()("router");
     var TRAILING_SLASH_REGEXP = /\/+$/;
     var MATCHING_GROUP_REGEXP = /\((?:\?<(.*?)>)?(?!\?)/g;
@@ -20346,7 +19698,7 @@ var require_layer = __commonJS({
 var require_route = __commonJS({
   "node_modules/router/lib/route.js"(exports2, module2) {
     "use strict";
-    var debug = require_src()("router:route");
+    var debug = require("debug")("router:route");
     var Layer = require_layer();
     var { METHODS } = require("node:http");
     var slice = Array.prototype.slice;
@@ -20471,7 +19823,7 @@ var require_router = __commonJS({
     var { METHODS } = require("node:http");
     var parseUrl = require_parseurl();
     var Route = require_route();
-    var debug = require_src()("router");
+    var debug = require("debug")("router");
     var deprecate = require_depd()("router");
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
@@ -20865,7 +20217,7 @@ var require_application = __commonJS({
   "node_modules/express/lib/application.js"(exports2, module2) {
     "use strict";
     var finalhandler = require_finalhandler();
-    var debug = require_src()("express:application");
+    var debug = require("debug")("express:application");
     var View2 = require_view();
     var http = require("node:http");
     var methods = require_utils3().methods;
@@ -22363,12 +21715,128 @@ var require_cookie = __commonJS({
   }
 });
 
+// node_modules/ms/index.js
+var require_ms = __commonJS({
+  "node_modules/ms/index.js"(exports2, module2) {
+    var s = 1e3;
+    var m = s * 60;
+    var h = m * 60;
+    var d = h * 24;
+    var w = d * 7;
+    var y = d * 365.25;
+    module2.exports = function(val, options) {
+      options = options || {};
+      var type = typeof val;
+      if (type === "string" && val.length > 0) {
+        return parse(val);
+      } else if (type === "number" && isFinite(val)) {
+        return options.long ? fmtLong(val) : fmtShort(val);
+      }
+      throw new Error(
+        "val is not a non-empty string or a valid number. val=" + JSON.stringify(val)
+      );
+    };
+    function parse(str2) {
+      str2 = String(str2);
+      if (str2.length > 100) {
+        return;
+      }
+      var match = /^(-?(?:\d+)?\.?\d+) *(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|w|years?|yrs?|y)?$/i.exec(
+        str2
+      );
+      if (!match) {
+        return;
+      }
+      var n = parseFloat(match[1]);
+      var type = (match[2] || "ms").toLowerCase();
+      switch (type) {
+        case "years":
+        case "year":
+        case "yrs":
+        case "yr":
+        case "y":
+          return n * y;
+        case "weeks":
+        case "week":
+        case "w":
+          return n * w;
+        case "days":
+        case "day":
+        case "d":
+          return n * d;
+        case "hours":
+        case "hour":
+        case "hrs":
+        case "hr":
+        case "h":
+          return n * h;
+        case "minutes":
+        case "minute":
+        case "mins":
+        case "min":
+        case "m":
+          return n * m;
+        case "seconds":
+        case "second":
+        case "secs":
+        case "sec":
+        case "s":
+          return n * s;
+        case "milliseconds":
+        case "millisecond":
+        case "msecs":
+        case "msec":
+        case "ms":
+          return n;
+        default:
+          return void 0;
+      }
+    }
+    function fmtShort(ms) {
+      var msAbs = Math.abs(ms);
+      if (msAbs >= d) {
+        return Math.round(ms / d) + "d";
+      }
+      if (msAbs >= h) {
+        return Math.round(ms / h) + "h";
+      }
+      if (msAbs >= m) {
+        return Math.round(ms / m) + "m";
+      }
+      if (msAbs >= s) {
+        return Math.round(ms / s) + "s";
+      }
+      return ms + "ms";
+    }
+    function fmtLong(ms) {
+      var msAbs = Math.abs(ms);
+      if (msAbs >= d) {
+        return plural(ms, msAbs, d, "day");
+      }
+      if (msAbs >= h) {
+        return plural(ms, msAbs, h, "hour");
+      }
+      if (msAbs >= m) {
+        return plural(ms, msAbs, m, "minute");
+      }
+      if (msAbs >= s) {
+        return plural(ms, msAbs, s, "second");
+      }
+      return ms + " ms";
+    }
+    function plural(ms, msAbs, n, name) {
+      var isPlural = msAbs >= n * 1.5;
+      return Math.round(ms / n) + " " + name + (isPlural ? "s" : "");
+    }
+  }
+});
+
 // node_modules/send/index.js
 var require_send = __commonJS({
   "node_modules/send/index.js"(exports2, module2) {
     "use strict";
     var createError = require_http_errors();
-    var debug = require_src()("send");
+    var debug = require("debug")("send");
     var encodeUrl = require_encodeurl();
     var escapeHtml = require_escape_html();
     var etag = require_etag();
@@ -28646,22 +28114,25 @@ var require_lib4 = __commonJS({
 });
 
 // server/lib/supabase.ts
-var import_supabase_js, supabase, isSupabaseEnabled;
+var supabase_exports = {};
+__export(supabase_exports, {
+  isSupabaseEnabled: () => isSupabaseEnabled,
+  supabase: () => supabase
+});
+var import_supabase_js, isSupabaseEnabled, supabase;
 var init_supabase = __esm({
   "server/lib/supabase.ts"() {
     "use strict";
     import_supabase_js = require("@supabase/supabase-js");
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+    isSupabaseEnabled = !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY);
+    if (!isSupabaseEnabled) {
       console.warn("[supabase] SUPABASE_URL or SUPABASE_ANON_KEY not set. Supabase disabled.");
     }
-    supabase = (0, import_supabase_js.createClient)(
-      process.env.SUPABASE_URL ?? "",
-      process.env.SUPABASE_ANON_KEY ?? "",
-      {
-        auth: { persistSession: false }
-      }
-    );
-    isSupabaseEnabled = !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY);
+    supabase = isSupabaseEnabled ? (0, import_supabase_js.createClient)(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_ANON_KEY,
+      { auth: { persistSession: false } }
+    ) : null;
   }
 });
 
@@ -40503,7 +39974,7 @@ var MemStorage = class {
       totalGainLoss = allHoldings.reduce((sum, h) => sum + (h.gainLoss ?? 0), 0);
       totalGainLossPct = totalCostBasis > 0 ? totalGainLoss / totalCostBasis * 100 : 0;
     }
-    const dayChangePct = totalValue > 0 ? dayChange / (totalValue - dayChange) * 100 : 0;
+    const dayChangePct = totalValue > 0 ? dayChange / totalValue * 100 : 0;
     let bestPerformer = null;
     let worstPerformer = null;
     for (const h of allHoldings) {
@@ -40747,12 +40218,10 @@ function assembleQuantSignals(params) {
 
 // src/lib/agents/risk/exclusion-guard.ts
 init_exclusion_list();
-var import_supabase_js2 = require("@supabase/supabase-js");
+init_supabase();
 function getSupabase() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_ANON_KEY;
-  if (!url || !key) throw new Error("Supabase env vars not set");
-  return (0, import_supabase_js2.createClient)(url, key, { auth: { persistSession: false } });
+  if (!isSupabaseEnabled) throw new Error("Supabase not configured");
+  return supabase;
 }
 async function checkExclusion(ticker) {
   const upper = ticker.toUpperCase();
@@ -40761,8 +40230,8 @@ async function checkExclusion(ticker) {
     return { passed: false, reason: `Exclusion List: ${exclusion.reason}` };
   }
   try {
-    const supabase3 = getSupabase();
-    const { data: cooldown } = await supabase3.from("cooldown_list").select("*").eq("ticker", upper).gte("cooldown_until", (/* @__PURE__ */ new Date()).toISOString().split("T")[0]).maybeSingle();
+    const sb = getSupabase();
+    const { data: cooldown } = await sb.from("cooldown_list").select("*").eq("ticker", upper).gte("cooldown_until", (/* @__PURE__ */ new Date()).toISOString().split("T")[0]).maybeSingle();
     if (cooldown) {
       return {
         passed: false,
@@ -40915,7 +40384,8 @@ async function analyzeStock(ticker) {
   ]);
   const val = (r) => r.status === "fulfilled" ? r.value : null;
   const profile = val(profileArr);
-  const companyProfile = Array.isArray(profile) ? profile[0] : profile;
+  const unwrapped = Array.isArray(profile) ? profile[0] : profile;
+  const companyProfile = unwrapped && typeof unwrapped === "object" && "symbol" in unwrapped ? unwrapped : null;
   const quote = await getFMPQuote(upper);
   const currentPrice = (Array.isArray(quote) ? quote[0]?.price : null) ?? val(avBars)?.[0]?.close ?? 0;
   const avgVolume = (Array.isArray(quote) ? quote[0]?.avgVolume : 0) ?? 0;
@@ -41035,10 +40505,8 @@ ${JSON.stringify(dataPackage, null, 2)}`
   }
   if (scoring) {
     try {
-      const { createClient: createClient6 } = await import("@supabase/supabase-js");
-      const sb = createClient6(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
-        auth: { persistSession: false }
-      });
+      const { supabase: sb, isSupabaseEnabled: isSupabaseEnabled3 } = await Promise.resolve().then(() => (init_supabase(), supabase_exports));
+      if (!isSupabaseEnabled3) throw new Error("Supabase not configured");
       await sb.from("score_history").insert({
         ticker: upper,
         score_date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
@@ -41063,7 +40531,8 @@ ${JSON.stringify(dataPackage, null, 2)}`
     profile: companyProfile,
     quantSignals,
     scoring,
-    rejected: false,
+    rejected: scoring === null,
+    rejectReason: scoring === null ? "Claude scoring unavailable" : void 0,
     timestamp: (/* @__PURE__ */ new Date()).toISOString()
   };
 }
@@ -41085,12 +40554,10 @@ async function analyzeRoute(req, res) {
 }
 
 // src/lib/portfolio/state.ts
-var import_supabase_js3 = require("@supabase/supabase-js");
+init_supabase();
 function getSupabase2() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_ANON_KEY;
-  if (!url || !key) throw new Error("Supabase env vars not set");
-  return (0, import_supabase_js3.createClient)(url, key, { auth: { persistSession: false } });
+  if (!isSupabaseEnabled) throw new Error("Supabase not configured");
+  return supabase;
 }
 function mapHolding(row) {
   const shares = row.shares != null ? Number(row.shares) : row.quantity != null ? Number(row.quantity) : 0;
@@ -41111,30 +40578,42 @@ function mapHolding(row) {
   };
 }
 async function getHoldings() {
-  const sb = getSupabase2();
-  const { data, error } = await sb.from("holdings").select("*").order("created_at", { ascending: true });
-  if (error) throw new Error(error.message);
-  return (data ?? []).map(mapHolding);
+  try {
+    const sb = getSupabase2();
+    const { data, error } = await sb.from("holdings").select("*").order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map(mapHolding);
+  } catch {
+    return [];
+  }
 }
 async function getCash() {
-  const sb = getSupabase2();
-  const { data } = await sb.from("portfolio_snapshots").select("cash").order("snapshot_date", { ascending: false }).limit(1).maybeSingle();
-  return Number(data?.cash ?? 0);
+  try {
+    const sb = getSupabase2();
+    const { data } = await sb.from("portfolio_snapshots").select("cash").order("snapshot_date", { ascending: false }).limit(1).maybeSingle();
+    return Number(data?.cash ?? 0);
+  } catch {
+    return 0;
+  }
 }
 async function getSnapshotHistory(days = 30) {
-  const sb = getSupabase2();
-  const since = new Date(Date.now() - days * 864e5).toISOString().split("T")[0];
-  const { data } = await sb.from("portfolio_snapshots").select("*").gte("snapshot_date", since).order("snapshot_date", { ascending: true });
-  return (data ?? []).map((row) => ({
-    snapshotDate: row.snapshot_date,
-    totalValue: Number(row.total_value),
-    cash: Number(row.cash),
-    holdingsJson: row.holdings_json,
-    sp500Value: row.sp500_value ? Number(row.sp500_value) : void 0,
-    totalReturn: row.total_return ? Number(row.total_return) : void 0,
-    sp500Return: row.sp500_return ? Number(row.sp500_return) : void 0,
-    alpha: row.alpha ? Number(row.alpha) : void 0
-  }));
+  try {
+    const sb = getSupabase2();
+    const since = new Date(Date.now() - days * 864e5).toISOString().split("T")[0];
+    const { data } = await sb.from("portfolio_snapshots").select("*").gte("snapshot_date", since).order("snapshot_date", { ascending: true });
+    return (data ?? []).map((row) => ({
+      snapshotDate: row.snapshot_date,
+      totalValue: Number(row.total_value),
+      cash: Number(row.cash),
+      holdingsJson: row.holdings_json,
+      sp500Value: row.sp500_value ? Number(row.sp500_value) : void 0,
+      totalReturn: row.total_return ? Number(row.total_return) : void 0,
+      sp500Return: row.sp500_return ? Number(row.sp500_return) : void 0,
+      alpha: row.alpha ? Number(row.alpha) : void 0
+    }));
+  } catch {
+    return [];
+  }
 }
 
 // src/api/portfolio/status/route.ts
@@ -41161,15 +40640,21 @@ function enrichHoldings(holdings2, quotes, totalValue) {
     };
   });
 }
-function calcPortfolioMetrics(enriched, cash, startingCapital) {
+function calcPortfolioMetrics(enriched, cash, startingCapital, quotes) {
   const investedValue = enriched.reduce((s, h) => s + h.value, 0);
   const totalValue = investedValue + cash;
   const cashPct = totalValue > 0 ? cash / totalValue * 100 : 0;
   const totalReturnPct = startingCapital > 0 ? (totalValue - startingCapital) / startingCapital * 100 : 0;
-  const dayChangePct = enriched.length > 0 ? enriched.reduce((s, h) => s + h.weightPct * 0, 0) : 0;
+  const dayChangePct = enriched.length > 0 && totalValue > 0 ? enriched.reduce((s, h) => {
+    const q = quotes?.find((q2) => q2.symbol === h.ticker);
+    const changePct = q?.changesPercentage ?? 0;
+    return s + h.value / totalValue * changePct;
+  }, 0) : 0;
   const weightedBeta = investedValue > 0 ? enriched.reduce((s, h) => {
     const w = h.value / investedValue;
-    return s + w * 1;
+    const q = quotes?.find((q2) => q2.symbol === h.ticker);
+    const beta = q && typeof q.beta === "number" ? q.beta : 1;
+    return s + w * beta;
   }, 0) : 1;
   return {
     totalValue,
@@ -41637,7 +41122,12 @@ Based on these market signals, assess the current status of the AGI Structural M
 // src/api/briefing/route.ts
 async function briefingRoute(req, res) {
   try {
-    const holdings2 = await getHoldings();
+    let holdings2 = [];
+    try {
+      holdings2 = await getHoldings();
+    } catch {
+      holdings2 = [];
+    }
     const tickers = holdings2.map((h) => h.ticker);
     const [macroResult, agiResult, quotesRaw] = await Promise.allSettled([
       runMacroSentinel(),
@@ -42004,30 +41494,16 @@ async function sendAlert(message, severity) {
 }
 
 // src/lib/supabase.ts
-var import_supabase_js4 = require("@supabase/supabase-js");
-var SUPABASE_URL = process.env.SUPABASE_URL;
-var SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-var isSupabaseEnabled2 = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
-function createSupabaseClient() {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    throw new Error(
-      "Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY environment variables."
-    );
-  }
-  return (0, import_supabase_js4.createClient)(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { persistSession: false }
-  });
+var import_supabase_js2 = require("@supabase/supabase-js");
+var isSupabaseEnabled2 = !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY);
+if (!isSupabaseEnabled2) {
+  console.warn("[supabase] SUPABASE_URL or SUPABASE_ANON_KEY not set. Supabase disabled.");
 }
-var _client = null;
-var supabase2 = new Proxy({}, {
-  get(_target, prop) {
-    if (!_client) {
-      _client = createSupabaseClient();
-    }
-    const value = _client[prop];
-    return typeof value === "function" ? value.bind(_client) : value;
-  }
-});
+var supabase2 = isSupabaseEnabled2 ? (0, import_supabase_js2.createClient)(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY,
+  { auth: { persistSession: false } }
+) : null;
 
 // src/api/cron/morning/route.ts
 function verifyCron(req) {
@@ -42063,7 +41539,8 @@ ${briefingText}`,
           agi_status: briefingData.agi?.status ?? null,
           created_at: (/* @__PURE__ */ new Date()).toISOString()
         });
-      } catch {
+      } catch (e) {
+        console.warn("[cron/morning] Failed to persist briefing to Supabase:", e);
       }
     }
     console.log(`[cron/morning] Briefing sent for ${today}`);
@@ -42112,7 +41589,8 @@ async function cronDrawdownRoute(req, res) {
             message: alert.action,
             severity: alert.level === "FORCED_EXIT" || alert.level === "AUTO_EXIT" ? "CRITICAL" : "WARNING"
           });
-        } catch {
+        } catch (e) {
+          console.warn("[cron/drawdown] Failed to persist alert to Supabase:", e);
         }
       }
       if (alert.level === "FORCED_EXIT") {
@@ -42281,7 +41759,8 @@ async function cronEarningsRoute(req, res) {
             message: msg,
             severity: "WARNING"
           });
-        } catch {
+        } catch (e) {
+          console.warn("[cron/earnings] Failed to persist alert to Supabase:", e);
         }
       }
     }
@@ -42315,12 +41794,11 @@ ${lines}`, "INFO");
 }
 
 // src/api/portfolio/update/route.ts
-var import_supabase_js5 = require("@supabase/supabase-js");
 var import_crypto3 = require("crypto");
+init_supabase();
 function getSb() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_ANON_KEY;
-  return (0, import_supabase_js5.createClient)(url, key, { auth: { persistSession: false } });
+  if (!isSupabaseEnabled) throw new Error("Supabase not configured");
+  return supabase;
 }
 async function getPortfolioId() {
   const { data } = await getSb().from("portfolios").select("id").order("created_at", { ascending: true }).limit(1).maybeSingle();
@@ -49757,55 +49235,6 @@ async function fetchPortfolioNews(rawTickers) {
 // server/routes.ts
 init_fmp();
 
-// server/lib/alphavantage.ts
-var AV_BASE = "https://www.alphavantage.co/query";
-async function avFetch(params) {
-  const key = process.env.ALPHA_VANTAGE_API_KEY;
-  if (!key) return null;
-  const url = new URL(AV_BASE);
-  url.searchParams.set("apikey", key);
-  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  try {
-    const res = await fetch(url.toString(), { signal: AbortSignal.timeout(15e3) });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data["Error Message"] || data["Note"] || data["Information"]) return null;
-    return data;
-  } catch {
-    return null;
-  }
-}
-async function getDailyPrices2(ticker, outputsize = "full") {
-  const data = await avFetch({
-    function: "TIME_SERIES_DAILY",
-    symbol: ticker,
-    outputsize
-  });
-  if (!data) return [];
-  const timeSeries = data["Time Series (Daily)"] || {};
-  return Object.entries(timeSeries).map(([date2, vals]) => ({
-    date: date2,
-    open: parseFloat(vals["1. open"]),
-    high: parseFloat(vals["2. high"]),
-    low: parseFloat(vals["3. low"]),
-    close: parseFloat(vals["4. close"]),
-    volume: parseInt(vals["5. volume"])
-  })).sort((a, b) => b.date.localeCompare(a.date));
-}
-async function getRSI(ticker, period = 14) {
-  const data = await avFetch({
-    function: "RSI",
-    symbol: ticker,
-    interval: "daily",
-    time_period: String(period),
-    series_type: "close"
-  });
-  if (!data) return null;
-  const techData = data["Technical Analysis: RSI"] || {};
-  const latest = Object.values(techData)[0];
-  return latest ? parseFloat(latest["RSI"]) : null;
-}
-
 // server/lib/quantSignals.ts
 function calcMomentum2(bars) {
   if (bars.length < 252) return { confirmed: false, return12m: 0 };
@@ -49893,6 +49322,29 @@ function calcDonchian2(bars, currentPrice) {
     low52w: Math.round(low52w * 100) / 100
   };
 }
+function calcRSI(bars, period = 14) {
+  if (bars.length < period + 1) return null;
+  const closes = bars.slice(0, period + 1).reverse().map((b) => b.close);
+  let gainSum = 0, lossSum = 0;
+  for (let i = 1; i < closes.length; i++) {
+    const change = closes[i] - closes[i - 1];
+    if (change > 0) gainSum += change;
+    else lossSum -= change;
+  }
+  let avgGain = gainSum / period;
+  let avgLoss = lossSum / period;
+  const extra = bars.slice(period + 1).reverse();
+  let prev = closes[closes.length - 1];
+  for (const bar of extra) {
+    const change = bar.close - prev;
+    avgGain = (avgGain * (period - 1) + (change > 0 ? change : 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + (change < 0 ? -change : 0)) / period;
+    prev = bar.close;
+  }
+  if (avgLoss === 0) return 100;
+  const rs = avgGain / avgLoss;
+  return Math.round((100 - 100 / (1 + rs)) * 10) / 10;
+}
 function buildSignalSummary2(s) {
   const parts = [
     s.momentum.confirmed ? `Momentum YES (${(s.momentum.return12m * 100).toFixed(1)}% 12m)` : `Momentum NO (${(s.momentum.return12m * 100).toFixed(1)}% 12m)`,
@@ -49947,8 +49399,8 @@ var RULES2 = {
   DRAWDOWN_RESCORE: 0.15,
   DRAWDOWN_AUTO_EXIT: 0.2,
   DRAWDOWN_FORCED_EXIT: 0.25,
-  DONCHIAN_REJECT: 0.95,
-  DONCHIAN_PREFER: 0.6,
+  DONCHIAN_REJECT_PCT: 0.95,
+  DONCHIAN_PREFER_PCT: 0.6,
   HIGH_BETA_THRESHOLD: 1.8
 };
 
@@ -50676,8 +50128,7 @@ RESPONSE INSTRUCTIONS:
         upgradesR,
         insiderR,
         fmpQuoteR,
-        barsR,
-        rsiR
+        barsR
       ] = await Promise.allSettled([
         getProfile(sym),
         getIncomeStatement(sym),
@@ -50690,8 +50141,7 @@ RESPONSE INSTRUCTIONS:
         getUpgradesDowngrades(sym),
         getInsiderTrading(sym),
         getFMPQuote(sym),
-        getDailyPrices2(sym, "full"),
-        getRSI(sym, 14)
+        getDailyPrices(sym)
       ]);
       const ok = (r) => r.status === "fulfilled" ? r.value : null;
       const profileData = ok(profileR)?.[0] ?? null;
@@ -50711,12 +50161,12 @@ RESPONSE INSTRUCTIONS:
       }
       const fmpQuoteData = ok(fmpQuoteR)?.[0] ?? null;
       const bars = ok(barsR) ?? [];
-      const rsiValue = ok(rsiR);
+      const rsiValue = calcRSI(bars);
       const currentPrice = fmpQuoteData?.price ?? profileData?.price ?? 0;
       const marketCap = profileData?.mktCap ?? fmpQuoteData?.marketCap ?? 0;
       let spBars = [];
       try {
-        spBars = await getDailyPrices2("SPY", "compact");
+        spBars = await getDailyPrices("SPY");
       } catch {
       }
       const momentum = calcMomentum2(bars);
@@ -50919,7 +50369,7 @@ Return ONLY valid JSON, no markdown, no backticks, no explanation:
             catalysts: parsed.catalysts,
             factorNotes: parsed.factorNotes,
             agiAlignment: parsed.agiAlignment,
-            dataSource: "fmp+alphavantage+claude"
+            dataSource: "fmp+claude"
           }).catch(() => {
           });
         }).catch(() => {
@@ -50928,12 +50378,12 @@ Return ONLY valid JSON, no markdown, no backticks, no explanation:
       return res.json({
         ...parsed,
         quantSignals: { ...quantSignals, signalSummary },
-        dataSource: "fmp+alphavantage+claude",
+        dataSource: "fmp+claude",
         analyzedAt: (/* @__PURE__ */ new Date()).toISOString()
       });
     } catch (error) {
       console.error("MAPO score error:", error);
-      res.status(500).json({ error: "Failed to compute MAPO score", detail: error.message });
+      return res.status(500).json({ error: "Failed to compute MAPO score", detail: error.message });
     }
   });
   app2.post("/api/screen", async (req, res) => {

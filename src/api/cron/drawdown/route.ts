@@ -46,7 +46,7 @@ export async function cronDrawdownRoute(req: Request, res: Response): Promise<vo
             message: alert.action,
             severity: alert.level === "FORCED_EXIT" || alert.level === "AUTO_EXIT" ? "CRITICAL" : "WARNING",
           });
-        } catch { /* non-fatal */ }
+        } catch (e) { console.warn("[cron/drawdown] Failed to persist alert to Supabase:", e); }
       }
 
       // Forced exit: add to cooldown + critical alert

@@ -2,7 +2,14 @@
  * MAPO Quant Signal Calculators - Pure mathematics, no AI
  * All 7 alpha signals computed from raw price and earnings data
  */
-import type { DailyBar } from "./alphavantage.js";
+export interface DailyBar {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
 
 export interface QuantSignals {
   momentum: { confirmed: boolean; return12m: number };
@@ -118,6 +125,32 @@ export function calcDonchian(bars: DailyBar[], currentPrice: number): { position
     high52w: Math.round(high52w * 100) / 100,
     low52w: Math.round(low52w * 100) / 100,
   };
+}
+
+// RSI (Relative Strength Index) - computed from daily bars
+export function calcRSI(bars: DailyBar[], period = 14): number | null {
+  if (bars.length < period + 1) return null;
+  const closes = bars.slice(0, period + 1).reverse().map(b => b.close);
+  let gainSum = 0, lossSum = 0;
+  for (let i = 1; i < closes.length; i++) {
+    const change = closes[i] - closes[i - 1];
+    if (change > 0) gainSum += change;
+    else lossSum -= change;
+  }
+  let avgGain = gainSum / period;
+  let avgLoss = lossSum / period;
+  // Smooth over remaining bars
+  const extra = bars.slice(period + 1).reverse();
+  let prev = closes[closes.length - 1];
+  for (const bar of extra) {
+    const change = bar.close - prev;
+    avgGain = (avgGain * (period - 1) + (change > 0 ? change : 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + (change < 0 ? -change : 0)) / period;
+    prev = bar.close;
+  }
+  if (avgLoss === 0) return 100;
+  const rs = avgGain / avgLoss;
+  return Math.round((100 - 100 / (1 + rs)) * 10) / 10;
 }
 
 export function buildSignalSummary(s: Omit<QuantSignals, "signalSummary">): string {

@@ -18,8 +18,7 @@ import { join } from "path";
 import { fetchLiveQuotes, fetchEarningsSchedule, fetchMarketSentiment, fetchPortfolioNews, fetchExtendedQuotes, fetchMarketPulse } from "./liveData";
 import { insertHoldingSchema, insertTradeSchema } from "@shared/schema";
 import * as fmp from "./lib/fmp.js";
-import { getDailyPrices, getRSI } from "./lib/alphavantage.js";
-import { calcMomentum, calcGoldenCross, calcSUE, calcRevisions, calcBeta, calcValueFactor, calcDonchian, buildSignalSummary } from "./lib/quantSignals.js";
+import { calcMomentum, calcGoldenCross, calcSUE, calcRevisions, calcBeta, calcValueFactor, calcDonchian, calcRSI, buildSignalSummary } from "./lib/quantSignals.js";
 import { isExcluded, RULES } from "./lib/constants.js";
 import { isSupabaseEnabled } from "./lib/supabase.js";
 
@@ -899,13 +898,13 @@ RESPONSE INSTRUCTIONS:
       const [
         profileR, incomeR, balanceR, cashflowR, ratiosR, metricsR,
         growthR, earningsR, upgradesR, insiderR,
-        fmpQuoteR, barsR, rsiR,
+        fmpQuoteR, barsR,
       ] = await Promise.allSettled([
         fmp.getProfile(sym), fmp.getIncomeStatement(sym), fmp.getBalanceSheet(sym),
         fmp.getCashFlow(sym), fmp.getKeyRatios(sym), fmp.getKeyMetrics(sym),
         fmp.getFinancialGrowth(sym), fmp.getEarnings(sym),
         fmp.getUpgradesDowngrades(sym), fmp.getInsiderTrading(sym),
-        fmp.getFMPQuote(sym), getDailyPrices(sym, "full"), getRSI(sym, 14),
+        fmp.getFMPQuote(sym), fmp.getDailyPrices(sym),
       ]);
 
       const ok = <T>(r: PromiseSettledResult<T>): T | null => r.status === "fulfilled" ? r.value : null;
@@ -927,14 +926,14 @@ RESPONSE INSTRUCTIONS:
       } catch { /* ignore */ }
       const fmpQuoteData = ok(fmpQuoteR)?.[0] ?? null;
       const bars = ok(barsR) ?? [];
-      const rsiValue = ok(rsiR);
+      const rsiValue = calcRSI(bars);
 
       const currentPrice = fmpQuoteData?.price ?? profileData?.price ?? 0;
       const marketCap = profileData?.mktCap ?? fmpQuoteData?.marketCap ?? 0;
 
       // Fetch SPY for beta calculation
       let spBars: typeof bars = [];
-      try { spBars = await getDailyPrices("SPY", "compact"); } catch { /* ignore */ }
+      try { spBars = await fmp.getDailyPrices("SPY"); } catch { /* ignore */ }
 
       // Compute all 7 quant signals (pure math)
       const momentum = calcMomentum(bars);
@@ -1119,7 +1118,7 @@ Return ONLY valid JSON, no markdown, no backticks, no explanation:
             catalysts: parsed.catalysts,
             factorNotes: parsed.factorNotes,
             agiAlignment: parsed.agiAlignment,
-            dataSource: "fmp+alphavantage+claude",
+            dataSource: "fmp+claude",
           }).catch(() => {});
         }).catch(() => {});
       }
@@ -1127,7 +1126,7 @@ Return ONLY valid JSON, no markdown, no backticks, no explanation:
       return res.json({
         ...parsed,
         quantSignals: { ...quantSignals, signalSummary: signalSummary },
-        dataSource: "fmp+alphavantage+claude",
+        dataSource: "fmp+claude",
         analyzedAt: new Date().toISOString(),
       });
 

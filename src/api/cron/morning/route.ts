@@ -42,7 +42,7 @@ export async function cronMorningRoute(req: Request, res: Response): Promise<voi
           agi_status: briefingData.agi?.status ?? null,
           created_at: new Date().toISOString(),
         });
-      } catch { /* briefings table may not exist, non-fatal */ }
+      } catch (e) { console.warn("[cron/morning] Failed to persist briefing to Supabase:", e); }
     }
 
     console.log(`[cron/morning] Briefing sent for ${today}`);

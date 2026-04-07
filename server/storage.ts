@@ -277,7 +277,7 @@ export class MemStorage implements IStorage {
       totalGainLossPct = totalCostBasis > 0 ? (totalGainLoss / totalCostBasis) * 100 : 0;
     }
 
-    const dayChangePct = totalValue > 0 ? (dayChange / (totalValue - dayChange)) * 100 : 0;
+    const dayChangePct = totalValue > 0 ? (dayChange / totalValue) * 100 : 0;
 
     let bestPerformer: { ticker: string; gainLossPct: number } | null = null;
     let worstPerformer: { ticker: string; gainLossPct: number } | null = null;

@@ -45,118 +45,146 @@ async function getDefaultPortfolioId(): Promise<string | null> {
 }
 
 export async function getHoldings(): Promise<Holding[]> {
-  const sb = getSupabase();
-  const { data, error } = await sb.from("holdings").select("*").order("created_at", { ascending: true });
-  if (error) throw new Error(error.message);
-  return (data ?? []).map(mapHolding);
+  try {
+    const sb = getSupabase();
+    const { data, error } = await sb.from("holdings").select("*").order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map(mapHolding);
+  } catch {
+    return [];
+  }
 }
 
 export async function addHolding(holding: Omit<Holding, "id">): Promise<Holding> {
-  const sb = getSupabase();
-  const portfolioId = await getDefaultPortfolioId();
-  const today = holding.entryDate || new Date().toISOString().split("T")[0];
-  const row: any = {
-    ticker: holding.ticker,
-    name: holding.companyName,
-    quantity: holding.shares,
-    cost_basis: holding.entryPrice,
-    price: holding.entryPrice,
-    value: holding.shares * holding.entryPrice,
-    sector: holding.sector,
-    type: "Stock",
-    source: "mapo",
-  };
-  if (portfolioId) row.portfolio_id = portfolioId;
+  try {
+    const sb = getSupabase();
+    const portfolioId = await getDefaultPortfolioId();
+    const today = holding.entryDate || new Date().toISOString().split("T")[0];
+    const row: any = {
+      ticker: holding.ticker,
+      name: holding.companyName,
+      quantity: holding.shares,
+      cost_basis: holding.entryPrice,
+      price: holding.entryPrice,
+      value: holding.shares * holding.entryPrice,
+      sector: holding.sector,
+      type: "Stock",
+      source: "mapo",
+    };
+    if (portfolioId) row.portfolio_id = portfolioId;
 
-  const { data, error } = await sb.from("holdings").insert(row).select().single();
-  if (error) throw new Error(error.message);
-  return { ...holding, id: data.id };
+    const { data, error } = await sb.from("holdings").insert(row).select().single();
+    if (error) throw new Error(error.message);
+    return { ...holding, id: data.id };
+  } catch (e) {
+    throw e;
+  }
 }
 
 export async function removeHolding(id: string): Promise<void> {
-  const sb = getSupabase();
-  const { error } = await sb.from("holdings").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  try {
+    const sb = getSupabase();
+    const { error } = await sb.from("holdings").delete().eq("id", id);
+    if (error) throw new Error(error.message);
+  } catch (e) {
+    throw e;
+  }
 }
 
 export async function getCash(): Promise<number> {
-  const sb = getSupabase();
-  const { data } = await sb
-    .from("portfolio_snapshots")
-    .select("cash")
-    .order("snapshot_date", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return Number(data?.cash ?? 0);
+  try {
+    const sb = getSupabase();
+    const { data } = await sb
+      .from("portfolio_snapshots")
+      .select("cash")
+      .order("snapshot_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return Number(data?.cash ?? 0);
+  } catch {
+    return 0;
+  }
 }
 
 export async function logTrade(trade: Omit<Trade, "id">): Promise<void> {
-  const sb = getSupabase();
-  const portfolioId = await getDefaultPortfolioId();
-  const row: any = {
-    ticker: trade.ticker,
-    action: trade.action,
-    shares: trade.shares,
-    price: trade.price,
-    total: trade.totalValue,
-    name: trade.ticker,
-    rationale: trade.rationale,
-    date: trade.tradeDate,
-    // Extended MAPO fields (stored if columns exist)
-    total_value: trade.totalValue,
-    score_at_trade: trade.scoreAtTrade ?? null,
-    trade_date: trade.tradeDate,
-  };
-  if (portfolioId) row.portfolio_id = portfolioId;
-  // Try new trade_log table first, fallback to trades
-  const { error: logError } = await sb.from("trade_log").insert(row);
-  if (logError) {
-    // Fallback: write to trades table (old schema)
-    const tradeRow: any = {
+  try {
+    const sb = getSupabase();
+    const portfolioId = await getDefaultPortfolioId();
+    const row: any = {
       ticker: trade.ticker,
       action: trade.action,
       shares: trade.shares,
       price: trade.price,
       total: trade.totalValue,
       name: trade.ticker,
-      rationale: trade.rationale ?? "",
+      rationale: trade.rationale,
       date: trade.tradeDate,
+      // Extended MAPO fields (stored if columns exist)
+      total_value: trade.totalValue,
+      score_at_trade: trade.scoreAtTrade ?? null,
+      trade_date: trade.tradeDate,
     };
-    if (portfolioId) tradeRow.portfolio_id = portfolioId;
-    await sb.from("trades").insert(tradeRow).then(() => {}); // non-fatal
+    if (portfolioId) row.portfolio_id = portfolioId;
+    // Try new trade_log table first, fallback to trades
+    const { error: logError } = await sb.from("trade_log").insert(row);
+    if (logError) {
+      // Fallback: write to trades table (old schema)
+      const tradeRow: any = {
+        ticker: trade.ticker,
+        action: trade.action,
+        shares: trade.shares,
+        price: trade.price,
+        total: trade.totalValue,
+        name: trade.ticker,
+        rationale: trade.rationale ?? "",
+        date: trade.tradeDate,
+      };
+      if (portfolioId) tradeRow.portfolio_id = portfolioId;
+      await sb.from("trades").insert(tradeRow).then(() => {}); // non-fatal
+    }
+  } catch {
+    // Supabase unavailable: non-fatal
   }
 }
 
 export async function saveSnapshot(snapshot: Omit<PortfolioSnapshot, "id">): Promise<void> {
-  const sb = getSupabase();
-  await sb.from("portfolio_snapshots").upsert({
-    snapshot_date: snapshot.snapshotDate,
-    total_value: snapshot.totalValue,
-    cash: snapshot.cash,
-    holdings_json: snapshot.holdingsJson,
-    sp500_value: snapshot.sp500Value,
-    total_return: snapshot.totalReturn,
-    sp500_return: snapshot.sp500Return,
-    alpha: snapshot.alpha,
-  });
+  try {
+    const sb = getSupabase();
+    await sb.from("portfolio_snapshots").upsert({
+      snapshot_date: snapshot.snapshotDate,
+      total_value: snapshot.totalValue,
+      cash: snapshot.cash,
+      holdings_json: snapshot.holdingsJson,
+      sp500_value: snapshot.sp500Value,
+      total_return: snapshot.totalReturn,
+      sp500_return: snapshot.sp500Return,
+      alpha: snapshot.alpha,
+    });
+  } catch {
+    // Supabase unavailable: non-fatal
+  }
 }
 
 export async function getSnapshotHistory(days: number = 30): Promise<PortfolioSnapshot[]> {
-  const sb = getSupabase();
-  const since = new Date(Date.now() - days * 86_400_000).toISOString().split("T")[0];
-  const { data } = await sb
-    .from("portfolio_snapshots")
-    .select("*")
-    .gte("snapshot_date", since)
-    .order("snapshot_date", { ascending: true });
-  return (data ?? []).map(row => ({
-    snapshotDate: row.snapshot_date,
-    totalValue: Number(row.total_value),
-    cash: Number(row.cash),
-    holdingsJson: row.holdings_json,
-    sp500Value: row.sp500_value ? Number(row.sp500_value) : undefined,
-    totalReturn: row.total_return ? Number(row.total_return) : undefined,
-    sp500Return: row.sp500_return ? Number(row.sp500_return) : undefined,
-    alpha: row.alpha ? Number(row.alpha) : undefined,
-  }));
+  try {
+    const sb = getSupabase();
+    const since = new Date(Date.now() - days * 86_400_000).toISOString().split("T")[0];
+    const { data } = await sb
+      .from("portfolio_snapshots")
+      .select("*")
+      .gte("snapshot_date", since)
+      .order("snapshot_date", { ascending: true });
+    return (data ?? []).map(row => ({
+      snapshotDate: row.snapshot_date,
+      totalValue: Number(row.total_value),
+      cash: Number(row.cash),
+      holdingsJson: row.holdings_json,
+      sp500Value: row.sp500_value ? Number(row.sp500_value) : undefined,
+      totalReturn: row.total_return ? Number(row.total_return) : undefined,
+      sp500Return: row.sp500_return ? Number(row.sp500_return) : undefined,
+      alpha: row.alpha ? Number(row.alpha) : undefined,
+    }));
+  } catch {
+    return [];
+  }
 }
