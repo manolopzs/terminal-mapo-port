@@ -254,9 +254,36 @@ export class MemStorage implements IStorage {
   async getPortfolioSummary(portfolioId?: string) {
     let allHoldings = Array.from(this.holdings.values());
     if (portfolioId) allHoldings = allHoldings.filter((h) => h.portfolioId === portfolioId);
-    const holdingsValue = allHoldings.reduce((sum, h) => sum + h.value, 0);
+
+    // Fetch live quotes so summary reflects real-time prices
+    let liveQuotes: any[] = [];
+    if (allHoldings.length > 0) {
+      try {
+        const { getFMPQuote } = await import("./lib/fmp.js");
+        const tickers = allHoldings.map(h => h.ticker).join(",");
+        const raw = await getFMPQuote(tickers);
+        liveQuotes = Array.isArray(raw) ? raw : [];
+      } catch { /* FMP unavailable — use stored values */ }
+    }
+
+    // Update holdings with live data
+    let holdingsValue = 0;
+    let dayChange = 0;
+    for (const h of allHoldings) {
+      const q = liveQuotes.find((lq: any) => lq.symbol === h.ticker);
+      if (q) {
+        h.price = q.price ?? h.price;
+        h.value = h.quantity * h.price;
+        h.dayChange = (q.change ?? 0) * h.quantity;
+        h.dayChangePct = q.changesPercentage ?? 0;
+        h.gainLoss = h.value - h.costBasis;
+        h.gainLossPct = h.costBasis > 0 ? (h.gainLoss / h.costBasis) * 100 : 0;
+      }
+      holdingsValue += h.value;
+      dayChange += h.dayChange ?? 0;
+    }
+
     const totalCostBasis = allHoldings.reduce((sum, h) => sum + h.costBasis, 0);
-    const dayChange = allHoldings.reduce((sum, h) => sum + (h.dayChange ?? 0), 0);
 
     // Include cash for portfolios that have it
     const meta = portfolioId ? this.portfolioMeta.get(portfolioId) : null;

@@ -186,9 +186,36 @@ export class SupabaseStorage {
   // ── SUMMARY ───────────────────────────────────────────────────────────────────
   async getPortfolioSummary(portfolioId?: string) {
     const allHoldings = await this.getHoldings(portfolioId);
-    const holdingsValue = allHoldings.reduce((s, h) => s + h.value, 0);
+
+    // Fetch live quotes so summary reflects real-time prices
+    let liveQuotes: any[] = [];
+    if (allHoldings.length > 0) {
+      try {
+        const { getFMPQuote } = await import("./fmp.js");
+        const tickers = allHoldings.map(h => h.ticker).join(",");
+        const raw = await getFMPQuote(tickers);
+        liveQuotes = Array.isArray(raw) ? raw : [];
+      } catch { /* FMP unavailable — use stored values */ }
+    }
+
+    // Update holdings with live data
+    let holdingsValue = 0;
+    let dayChange = 0;
+    for (const h of allHoldings) {
+      const q = liveQuotes.find((lq: any) => lq.symbol === h.ticker);
+      if (q) {
+        h.price = q.price ?? h.price;
+        h.value = h.quantity * h.price;
+        h.dayChange = (q.change ?? 0) * h.quantity;
+        h.dayChangePct = q.changesPercentage ?? 0;
+        h.gainLoss = h.value - h.costBasis;
+        h.gainLossPct = h.costBasis > 0 ? (h.gainLoss / h.costBasis) * 100 : 0;
+      }
+      holdingsValue += h.value;
+      dayChange += h.dayChange ?? 0;
+    }
+
     const totalCostBasis = allHoldings.reduce((s, h) => s + h.costBasis, 0);
-    const dayChange = allHoldings.reduce((s, h) => s + (h.dayChange ?? 0), 0);
 
     let cash = 0;
     let startingCapital = 0;
@@ -214,7 +241,7 @@ export class SupabaseStorage {
       totalGainLossPct = totalCostBasis > 0 ? (totalGainLoss / totalCostBasis) * 100 : 0;
     }
 
-    const dayChangePct = totalValue > 0 ? (dayChange / (totalValue - dayChange)) * 100 : 0;
+    const dayChangePct = totalValue > 0 ? (dayChange / totalValue) * 100 : 0;
 
     let bestPerformer: { ticker: string; gainLossPct: number } | null = null;
     let worstPerformer: { ticker: string; gainLossPct: number } | null = null;
