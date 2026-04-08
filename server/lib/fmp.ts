@@ -84,7 +84,22 @@ export async function getInsiderTrading(ticker: string) {
 }
 
 export async function getFMPQuote(ticker: string) {
-  return fmpFetch("/quote", { symbol: ticker });
+  // FMP stable API only supports single symbol per call
+  const symbols = ticker.split(",").map(s => s.trim()).filter(Boolean);
+  if (symbols.length <= 1) {
+    return fmpFetch("/quote", { symbol: ticker });
+  }
+  // Batch: fetch each symbol in parallel, merge results
+  const results = await Promise.allSettled(
+    symbols.map(s => fmpFetch("/quote", { symbol: s }))
+  );
+  const merged: any[] = [];
+  for (const r of results) {
+    if (r.status === "fulfilled" && Array.isArray(r.value)) {
+      merged.push(...r.value);
+    }
+  }
+  return merged.length > 0 ? merged : null;
 }
 
 // Daily price history for quant signals (SMA, momentum, beta, Donchian)

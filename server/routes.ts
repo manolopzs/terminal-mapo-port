@@ -14,8 +14,6 @@ import { cronScreenRoute } from "../src/api/cron/screen/route.js";
 import { portfolioUpdateRoute } from "../src/api/portfolio/update/route.js";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
-import { readFileSync } from "fs";
-import { join } from "path";
 import { fetchLiveQuotes, fetchEarningsSchedule, fetchMarketSentiment, fetchPortfolioNews, fetchExtendedQuotes, fetchMarketPulse } from "./liveData";
 import { insertHoldingSchema, insertTradeSchema } from "@shared/schema";
 import * as fmp from "./lib/fmp.js";
@@ -400,15 +398,36 @@ RESPONSE INSTRUCTIONS:
     }
   });
 
+  // ---------------------------------------------------------------------------
+  // Shared helper: fetch FMP daily prices for a set of tickers and build a
+  // lookup of ticker -> date -> close price, plus a sorted list of all dates.
+  // ---------------------------------------------------------------------------
+  async function buildPriceLookup(tickers: string[]): Promise<{
+    prices: Record<string, Record<string, number>>;
+    allDates: string[];
+  }> {
+    const unique = Array.from(new Set(tickers.map(t => t.toUpperCase())));
+    const results = await Promise.all(
+      unique.map(t => fmp.getDailyPrices(t).then(bars => ({ ticker: t, bars })))
+    );
+    const prices: Record<string, Record<string, number>> = {};
+    const dateSet = new Set<string>();
+    for (const { ticker, bars } of results) {
+      const map: Record<string, number> = {};
+      for (const bar of bars) {
+        map[bar.date] = bar.close;
+        dateSet.add(bar.date);
+      }
+      prices[ticker] = map;
+    }
+    const allDates = Array.from(dateSet).sort();
+    return { prices, allDates };
+  }
+
   // Performance data
   app.get("/api/performance", async (req, res) => {
     const portfolioId = req.query.portfolioId as string | undefined;
     try {
-      // Load price data and trade data to compute performance
-      const priceDataPath = join(process.cwd(), "price-data.json");
-      const priceDataRaw = readFileSync(priceDataPath, "utf-8");
-      const prices: Record<string, Record<string, number>> = JSON.parse(priceDataRaw);
-
       // Get trades for this portfolio
       const trades = await storage.getTrades(portfolioId);
 
@@ -418,27 +437,34 @@ RESPONSE INSTRUCTIONS:
         portfolio = await storage.getPortfolio(portfolioId);
       }
 
-      // For Mapo AI portfolio, compute from trades
+      // For portfolios with trades, compute performance from trade history
       if (trades.length > 0) {
-        // Load mapo-ai-portfolio.json for starting capital and start date
-        let startingCapital = 20469.11;
-        let mapoData: Record<string, any> = {};
-        try {
-          const mapoPath = join(process.cwd(), "mapo-ai-portfolio.json");
-          const mapoRaw = readFileSync(mapoPath, "utf-8");
-          mapoData = JSON.parse(mapoRaw);
-          startingCapital = mapoData.startingCapital || startingCapital;
-        } catch (e) {}
+        // Get starting capital from storage
+        let startingCapital = 0;
+        if (portfolioId) {
+          if (isSupabaseEnabled) {
+            const { supabase } = await import("./lib/supabase.js");
+            const { data: meta } = await supabase
+              .from("portfolio_meta")
+              .select("starting_capital")
+              .eq("portfolio_id", portfolioId)
+              .single();
+            startingCapital = meta ? Number(meta.starting_capital) : 0;
+          } else if ((storage as any).portfolioMeta) {
+            const meta = (storage as any).portfolioMeta.get(portfolioId);
+            startingCapital = meta?.startingCapital ?? 0;
+          }
+        }
 
         // Sort trades by date
         const sortedTrades = [...trades].sort((a, b) => a.date.localeCompare(b.date));
 
-        // Get all trading dates from VOO
-        const allDates = Object.keys(prices.VOO || {}).sort();
+        // Collect every ticker that was ever traded + benchmarks
+        const tradedTickers = Array.from(new Set(sortedTrades.map(t => t.ticker)));
+        const { prices, allDates } = await buildPriceLookup([...tradedTickers, "VOO", "QQQ"]);
 
-        // Base date: portfolio startDate from JSON, falling back to first trade date.
-        // Find the first available price date on or after the portfolio start date.
-        const portfolioStartDate = mapoData.startDate || sortedTrades[0]?.date || allDates[0];
+        // Base date: first trade date, or first available price date.
+        const portfolioStartDate = sortedTrades[0]?.date || allDates[0];
         const baseDate = allDates.find(d => d >= portfolioStartDate) || allDates[0];
 
         // Group trades by date
@@ -457,6 +483,8 @@ RESPONSE INSTRUCTIONS:
         const performanceData: { date: string; portfolio: number; voo: number; qqq: number }[] = [];
 
         for (const date of allDates) {
+          if (date < baseDate) continue;
+
           // Process trades
           if (tradesByDate[date]) {
             for (const t of tradesByDate[date]) {
@@ -530,9 +558,12 @@ RESPONSE INSTRUCTIONS:
 
       // For Schwab portfolio (no trades), compute actual weighted portfolio return
       // using real stock prices and current portfolio weights
-      const allDates = Object.keys(prices.VOO || {}).sort();
       const holdings = await storage.getHoldings(portfolioId);
+      if (holdings.length === 0) return res.json([]);
+
       const totalCurrentValue = holdings.reduce((s, h) => s + h.value, 0);
+      const holdingTickers = holdings.map(h => h.ticker);
+      const { prices, allDates } = await buildPriceLookup([...holdingTickers, "VOO", "QQQ"]);
 
       // Use first available date as base for benchmarks
       const firstDate = allDates[0];
@@ -720,9 +751,6 @@ RESPONSE INSTRUCTIONS:
   app.get("/api/analytics", async (req, res) => {
     try {
       const portfolioId = req.query.portfolioId as string | undefined;
-      const priceDataPath = join(process.cwd(), "price-data.json");
-      const priceDataRaw = readFileSync(priceDataPath, "utf-8");
-      const prices: Record<string, Record<string, number>> = JSON.parse(priceDataRaw);
       const holdings = await storage.getHoldings(portfolioId);
 
       if (holdings.length === 0) {
@@ -730,7 +758,7 @@ RESPONSE INSTRUCTIONS:
       }
 
       const tickers = holdings.map(h => h.ticker);
-      const allDates = Object.keys(prices.VOO || {}).sort();
+      const { prices, allDates } = await buildPriceLookup([...tickers, "VOO"]);
       const recentDates = allDates.slice(-63); // ~3 months of trading days
 
       // Compute log returns for each ticker + VOO (benchmark)
@@ -1246,25 +1274,8 @@ Return ONLY valid JSON, no markdown, no backticks, no explanation:
       const holdings = await storage.getHoldings(portfolioId);
       const summary = await storage.getPortfolioSummary(portfolioId);
 
-      // Determine cash: prefer summary.cash (from portfolioMeta / in-memory storage),
-      // fall back to mapo-ai-portfolio.json, then hardcoded default.
-      let cash: number;
-      const summaryCash = (summary as any).cash;
-      if (typeof summaryCash === "number") {
-        cash = summaryCash;
-      } else {
-        cash = 277.00;
-        try {
-          const mapoPath = join(process.cwd(), "mapo-ai-portfolio.json");
-          const mapoRaw = readFileSync(mapoPath, "utf-8");
-          const mapoData = JSON.parse(mapoRaw);
-          if (typeof mapoData.cash === "number") {
-            cash = mapoData.cash;
-          }
-        } catch (_e) {
-          // default cash stays 277.00
-        }
-      }
+      // Cash comes from storage (Supabase portfolio_meta or MemStorage portfolioMeta)
+      const cash = (summary as any).cash ?? 0;
 
       // summary.totalValue already includes cash (from MemStorage.getPortfolioSummary)
       const totalValue = summary.totalValue;

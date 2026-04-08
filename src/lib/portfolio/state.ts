@@ -106,6 +106,20 @@ export async function getCash(): Promise<number> {
   }
 }
 
+export async function getStartingCapital(): Promise<number> {
+  try {
+    const sb = getSupabase();
+    const { data } = await sb
+      .from("portfolio_meta")
+      .select("starting_capital")
+      .limit(1)
+      .maybeSingle();
+    return Number(data?.starting_capital ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
 export async function logTrade(trade: Omit<Trade, "id">): Promise<void> {
   try {
     const sb = getSupabase();

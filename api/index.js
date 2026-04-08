@@ -18023,7 +18023,7 @@ var require_view = __commonJS({
     var dirname = path3.dirname;
     var basename = path3.basename;
     var extname = path3.extname;
-    var join3 = path3.join;
+    var join = path3.join;
     var resolve = path3.resolve;
     module2.exports = View2;
     function View2(name, options) {
@@ -18085,12 +18085,12 @@ var require_view = __commonJS({
     };
     View2.prototype.resolve = function resolve2(dir, file) {
       var ext = this.ext;
-      var path4 = join3(dir, file);
+      var path4 = join(dir, file);
       var stat = tryStat(path4);
       if (stat && stat.isFile()) {
         return path4;
       }
-      path4 = join3(dir, basename(file, ext), "index" + ext);
+      path4 = join(dir, basename(file, ext), "index" + ext);
       stat = tryStat(path4);
       if (stat && stat.isFile()) {
         return path4;
@@ -21851,7 +21851,7 @@ var require_send = __commonJS({
     var Stream2 = require("stream");
     var util2 = require("util");
     var extname = path3.extname;
-    var join3 = path3.join;
+    var join = path3.join;
     var normalize = path3.normalize;
     var resolve = path3.resolve;
     var sep = path3.sep;
@@ -22023,7 +22023,7 @@ var require_send = __commonJS({
           return res;
         }
         parts = path4.split(sep);
-        path4 = normalize(join3(root, path4));
+        path4 = normalize(join(root, path4));
       } else {
         if (UP_PATH_REGEXP.test(path4)) {
           debug('malicious path "%s"', path4);
@@ -22156,7 +22156,7 @@ var require_send = __commonJS({
           if (err) return self.onStatError(err);
           return self.error(404);
         }
-        var p = join3(path4, self._index[i]);
+        var p = join(path4, self._index[i]);
         debug('stat "%s"', p);
         fs2.stat(p, function(err2, stat) {
           if (err2) return next(err2);
@@ -28136,6 +28136,153 @@ var init_supabase = __esm({
   }
 });
 
+// server/lib/fmp.ts
+var fmp_exports = {};
+__export(fmp_exports, {
+  getBalanceSheet: () => getBalanceSheet,
+  getCashFlow: () => getCashFlow,
+  getDailyPrices: () => getDailyPrices,
+  getEarnings: () => getEarnings,
+  getFMPQuote: () => getFMPQuote,
+  getFinancialGrowth: () => getFinancialGrowth,
+  getIncomeStatement: () => getIncomeStatement,
+  getInsiderTrading: () => getInsiderTrading,
+  getKeyMetrics: () => getKeyMetrics,
+  getKeyRatios: () => getKeyRatios,
+  getProfile: () => getProfile,
+  getUpgradesDowngrades: () => getUpgradesDowngrades,
+  screenStocks: () => screenStocks
+});
+async function fmpFetch(path3, params = {}) {
+  const key = process.env.FMP_API_KEY;
+  if (!key) return null;
+  const url = new URL(`${FMP_BASE}${path3}`);
+  url.searchParams.set("apikey", key);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  const cacheKey = url.toString();
+  const TTL = 3e5;
+  const cached = _cache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < TTL) return cached.data;
+  const existing = _inflight.get(cacheKey);
+  if (existing) return existing;
+  const p = (async () => {
+    try {
+      const res = await fetch(url.toString(), { signal: AbortSignal.timeout(12e3) });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (typeof data === "string") return null;
+      if (data && typeof data === "object" && !Array.isArray(data)) {
+        if (data["Error Message"] || data["error"]) return null;
+      }
+      const result = Array.isArray(data) && data.length === 0 ? null : data;
+      _cache.set(cacheKey, { data: result, ts: Date.now() });
+      return result;
+    } catch {
+      return null;
+    } finally {
+      _inflight.delete(cacheKey);
+    }
+  })();
+  _inflight.set(cacheKey, p);
+  return p;
+}
+async function getProfile(ticker) {
+  return fmpFetch("/profile", { symbol: ticker });
+}
+async function getIncomeStatement(ticker) {
+  return fmpFetch("/income-statement", { symbol: ticker, period: "quarter", limit: "8" });
+}
+async function getBalanceSheet(ticker) {
+  return fmpFetch("/balance-sheet-statement", { symbol: ticker, period: "quarter", limit: "4" });
+}
+async function getCashFlow(ticker) {
+  return fmpFetch("/cash-flow-statement", { symbol: ticker, period: "quarter", limit: "4" });
+}
+async function getKeyRatios(ticker) {
+  return fmpFetch("/ratios", { symbol: ticker, limit: "5" });
+}
+async function getKeyMetrics(ticker) {
+  return fmpFetch("/key-metrics", { symbol: ticker, limit: "5" });
+}
+async function getFinancialGrowth(ticker) {
+  return fmpFetch("/financial-growth", { symbol: ticker, limit: "4" });
+}
+async function getEarnings(ticker) {
+  return fmpFetch("/earnings", { symbol: ticker });
+}
+async function getUpgradesDowngrades(ticker) {
+  return fmpFetch("/upgrades-downgrades", { symbol: ticker });
+}
+async function getInsiderTrading(ticker) {
+  return fmpFetch("/insider-trading", { symbol: ticker, limit: "10" });
+}
+async function getFMPQuote(ticker) {
+  const symbols = ticker.split(",").map((s) => s.trim()).filter(Boolean);
+  if (symbols.length <= 1) {
+    return fmpFetch("/quote", { symbol: ticker });
+  }
+  const results = await Promise.allSettled(
+    symbols.map((s) => fmpFetch("/quote", { symbol: s }))
+  );
+  const merged = [];
+  for (const r of results) {
+    if (r.status === "fulfilled" && Array.isArray(r.value)) {
+      merged.push(...r.value);
+    }
+  }
+  return merged.length > 0 ? merged : null;
+}
+async function getDailyPrices(ticker) {
+  const key = ticker.toUpperCase();
+  const ttl = key === "SPY" ? 36e5 : 3e5;
+  const cached = _priceCache.get(key);
+  if (cached && Date.now() - cached.ts < ttl) return cached.data;
+  const existing = _priceInflight.get(key);
+  if (existing) return existing;
+  const p = fmpFetch("/historical-price-eod/full", { symbol: key }).then((data) => {
+    if (!data || !Array.isArray(data)) return [];
+    const bars = data.map((d) => ({
+      date: d.date,
+      open: d.open ?? d.adjOpen ?? 0,
+      high: d.high ?? d.adjHigh ?? 0,
+      low: d.low ?? d.adjLow ?? 0,
+      close: d.close ?? d.adjClose ?? 0,
+      volume: d.volume ?? 0
+    })).sort((a, b) => b.date.localeCompare(a.date));
+    _priceCache.set(key, { data: bars, ts: Date.now() });
+    _priceInflight.delete(key);
+    return bars;
+  }).catch(() => {
+    _priceInflight.delete(key);
+    return [];
+  });
+  _priceInflight.set(key, p);
+  return p;
+}
+async function screenStocks(params) {
+  const p = {
+    marketCapMoreThan: String(params.marketCapMoreThan ?? 5e8),
+    marketCapLessThan: String(params.marketCapLessThan ?? 5e10),
+    country: params.country ?? "US",
+    limit: "1000"
+  };
+  if (params.sector) p.sector = params.sector;
+  if (params.betaMoreThan !== void 0) p.betaMoreThan = String(params.betaMoreThan);
+  if (params.betaLessThan !== void 0) p.betaLessThan = String(params.betaLessThan);
+  return fmpFetch("/company-screener", p);
+}
+var FMP_BASE, _cache, _inflight, _priceCache, _priceInflight;
+var init_fmp = __esm({
+  "server/lib/fmp.ts"() {
+    "use strict";
+    FMP_BASE = "https://financialmodelingprep.com/stable";
+    _cache = /* @__PURE__ */ new Map();
+    _inflight = /* @__PURE__ */ new Map();
+    _priceCache = /* @__PURE__ */ new Map();
+    _priceInflight = /* @__PURE__ */ new Map();
+  }
+});
+
 // server/lib/supabaseStorage.ts
 var supabaseStorage_exports = {};
 __export(supabaseStorage_exports, {
@@ -28296,9 +28443,32 @@ var init_supabaseStorage = __esm({
       // ── SUMMARY ───────────────────────────────────────────────────────────────────
       async getPortfolioSummary(portfolioId) {
         const allHoldings = await this.getHoldings(portfolioId);
-        const holdingsValue = allHoldings.reduce((s, h) => s + h.value, 0);
+        let liveQuotes = [];
+        if (allHoldings.length > 0) {
+          try {
+            const { getFMPQuote: getFMPQuote2 } = await Promise.resolve().then(() => (init_fmp(), fmp_exports));
+            const tickers = allHoldings.map((h) => h.ticker).join(",");
+            const raw = await getFMPQuote2(tickers);
+            liveQuotes = Array.isArray(raw) ? raw : [];
+          } catch {
+          }
+        }
+        let holdingsValue = 0;
+        let dayChange = 0;
+        for (const h of allHoldings) {
+          const q = liveQuotes.find((lq) => lq.symbol === h.ticker);
+          if (q) {
+            h.price = q.price ?? h.price;
+            h.value = h.quantity * h.price;
+            h.dayChange = (q.change ?? 0) * h.quantity;
+            h.dayChangePct = q.changesPercentage ?? 0;
+            h.gainLoss = h.value - h.costBasis;
+            h.gainLossPct = h.costBasis > 0 ? h.gainLoss / h.costBasis * 100 : 0;
+          }
+          holdingsValue += h.value;
+          dayChange += h.dayChange ?? 0;
+        }
         const totalCostBasis = allHoldings.reduce((s, h) => s + h.costBasis, 0);
-        const dayChange = allHoldings.reduce((s, h) => s + (h.dayChange ?? 0), 0);
         let cash = 0;
         let startingCapital = 0;
         if (portfolioId) {
@@ -28316,7 +28486,7 @@ var init_supabaseStorage = __esm({
           totalGainLoss = holdingsValue - totalCostBasis;
           totalGainLossPct = totalCostBasis > 0 ? totalGainLoss / totalCostBasis * 100 : 0;
         }
-        const dayChangePct = totalValue > 0 ? dayChange / (totalValue - dayChange) * 100 : 0;
+        const dayChangePct = totalValue > 0 ? dayChange / totalValue * 100 : 0;
         let bestPerformer = null;
         let worstPerformer = null;
         for (const h of allHoldings) {
@@ -28418,124 +28588,6 @@ var init_supabaseStorage = __esm({
         return data ?? [];
       }
     };
-  }
-});
-
-// server/lib/fmp.ts
-async function fmpFetch(path3, params = {}) {
-  const key = process.env.FMP_API_KEY;
-  if (!key) return null;
-  const url = new URL(`${FMP_BASE}${path3}`);
-  url.searchParams.set("apikey", key);
-  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  const cacheKey = url.toString();
-  const TTL = 3e5;
-  const cached = _cache.get(cacheKey);
-  if (cached && Date.now() - cached.ts < TTL) return cached.data;
-  const existing = _inflight.get(cacheKey);
-  if (existing) return existing;
-  const p = (async () => {
-    try {
-      const res = await fetch(url.toString(), { signal: AbortSignal.timeout(12e3) });
-      if (!res.ok) return null;
-      const data = await res.json();
-      if (typeof data === "string") return null;
-      if (data && typeof data === "object" && !Array.isArray(data)) {
-        if (data["Error Message"] || data["error"]) return null;
-      }
-      const result = Array.isArray(data) && data.length === 0 ? null : data;
-      _cache.set(cacheKey, { data: result, ts: Date.now() });
-      return result;
-    } catch {
-      return null;
-    } finally {
-      _inflight.delete(cacheKey);
-    }
-  })();
-  _inflight.set(cacheKey, p);
-  return p;
-}
-async function getProfile(ticker) {
-  return fmpFetch("/profile", { symbol: ticker });
-}
-async function getIncomeStatement(ticker) {
-  return fmpFetch("/income-statement", { symbol: ticker, period: "quarter", limit: "8" });
-}
-async function getBalanceSheet(ticker) {
-  return fmpFetch("/balance-sheet-statement", { symbol: ticker, period: "quarter", limit: "4" });
-}
-async function getCashFlow(ticker) {
-  return fmpFetch("/cash-flow-statement", { symbol: ticker, period: "quarter", limit: "4" });
-}
-async function getKeyRatios(ticker) {
-  return fmpFetch("/ratios", { symbol: ticker, limit: "5" });
-}
-async function getKeyMetrics(ticker) {
-  return fmpFetch("/key-metrics", { symbol: ticker, limit: "5" });
-}
-async function getFinancialGrowth(ticker) {
-  return fmpFetch("/financial-growth", { symbol: ticker, limit: "4" });
-}
-async function getEarnings(ticker) {
-  return fmpFetch("/earnings", { symbol: ticker });
-}
-async function getUpgradesDowngrades(ticker) {
-  return fmpFetch("/upgrades-downgrades", { symbol: ticker });
-}
-async function getInsiderTrading(ticker) {
-  return fmpFetch("/insider-trading", { symbol: ticker, limit: "10" });
-}
-async function getFMPQuote(ticker) {
-  return fmpFetch("/quote", { symbol: ticker });
-}
-async function getDailyPrices(ticker) {
-  const key = ticker.toUpperCase();
-  const ttl = key === "SPY" ? 36e5 : 3e5;
-  const cached = _priceCache.get(key);
-  if (cached && Date.now() - cached.ts < ttl) return cached.data;
-  const existing = _priceInflight.get(key);
-  if (existing) return existing;
-  const p = fmpFetch("/historical-price-eod/full", { symbol: key }).then((data) => {
-    if (!data || !Array.isArray(data)) return [];
-    const bars = data.map((d) => ({
-      date: d.date,
-      open: d.open ?? d.adjOpen ?? 0,
-      high: d.high ?? d.adjHigh ?? 0,
-      low: d.low ?? d.adjLow ?? 0,
-      close: d.close ?? d.adjClose ?? 0,
-      volume: d.volume ?? 0
-    })).sort((a, b) => b.date.localeCompare(a.date));
-    _priceCache.set(key, { data: bars, ts: Date.now() });
-    _priceInflight.delete(key);
-    return bars;
-  }).catch(() => {
-    _priceInflight.delete(key);
-    return [];
-  });
-  _priceInflight.set(key, p);
-  return p;
-}
-async function screenStocks(params) {
-  const p = {
-    marketCapMoreThan: String(params.marketCapMoreThan ?? 5e8),
-    marketCapLessThan: String(params.marketCapLessThan ?? 5e10),
-    country: params.country ?? "US",
-    limit: "1000"
-  };
-  if (params.sector) p.sector = params.sector;
-  if (params.betaMoreThan !== void 0) p.betaMoreThan = String(params.betaMoreThan);
-  if (params.betaLessThan !== void 0) p.betaLessThan = String(params.betaLessThan);
-  return fmpFetch("/company-screener", p);
-}
-var FMP_BASE, _cache, _inflight, _priceCache, _priceInflight;
-var init_fmp = __esm({
-  "server/lib/fmp.ts"() {
-    "use strict";
-    FMP_BASE = "https://financialmodelingprep.com/stable";
-    _cache = /* @__PURE__ */ new Map();
-    _inflight = /* @__PURE__ */ new Map();
-    _priceCache = /* @__PURE__ */ new Map();
-    _priceInflight = /* @__PURE__ */ new Map();
   }
 });
 
@@ -28907,8 +28959,8 @@ __export(vercelHandler_exports, {
 module.exports = __toCommonJS(vercelHandler_exports);
 var import_express = __toESM(require_express2(), 1);
 var import_http = require("http");
-var import_path39 = __toESM(require("path"), 1);
-var import_fs3 = __toESM(require("fs"), 1);
+var import_path37 = __toESM(require("path"), 1);
+var import_fs = __toESM(require("fs"), 1);
 
 // node_modules/pg/esm/index.mjs
 var import_lib = __toESM(require_lib4(), 1);
@@ -29979,7 +30031,7 @@ function sql(strings, ...params) {
     return new SQL([new StringChunk(str2)]);
   }
   sql2.raw = raw;
-  function join3(chunks, separator) {
+  function join(chunks, separator) {
     const result = [];
     for (const [i, chunk] of chunks.entries()) {
       if (i > 0 && separator !== void 0) {
@@ -29989,7 +30041,7 @@ function sql(strings, ...params) {
     }
     return new SQL(result);
   }
-  sql2.join = join3;
+  sql2.join = join;
   function identifier(value) {
     return new Name(value);
   }
@@ -33493,7 +33545,7 @@ var PgSelectQueryBuilderBase = class extends TypedQueryBuilder {
     return (table, on) => {
       const baseTableName = this.tableName;
       const tableName = getTableLikeName(table);
-      if (typeof tableName === "string" && this.config.joins?.some((join3) => join3.alias === tableName)) {
+      if (typeof tableName === "string" && this.config.joins?.some((join) => join.alias === tableName)) {
         throw new Error(`Alias "${tableName}" is already used in this query`);
       }
       if (!this.isPartialSelect) {
@@ -34520,7 +34572,7 @@ var PgUpdateBase = class extends QueryPromise {
   createJoin(joinType) {
     return (table, on) => {
       const tableName = getTableLikeName(table);
-      if (typeof tableName === "string" && this.config.joins.some((join3) => join3.alias === tableName)) {
+      if (typeof tableName === "string" && this.config.joins.some((join) => join.alias === tableName)) {
         throw new Error(`Alias "${tableName}" is already used in this query`);
       }
       if (typeof on === "function") {
@@ -34616,10 +34668,10 @@ var PgUpdateBase = class extends QueryPromise {
           const fromFields = this.getTableLikeFields(this.config.from);
           fields[tableName] = fromFields;
         }
-        for (const join3 of this.config.joins) {
-          const tableName2 = getTableLikeName(join3.table);
-          if (typeof tableName2 === "string" && !is(join3.table, SQL)) {
-            const fromFields = this.getTableLikeFields(join3.table);
+        for (const join of this.config.joins) {
+          const tableName2 = getTableLikeName(join.table);
+          if (typeof tableName2 === "string" && !is(join.table, SQL)) {
+            const fromFields = this.getTableLikeFields(join.table);
             fields[tableName2] = fromFields;
           }
         }
@@ -39897,8 +39949,6 @@ var DatabaseStorage = class {
 
 // server/storage.ts
 var import_crypto2 = require("crypto");
-var import_fs = require("fs");
-var import_path = require("path");
 init_supabaseStorage();
 init_supabase();
 var MemStorage = class {
@@ -39916,64 +39966,9 @@ var MemStorage = class {
     this.seedData();
   }
   seedData() {
-    try {
-      const mapoPath = (0, import_path.join)(process.cwd(), "mapo-ai-portfolio.json");
-      const mapoRaw = (0, import_fs.readFileSync)(mapoPath, "utf-8");
-      const mapoData = JSON.parse(mapoRaw);
-      const mapoId = (0, import_crypto2.randomUUID)();
-      const mapoPortfolio = {
-        id: mapoId,
-        name: mapoData.name || "Mapo AI Portfolio",
-        type: mapoData.type || "custom"
-      };
-      this.portfolios.set(mapoId, mapoPortfolio);
-      this.portfolioMeta.set(mapoId, {
-        cash: mapoData.cash ?? 277,
-        startingCapital: mapoData.startingCapital || 20469.11
-      });
-      for (const h of mapoData.holdings) {
-        const holdingId = (0, import_crypto2.randomUUID)();
-        const holding = {
-          id: holdingId,
-          portfolioId: mapoId,
-          ticker: h.ticker,
-          name: h.name,
-          quantity: h.quantity,
-          costBasis: h.costBasis,
-          price: h.price,
-          value: h.value,
-          dayChange: h.dayChange ?? 0,
-          dayChangePct: h.dayChangePct ?? 0,
-          gainLoss: h.gainLoss ?? 0,
-          gainLossPct: h.gainLossPct ?? 0,
-          type: h.type,
-          sector: h.sector ?? "Other",
-          source: "manual"
-        };
-        this.holdings.set(holdingId, holding);
-      }
-      if (mapoData.trades) {
-        for (const t of mapoData.trades) {
-          const tradeId = (0, import_crypto2.randomUUID)();
-          const trade = {
-            id: tradeId,
-            portfolioId: mapoId,
-            date: t.date,
-            action: t.action,
-            ticker: t.ticker,
-            name: t.name,
-            shares: t.shares,
-            price: t.price,
-            total: t.total,
-            pnl: t.pnl ?? null,
-            rationale: t.rationale ?? null
-          };
-          this.trades.set(tradeId, trade);
-        }
-      }
-    } catch (e) {
-      console.error("Failed to seed Mapo AI portfolio data:", e);
-    }
+    const defaultId = (0, import_crypto2.randomUUID)();
+    this.portfolios.set(defaultId, { id: defaultId, name: "MAPO Portfolio", type: "custom" });
+    this.portfolioMeta.set(defaultId, { cash: 0, startingCapital: 0 });
   }
   async getPortfolios() {
     return Array.from(this.portfolios.values());
@@ -40088,9 +40083,32 @@ var MemStorage = class {
   async getPortfolioSummary(portfolioId) {
     let allHoldings = Array.from(this.holdings.values());
     if (portfolioId) allHoldings = allHoldings.filter((h) => h.portfolioId === portfolioId);
-    const holdingsValue = allHoldings.reduce((sum, h) => sum + h.value, 0);
+    let liveQuotes = [];
+    if (allHoldings.length > 0) {
+      try {
+        const { getFMPQuote: getFMPQuote2 } = await Promise.resolve().then(() => (init_fmp(), fmp_exports));
+        const tickers = allHoldings.map((h) => h.ticker).join(",");
+        const raw = await getFMPQuote2(tickers);
+        liveQuotes = Array.isArray(raw) ? raw : [];
+      } catch {
+      }
+    }
+    let holdingsValue = 0;
+    let dayChange = 0;
+    for (const h of allHoldings) {
+      const q = liveQuotes.find((lq) => lq.symbol === h.ticker);
+      if (q) {
+        h.price = q.price ?? h.price;
+        h.value = h.quantity * h.price;
+        h.dayChange = (q.change ?? 0) * h.quantity;
+        h.dayChangePct = q.changesPercentage ?? 0;
+        h.gainLoss = h.value - h.costBasis;
+        h.gainLossPct = h.costBasis > 0 ? h.gainLoss / h.costBasis * 100 : 0;
+      }
+      holdingsValue += h.value;
+      dayChange += h.dayChange ?? 0;
+    }
     const totalCostBasis = allHoldings.reduce((sum, h) => sum + h.costBasis, 0);
-    const dayChange = allHoldings.reduce((sum, h) => sum + (h.dayChange ?? 0), 0);
     const meta = portfolioId ? this.portfolioMeta.get(portfolioId) : null;
     const cash = meta?.cash ?? 0;
     const startingCapital = meta?.startingCapital ?? 0;
@@ -40726,6 +40744,15 @@ async function getCash() {
     return 0;
   }
 }
+async function getStartingCapital() {
+  try {
+    const sb = getSupabase2();
+    const { data } = await sb.from("portfolio_meta").select("starting_capital").limit(1).maybeSingle();
+    return Number(data?.starting_capital ?? 0);
+  } catch {
+    return 0;
+  }
+}
 async function getSnapshotHistory(days = 30) {
   try {
     const sb = getSupabase2();
@@ -40962,7 +40989,8 @@ async function portfolioStatusRoute(req, res) {
       })),
       totalValue
     );
-    const metrics = calcPortfolioMetrics(enriched, cash, 20469);
+    const startingCapital = await getStartingCapital();
+    const metrics = calcPortfolioMetrics(enriched, cash, startingCapital);
     const sectorWeights = calcSectorWeights(enriched, totalValue);
     const validation = runValidation(enriched, cash, totalValue);
     const drawdownAlerts = enriched.map((h) => checkDrawdown(h.entryPrice, h.currentPrice ?? h.entryPrice, h.ticker)).filter(Boolean);
@@ -49186,10 +49214,6 @@ OpenAI.Containers = Containers;
 OpenAI.Skills = Skills;
 OpenAI.Videos = Videos;
 
-// server/routes.ts
-var import_fs2 = require("fs");
-var import_path38 = require("path");
-
 // server/liveData.ts
 init_fmp();
 var FINNHUB_BASE = "https://finnhub.io/api/v1";
@@ -49770,6 +49794,19 @@ async function registerRoutes(httpServer, app2) {
           costBasis: newCostBasis,
           value: holding.price * newQty
         });
+      } else {
+        await storage.createHolding({
+          portfolioId: result.data.portfolioId,
+          ticker: result.data.ticker.toUpperCase(),
+          name: result.data.ticker.toUpperCase(),
+          quantity: result.data.shares,
+          costBasis: result.data.shares * result.data.price,
+          price: result.data.price,
+          value: result.data.shares * result.data.price,
+          type: "Stock",
+          sector: "Unknown",
+          source: "trade"
+        });
       }
     }
     res.status(201).json(trade);
@@ -49955,30 +49992,48 @@ RESPONSE INSTRUCTIONS:
       res.status(500).json({ error: "Failed to get AI response" });
     }
   });
+  async function buildPriceLookup(tickers) {
+    const unique = Array.from(new Set(tickers.map((t) => t.toUpperCase())));
+    const results = await Promise.all(
+      unique.map((t) => getDailyPrices(t).then((bars) => ({ ticker: t, bars })))
+    );
+    const prices = {};
+    const dateSet = /* @__PURE__ */ new Set();
+    for (const { ticker, bars } of results) {
+      const map = {};
+      for (const bar of bars) {
+        map[bar.date] = bar.close;
+        dateSet.add(bar.date);
+      }
+      prices[ticker] = map;
+    }
+    const allDates = Array.from(dateSet).sort();
+    return { prices, allDates };
+  }
   app2.get("/api/performance", async (req, res) => {
     const portfolioId = req.query.portfolioId;
     try {
-      const priceDataPath = (0, import_path38.join)(process.cwd(), "price-data.json");
-      const priceDataRaw = (0, import_fs2.readFileSync)(priceDataPath, "utf-8");
-      const prices = JSON.parse(priceDataRaw);
       const trades2 = await storage.getTrades(portfolioId);
       let portfolio;
       if (portfolioId) {
         portfolio = await storage.getPortfolio(portfolioId);
       }
       if (trades2.length > 0) {
-        let startingCapital = 20469.11;
-        let mapoData = {};
-        try {
-          const mapoPath = (0, import_path38.join)(process.cwd(), "mapo-ai-portfolio.json");
-          const mapoRaw = (0, import_fs2.readFileSync)(mapoPath, "utf-8");
-          mapoData = JSON.parse(mapoRaw);
-          startingCapital = mapoData.startingCapital || startingCapital;
-        } catch (e) {
+        let startingCapital = 0;
+        if (portfolioId) {
+          if (isSupabaseEnabled) {
+            const { supabase: supabase3 } = await Promise.resolve().then(() => (init_supabase(), supabase_exports));
+            const { data: meta } = await supabase3.from("portfolio_meta").select("starting_capital").eq("portfolio_id", portfolioId).single();
+            startingCapital = meta ? Number(meta.starting_capital) : 0;
+          } else if (storage.portfolioMeta) {
+            const meta = storage.portfolioMeta.get(portfolioId);
+            startingCapital = meta?.startingCapital ?? 0;
+          }
         }
         const sortedTrades = [...trades2].sort((a, b) => a.date.localeCompare(b.date));
-        const allDates2 = Object.keys(prices.VOO || {}).sort();
-        const portfolioStartDate = mapoData.startDate || sortedTrades[0]?.date || allDates2[0];
+        const tradedTickers = Array.from(new Set(sortedTrades.map((t) => t.ticker)));
+        const { prices: prices2, allDates: allDates2 } = await buildPriceLookup([...tradedTickers, "VOO", "QQQ"]);
+        const portfolioStartDate = sortedTrades[0]?.date || allDates2[0];
         const baseDate = allDates2.find((d) => d >= portfolioStartDate) || allDates2[0];
         const tradesByDate = {};
         for (const t of sortedTrades) {
@@ -49987,10 +50042,11 @@ RESPONSE INSTRUCTIONS:
         }
         const positions = {};
         let cash = startingCapital;
-        const vooBase2 = prices.VOO?.[baseDate] || 1;
-        const qqqBase2 = prices.QQQ?.[baseDate] || 1;
+        const vooBase2 = prices2.VOO?.[baseDate] || 1;
+        const qqqBase2 = prices2.QQQ?.[baseDate] || 1;
         const performanceData2 = [];
         for (const date2 of allDates2) {
+          if (date2 < baseDate) continue;
           if (tradesByDate[date2]) {
             for (const t of tradesByDate[date2]) {
               if (t.action === "BUY") {
@@ -50005,14 +50061,14 @@ RESPONSE INSTRUCTIONS:
           }
           let holdingsValue = 0;
           for (const [ticker, shares] of Object.entries(positions)) {
-            if (prices[ticker]?.[date2]) {
-              holdingsValue += shares * prices[ticker][date2];
+            if (prices2[ticker]?.[date2]) {
+              holdingsValue += shares * prices2[ticker][date2];
             }
           }
           const totalValue = cash + holdingsValue;
           const pctReturn = (totalValue - startingCapital) / startingCapital * 100;
-          const vooReturn = prices.VOO?.[date2] ? (prices.VOO[date2] - vooBase2) / vooBase2 * 100 : 0;
-          const qqqReturn = prices.QQQ?.[date2] ? (prices.QQQ[date2] - qqqBase2) / qqqBase2 * 100 : 0;
+          const vooReturn = prices2.VOO?.[date2] ? (prices2.VOO[date2] - vooBase2) / vooBase2 * 100 : 0;
+          const qqqReturn = prices2.QQQ?.[date2] ? (prices2.QQQ[date2] - qqqBase2) / qqqBase2 * 100 : 0;
           performanceData2.push({
             date: date2,
             portfolio: Math.round(pctReturn * 100) / 100,
@@ -50028,7 +50084,7 @@ RESPONSE INSTRUCTIONS:
             let liveHoldingsValue = 0;
             for (const [ticker, shares] of Object.entries(positions)) {
               const h = currentHoldings.find((x) => x.ticker === ticker);
-              const livePrice = h?.price ?? prices[ticker]?.[lastDate] ?? 0;
+              const livePrice = h?.price ?? prices2[ticker]?.[lastDate] ?? 0;
               liveHoldingsValue += shares * livePrice;
             }
             const todayTotalValue = cash + liveHoldingsValue;
@@ -50037,8 +50093,8 @@ RESPONSE INSTRUCTIONS:
               getFMPQuote("VOO"),
               getFMPQuote("QQQ")
             ]);
-            const liveVooPrice = vooQuote?.[0]?.price ?? vooQuote?.price ?? prices.VOO?.[lastDate] ?? vooBase2;
-            const liveQqqPrice = qqqQuote?.[0]?.price ?? qqqQuote?.price ?? prices.QQQ?.[lastDate] ?? qqqBase2;
+            const liveVooPrice = vooQuote?.[0]?.price ?? vooQuote?.price ?? prices2.VOO?.[lastDate] ?? vooBase2;
+            const liveQqqPrice = qqqQuote?.[0]?.price ?? qqqQuote?.price ?? prices2.QQQ?.[lastDate] ?? qqqBase2;
             const todayVooReturn = (liveVooPrice - vooBase2) / vooBase2 * 100;
             const todayQqqReturn = (liveQqqPrice - qqqBase2) / qqqBase2 * 100;
             performanceData2.push({
@@ -50052,9 +50108,11 @@ RESPONSE INSTRUCTIONS:
         }
         return res.json(performanceData2);
       }
-      const allDates = Object.keys(prices.VOO || {}).sort();
       const holdings2 = await storage.getHoldings(portfolioId);
+      if (holdings2.length === 0) return res.json([]);
       const totalCurrentValue = holdings2.reduce((s, h) => s + h.value, 0);
+      const holdingTickers = holdings2.map((h) => h.ticker);
+      const { prices, allDates } = await buildPriceLookup([...holdingTickers, "VOO", "QQQ"]);
       const firstDate = allDates[0];
       const vooBase = prices.VOO?.[firstDate] || 1;
       const qqqBase = prices.QQQ?.[firstDate] || 1;
@@ -50204,15 +50262,12 @@ RESPONSE INSTRUCTIONS:
   app2.get("/api/analytics", async (req, res) => {
     try {
       const portfolioId = req.query.portfolioId;
-      const priceDataPath = (0, import_path38.join)(process.cwd(), "price-data.json");
-      const priceDataRaw = (0, import_fs2.readFileSync)(priceDataPath, "utf-8");
-      const prices = JSON.parse(priceDataRaw);
       const holdings2 = await storage.getHoldings(portfolioId);
       if (holdings2.length === 0) {
         return res.json({ volatility: {}, correlation: {}, sharpe: null, sortino: null, beta: null, maxDrawdown: null });
       }
       const tickers = holdings2.map((h) => h.ticker);
-      const allDates = Object.keys(prices.VOO || {}).sort();
+      const { prices, allDates } = await buildPriceLookup([...tickers, "VOO"]);
       const recentDates = allDates.slice(-63);
       const getReturns = (ticker, dates) => {
         const tickerPrices = prices[ticker];
@@ -50706,22 +50761,7 @@ Return ONLY valid JSON, no markdown, no backticks, no explanation:
     try {
       const holdings2 = await storage.getHoldings(portfolioId);
       const summary = await storage.getPortfolioSummary(portfolioId);
-      let cash;
-      const summaryCash = summary.cash;
-      if (typeof summaryCash === "number") {
-        cash = summaryCash;
-      } else {
-        cash = 277;
-        try {
-          const mapoPath = (0, import_path38.join)(process.cwd(), "mapo-ai-portfolio.json");
-          const mapoRaw = (0, import_fs2.readFileSync)(mapoPath, "utf-8");
-          const mapoData = JSON.parse(mapoRaw);
-          if (typeof mapoData.cash === "number") {
-            cash = mapoData.cash;
-          }
-        } catch (_e) {
-        }
-      }
+      const cash = summary.cash ?? 0;
       const totalValue = summary.totalValue;
       const cashTargetPct = 10;
       const numPositions = holdings2.length;
@@ -50898,11 +50938,11 @@ function initApp() {
       if (res.headersSent) return next(err);
       res.status(status).json({ message });
     });
-    const publicDir = import_path39.default.resolve(process.cwd(), "dist", "public");
-    if (import_fs3.default.existsSync(publicDir)) {
+    const publicDir = import_path37.default.resolve(process.cwd(), "dist", "public");
+    if (import_fs.default.existsSync(publicDir)) {
       app.use(import_express.default.static(publicDir));
       app.use("/{*path}", (_req, res) => {
-        res.sendFile(import_path39.default.join(publicDir, "index.html"));
+        res.sendFile(import_path37.default.join(publicDir, "index.html"));
       });
     }
     initialized = true;

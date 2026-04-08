@@ -6,8 +6,6 @@ import {
 } from "@shared/schema";
 import { DatabaseStorage } from "./db";
 import { randomUUID } from "crypto";
-import { readFileSync } from "fs";
-import { join } from "path";
 
 export interface IStorage {
   getPortfolios(): Promise<Portfolio[]>;
@@ -55,69 +53,10 @@ export class MemStorage implements IStorage {
   }
 
   private seedData() {
-    // Seed Mapo AI Portfolio
-    try {
-      const mapoPath = join(process.cwd(), "mapo-ai-portfolio.json");
-      const mapoRaw = readFileSync(mapoPath, "utf-8");
-      const mapoData = JSON.parse(mapoRaw);
-
-      const mapoId = randomUUID();
-      const mapoPortfolio: Portfolio = {
-        id: mapoId,
-        name: mapoData.name || "Mapo AI Portfolio",
-        type: mapoData.type || "custom",
-      };
-      this.portfolios.set(mapoId, mapoPortfolio);
-      this.portfolioMeta.set(mapoId, {
-        cash: mapoData.cash ?? 277.00,
-        startingCapital: mapoData.startingCapital || 20469.11,
-      });
-
-      for (const h of mapoData.holdings) {
-        const holdingId = randomUUID();
-        const holding: Holding = {
-          id: holdingId,
-          portfolioId: mapoId,
-          ticker: h.ticker,
-          name: h.name,
-          quantity: h.quantity,
-          costBasis: h.costBasis,
-          price: h.price,
-          value: h.value,
-          dayChange: h.dayChange ?? 0,
-          dayChangePct: h.dayChangePct ?? 0,
-          gainLoss: h.gainLoss ?? 0,
-          gainLossPct: h.gainLossPct ?? 0,
-          type: h.type,
-          sector: h.sector ?? "Other",
-          source: "manual",
-        };
-        this.holdings.set(holdingId, holding);
-      }
-
-      // Seed trade history for Mapo AI Portfolio
-      if (mapoData.trades) {
-        for (const t of mapoData.trades) {
-          const tradeId = randomUUID();
-          const trade: Trade = {
-            id: tradeId,
-            portfolioId: mapoId,
-            date: t.date,
-            action: t.action,
-            ticker: t.ticker,
-            name: t.name,
-            shares: t.shares,
-            price: t.price,
-            total: t.total,
-            pnl: t.pnl ?? null,
-            rationale: t.rationale ?? null,
-          };
-          this.trades.set(tradeId, trade);
-        }
-      }
-    } catch (e) {
-      console.error("Failed to seed Mapo AI portfolio data:", e);
-    }
+    // Empty state — real data comes from Supabase
+    const defaultId = randomUUID();
+    this.portfolios.set(defaultId, { id: defaultId, name: "MAPO Portfolio", type: "custom" });
+    this.portfolioMeta.set(defaultId, { cash: 0, startingCapital: 0 });
   }
 
   async getPortfolios(): Promise<Portfolio[]> {

@@ -3,7 +3,7 @@
  * Returns enriched holdings, portfolio metrics, drawdown alerts, validation
  */
 import type { Request, Response } from "express";
-import { getHoldings, getCash } from "../../../lib/portfolio/state.js";
+import { getHoldings, getCash, getStartingCapital } from "../../../lib/portfolio/state.js";
 import { getFMPQuote } from "../../../../server/lib/fmp.js";
 import { enrichHoldings, calcPortfolioMetrics, calcSectorWeights } from "../../../lib/portfolio/calculations.js";
 import { runValidation } from "../../../lib/portfolio/validation.js";
@@ -41,7 +41,8 @@ export async function portfolioStatusRoute(req: Request, res: Response): Promise
       totalValue
     );
 
-    const metrics = calcPortfolioMetrics(enriched, cash, 20_469);
+    const startingCapital = await getStartingCapital();
+    const metrics = calcPortfolioMetrics(enriched, cash, startingCapital);
     const sectorWeights = calcSectorWeights(enriched, totalValue);
     const validation = runValidation(enriched, cash, totalValue);
 
