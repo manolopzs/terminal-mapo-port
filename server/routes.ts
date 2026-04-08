@@ -159,7 +159,7 @@ export async function registerRoutes(
       }
     }
 
-    // On BUY: add to or create the matching holding
+    // On BUY: add to existing holding or create new one
     if (result.data.action === "BUY" && result.data.portfolioId) {
       const holdings = await storage.getHoldings(result.data.portfolioId);
       const holding = holdings.find(
@@ -172,6 +172,19 @@ export async function registerRoutes(
           quantity: newQty,
           costBasis: newCostBasis,
           value: holding.price * newQty,
+        });
+      } else {
+        await storage.createHolding({
+          portfolioId: result.data.portfolioId,
+          ticker: result.data.ticker.toUpperCase(),
+          name: result.data.ticker.toUpperCase(),
+          quantity: result.data.shares,
+          costBasis: result.data.shares * result.data.price,
+          price: result.data.price,
+          value: result.data.shares * result.data.price,
+          type: "Stock",
+          sector: "Unknown",
+          source: "trade",
         });
       }
     }
