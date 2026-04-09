@@ -210,16 +210,27 @@ export async function registerRoutes(
             value: holding.price * newQty,
           });
         } else {
+          // Fetch real company name + sector from FMP
+          let companyName = result.data.name || result.data.ticker.toUpperCase();
+          let sector = "Unknown";
+          try {
+            const profile = await fmp.getProfile(result.data.ticker.toUpperCase());
+            const p = Array.isArray(profile) ? profile[0] : profile;
+            if (p) {
+              companyName = p.companyName ?? companyName;
+              sector = p.sector ?? "Unknown";
+            }
+          } catch {}
           await storage.createHolding({
             portfolioId: result.data.portfolioId,
             ticker: result.data.ticker.toUpperCase(),
-            name: result.data.ticker.toUpperCase(),
+            name: companyName,
             quantity: result.data.shares,
             costBasis: result.data.shares * result.data.price,
             price: result.data.price,
             value: result.data.shares * result.data.price,
             type: "Stock",
-            sector: "Unknown",
+            sector,
             source: "trade",
           });
         }
