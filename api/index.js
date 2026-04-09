@@ -40438,6 +40438,13 @@ CRITICAL RULES:
 - If Donchian position > 0.95 (within 5% of 52-week high): AUTOMATIC REJECT regardless of score
 - The final composite score is the weighted sum
 
+RATING THRESHOLDS (STRICT \u2014 use these exactly):
+- STRONG_BUY: compositeScore >= 80
+- BUY: compositeScore >= 65 AND Donchian position < 0.80
+- HOLD: compositeScore >= 50 OR (compositeScore >= 65 AND Donchian >= 0.80)
+- AVOID: compositeScore < 50
+IMPORTANT: A stock CANNOT be rated BUY or STRONG_BUY if its Donchian position >= 0.80 (within 20% of 52-week high). This is a hard rule. Stocks near highs are HOLD at best, even with great fundamentals. MAPO only buys on pullbacks.
+
 SCORING WEIGHTS:
 - Growth Trajectory: 30% (Revenue growth %, EPS growth %, guidance direction, TAM expansion)
 - Macro Alignment: 20% (AGI thesis fit, sector tailwinds, rate sensitivity, secular trend)
@@ -40445,6 +40452,13 @@ SCORING WEIGHTS:
 - Technical Factors: 15% (Price vs MAs, Donchian position, volume trend, RSI)
 - Sentiment: 10% (Analyst actions, insider activity, news tone)
 - Valuation: 5% (P/E, P/S, P/B, PEG, EV/EBITDA \u2014 score relative to growth rate, NOT absolute multiples. High-growth companies deserve premium valuations)
+
+TECHNICAL FACTOR SCORING \u2014 DONCHIAN POSITION IS CRITICAL:
+- Donchian 0-30% (near 52-week low): Technical base 70-90 (great entry zone)
+- Donchian 30-60% (middle of range): Technical base 50-70 (acceptable entry)
+- Donchian 60-80% (extended): Technical base 30-50 (poor entry, penalize)
+- Donchian 80-95% (near high): Technical base 10-30 (do NOT recommend buying)
+- Donchian > 95%: AUTOMATIC REJECT
 
 QUANT ADJUSTMENTS TO APPLY:
 - Momentum confirmed (12-1 month return > 10%): +5 pts to Technical base
@@ -40638,10 +40652,17 @@ ${JSON.stringify(dataPackage, null, 2)}`
           timestamp: (/* @__PURE__ */ new Date()).toISOString()
         };
       }
+      const cs = parsed.compositeScore ?? 0;
+      const donPos = quantSignals.donchian.position;
+      let enforcedRating;
+      if (cs >= 80 && donPos < 0.8) enforcedRating = "STRONG_BUY";
+      else if (cs >= 65 && donPos < 0.8) enforcedRating = "BUY";
+      else if (cs >= 50) enforcedRating = "HOLD";
+      else enforcedRating = "AVOID";
       scoring = {
         factors: parsed.factors,
-        compositeScore: parsed.compositeScore,
-        rating: parsed.rating,
+        compositeScore: cs,
+        rating: enforcedRating,
         bullCase: parsed.bullCase ?? [],
         bearCase: parsed.bearCase ?? [],
         recommendation: parsed.recommendation ?? "",
@@ -49750,6 +49771,23 @@ async function registerRoutes(httpServer, app2) {
     const deleted = await storage.deleteHolding(req.params.id);
     if (!deleted) return res.status(404).json({ error: "Holding not found" });
     res.json({ success: true });
+  });
+  app2.put("/api/portfolio/:id/cash", async (req, res) => {
+    const { cash } = req.body ?? {};
+    if (typeof cash !== "number") return res.status(400).json({ error: "cash must be a number" });
+    const meta = storage.portfolioMeta?.get(req.params.id);
+    if (meta) {
+      meta.cash = cash;
+      storage.portfolioMeta.set(req.params.id, meta);
+    }
+    try {
+      const { supabase: supabase3, isSupabaseEnabled: isSupabaseEnabled3 } = await Promise.resolve().then(() => (init_supabase(), supabase_exports));
+      if (isSupabaseEnabled3) {
+        await supabase3.from("portfolio_meta").update({ cash }).eq("portfolio_id", req.params.id);
+      }
+    } catch {
+    }
+    res.json({ success: true, cash });
   });
   app2.get("/api/trades", async (req, res) => {
     const portfolioId = req.query.portfolioId;

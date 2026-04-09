@@ -120,6 +120,25 @@ export async function registerRoutes(
     res.json({ success: true });
   });
 
+  // Update portfolio cash
+  app.put("/api/portfolio/:id/cash", async (req, res) => {
+    const { cash } = req.body ?? {};
+    if (typeof cash !== "number") return res.status(400).json({ error: "cash must be a number" });
+    const meta = (storage as any).portfolioMeta?.get(req.params.id);
+    if (meta) {
+      meta.cash = cash;
+      (storage as any).portfolioMeta.set(req.params.id, meta);
+    }
+    // Also update Supabase if available
+    try {
+      const { supabase, isSupabaseEnabled } = await import("./lib/supabase.js");
+      if (isSupabaseEnabled) {
+        await supabase.from("portfolio_meta").update({ cash }).eq("portfolio_id", req.params.id);
+      }
+    } catch {}
+    res.json({ success: true, cash });
+  });
+
   // Trades
   app.get("/api/trades", async (req, res) => {
     const portfolioId = req.query.portfolioId as string | undefined;
