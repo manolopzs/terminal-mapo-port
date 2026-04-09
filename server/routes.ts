@@ -151,62 +151,134 @@ export async function registerRoutes(
     if (!result.success) {
       return res.status(400).json({ error: "Invalid trade data", details: result.error.flatten() });
     }
-    const trade = await storage.createTrade(result.data);
 
-    // On SELL: reduce or remove the matching holding
+    // BUG 7: Validate price and shares are positive
+    if (result.data.shares <= 0 || result.data.price <= 0) {
+      return res.status(400).json({ error: "Shares and price must be greater than 0" });
+    }
+
+    // BUG 5: Validate SELL has existing holding with sufficient quantity
     if (result.data.action === "SELL" && result.data.portfolioId) {
       const holdings = await storage.getHoldings(result.data.portfolioId);
       const holding = holdings.find(
         (h) => h.ticker.toUpperCase() === result.data.ticker.toUpperCase()
       );
-      if (holding) {
-        const remaining = holding.quantity - result.data.shares;
-        if (remaining <= 0) {
-          // Full exit — remove the holding
-          await storage.deleteHolding(holding.id);
-        } else {
-          // Partial sell — reduce quantity and cost basis proportionally
-          const costPerShare = holding.costBasis / holding.quantity;
+      if (!holding) {
+        return res.status(400).json({ error: `No holding found for ticker ${result.data.ticker.toUpperCase()}` });
+      }
+      if (result.data.shares > holding.quantity) {
+        return res.status(400).json({ error: `Cannot sell ${result.data.shares} shares — only ${holding.quantity} held` });
+      }
+    }
+
+    const trade = await storage.createTrade(result.data);
+
+    // On SELL: reduce or remove the matching holding
+    try {
+      if (result.data.action === "SELL" && result.data.portfolioId) {
+        const holdings = await storage.getHoldings(result.data.portfolioId);
+        const holding = holdings.find(
+          (h) => h.ticker.toUpperCase() === result.data.ticker.toUpperCase()
+        );
+        if (holding) {
+          const remaining = holding.quantity - result.data.shares;
+          if (remaining <= 0) {
+            await storage.deleteHolding(holding.id);
+          } else {
+            const costPerShare = holding.costBasis / holding.quantity;
+            await storage.updateHolding(holding.id, {
+              quantity: remaining,
+              costBasis: costPerShare * remaining,
+              value: holding.price * remaining,
+            });
+          }
+        }
+      }
+
+      // On BUY: add to existing holding or create new one
+      if (result.data.action === "BUY" && result.data.portfolioId) {
+        const holdings = await storage.getHoldings(result.data.portfolioId);
+        const holding = holdings.find(
+          (h) => h.ticker.toUpperCase() === result.data.ticker.toUpperCase()
+        );
+        if (holding) {
+          const newQty = holding.quantity + result.data.shares;
+          const newCostBasis = holding.costBasis + (result.data.shares * result.data.price);
           await storage.updateHolding(holding.id, {
-            quantity: remaining,
-            costBasis: costPerShare * remaining,
-            value: holding.price * remaining,
+            quantity: newQty,
+            costBasis: newCostBasis,
+            value: holding.price * newQty,
+          });
+        } else {
+          await storage.createHolding({
+            portfolioId: result.data.portfolioId,
+            ticker: result.data.ticker.toUpperCase(),
+            name: result.data.ticker.toUpperCase(),
+            quantity: result.data.shares,
+            costBasis: result.data.shares * result.data.price,
+            price: result.data.price,
+            value: result.data.shares * result.data.price,
+            type: "Stock",
+            sector: "Unknown",
+            source: "trade",
           });
         }
       }
-    }
-
-    // On BUY: add to existing holding or create new one
-    if (result.data.action === "BUY" && result.data.portfolioId) {
-      const holdings = await storage.getHoldings(result.data.portfolioId);
-      const holding = holdings.find(
-        (h) => h.ticker.toUpperCase() === result.data.ticker.toUpperCase()
-      );
-      if (holding) {
-        const newQty = holding.quantity + result.data.shares;
-        const newCostBasis = holding.costBasis + (result.data.shares * result.data.price);
-        await storage.updateHolding(holding.id, {
-          quantity: newQty,
-          costBasis: newCostBasis,
-          value: holding.price * newQty,
-        });
-      } else {
-        await storage.createHolding({
-          portfolioId: result.data.portfolioId,
-          ticker: result.data.ticker.toUpperCase(),
-          name: result.data.ticker.toUpperCase(),
-          quantity: result.data.shares,
-          costBasis: result.data.shares * result.data.price,
-          price: result.data.price,
-          value: result.data.shares * result.data.price,
-          type: "Stock",
-          sector: "Unknown",
-          source: "trade",
-        });
-      }
+    } catch (err) {
+      console.error("[routes] Error updating holdings after trade:", err);
     }
 
     res.status(201).json(trade);
+  });
+
+  app.delete("/api/trades/:id", async (req, res) => {
+    const trade = await storage.getTrade(req.params.id);
+    if (!trade) return res.status(404).json({ error: "Trade not found" });
+
+    // Reverse the cash impact
+    if (trade.portfolioId) {
+      const total = trade.total ?? (trade.shares * trade.price);
+      try {
+        const { supabase: sb, isSupabaseEnabled: isSupa } = await import("./lib/supabase.js");
+        if (isSupa) {
+          const { data: meta } = await sb
+            .from("portfolio_meta")
+            .select("cash")
+            .eq("portfolio_id", trade.portfolioId)
+            .single();
+          if (meta) {
+            // BUY deleted = add cash back; SELL deleted = subtract cash
+            const newCash = trade.action === "BUY"
+              ? Number(meta.cash) + total
+              : Number(meta.cash) - total;
+            await sb.from("portfolio_meta").update({ cash: newCash }).eq("portfolio_id", trade.portfolioId);
+          }
+        }
+      } catch {}
+      // Also handle MemStorage
+      const memMeta = (storage as any).portfolioMeta?.get(trade.portfolioId);
+      if (memMeta) {
+        if (trade.action === "BUY") memMeta.cash += total;
+        else memMeta.cash -= total;
+        (storage as any).portfolioMeta?.set(trade.portfolioId, memMeta);
+      }
+    }
+
+    const deleted = await storage.deleteTrade(req.params.id);
+    if (!deleted) return res.status(500).json({ error: "Failed to delete trade" });
+    res.json({ success: true });
+  });
+
+  app.put("/api/trades/:id", async (req, res) => {
+    const { price, shares, total, rationale } = req.body ?? {};
+    const updates: any = {};
+    if (price !== undefined) updates.price = price;
+    if (shares !== undefined) updates.shares = shares;
+    if (total !== undefined) updates.total = total;
+    if (rationale !== undefined) updates.rationale = rationale;
+    const updated = await storage.updateTrade(req.params.id, updates);
+    if (!updated) return res.status(404).json({ error: "Trade not found" });
+    res.json(updated);
   });
 
   // Chat messages

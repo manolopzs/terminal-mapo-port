@@ -140,7 +140,10 @@ export class SupabaseStorage {
         const total = t.total ?? (t.shares * t.price);
         const newCash = t.action === "SELL"
           ? Number(meta.cash) + total
-          : Math.max(0, Number(meta.cash) - total);
+          : Number(meta.cash) - total;
+        if (newCash < 0) {
+          console.warn(`[supabase] Cash went negative for portfolio ${t.portfolioId}: $${newCash.toFixed(2)}`);
+        }
         await supabase
           .from("portfolio_meta")
           .update({ cash: newCash })
@@ -148,6 +151,33 @@ export class SupabaseStorage {
       }
     }
 
+    return this.mapTrade(data);
+  }
+
+  async getTrade(id: string): Promise<Trade | undefined> {
+    const { data, error } = await supabase.from("trades").select("*").eq("id", id).single();
+    if (error || !data) return undefined;
+    return this.mapTrade(data);
+  }
+
+  async deleteTrade(id: string): Promise<boolean> {
+    const { error } = await supabase.from("trades").delete().eq("id", id);
+    return !error;
+  }
+
+  async updateTrade(id: string, updates: Partial<InsertTrade>): Promise<Trade | undefined> {
+    const row: any = {};
+    if (updates.price !== undefined) row.price = updates.price;
+    if (updates.shares !== undefined) row.shares = updates.shares;
+    if (updates.total !== undefined) row.total = updates.total;
+    if (updates.pnl !== undefined) row.pnl = updates.pnl;
+    if (updates.rationale !== undefined) row.rationale = updates.rationale;
+    if (updates.action !== undefined) row.action = updates.action;
+    if (updates.ticker !== undefined) row.ticker = updates.ticker;
+    if (updates.name !== undefined) row.name = updates.name;
+    if (updates.date !== undefined) row.date = updates.date;
+    const { data, error } = await supabase.from("trades").update(row).eq("id", id).select().single();
+    if (error) return undefined;
     return this.mapTrade(data);
   }
 

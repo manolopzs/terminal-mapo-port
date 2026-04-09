@@ -18,7 +18,10 @@ export interface IStorage {
   updateHolding(id: string, holding: Partial<InsertHolding>): Promise<Holding | undefined>;
   deleteHolding(id: string): Promise<boolean>;
   getTrades(portfolioId?: string): Promise<Trade[]>;
+  getTrade(id: string): Promise<Trade | undefined>;
   createTrade(trade: InsertTrade): Promise<Trade>;
+  deleteTrade(id: string): Promise<boolean>;
+  updateTrade(id: string, data: Partial<InsertTrade>): Promise<Trade | undefined>;
   getChatMessages(portfolioId: string): Promise<ChatMessage[]>;
   createChatMessage(msg: InsertChatMessage): Promise<ChatMessage>;
   clearChatMessages(portfolioId: string): Promise<void>;
@@ -160,13 +163,32 @@ export class MemStorage implements IStorage {
         if (insertTrade.action === "SELL") {
           meta.cash += total;
         } else if (insertTrade.action === "BUY") {
-          meta.cash = Math.max(0, meta.cash - total);
+          meta.cash = meta.cash - total;
+          if (meta.cash < 0) {
+            console.warn(`[storage] Cash went negative for portfolio ${insertTrade.portfolioId}: $${meta.cash.toFixed(2)}`);
+          }
         }
         this.portfolioMeta.set(insertTrade.portfolioId, meta);
       }
     }
 
     return trade;
+  }
+
+  async getTrade(id: string): Promise<Trade | undefined> {
+    return this.trades.get(id);
+  }
+
+  async deleteTrade(id: string): Promise<boolean> {
+    return this.trades.delete(id);
+  }
+
+  async updateTrade(id: string, updates: Partial<InsertTrade>): Promise<Trade | undefined> {
+    const existing = this.trades.get(id);
+    if (!existing) return undefined;
+    const updated: Trade = { ...existing, ...updates, id };
+    this.trades.set(id, updated);
+    return updated;
   }
 
   async getChatMessages(portfolioId: string): Promise<ChatMessage[]> {

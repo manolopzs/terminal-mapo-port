@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useHoldings, useCreateTrade, useUpdateHolding, useDeleteHolding } from "@/hooks/use-portfolio";
+import { useHoldings, useCreateTrade, useUpdateHolding, useDeleteHolding, useCreateHolding } from "@/hooks/use-portfolio";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,7 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
   const createTrade = useCreateTrade();
   const updateHolding = useUpdateHolding();
   const deleteHolding = useDeleteHolding();
+  const createHolding = useCreateHolding();
 
   // Find matching holding for auto-fill and P&L calc
   const matchedHolding = useMemo(() => {
@@ -107,6 +108,20 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
                 gainLoss: newValue - newCost,
                 gainLossPct: newCost > 0 ? ((newValue - newCost) / newCost) * 100 : 0,
               },
+            });
+          } else if (action === "BUY" && !matchedHolding) {
+            // New position — create holding
+            createHolding.mutate({
+              portfolioId,
+              ticker: ticker.toUpperCase(),
+              name: ticker.toUpperCase(),
+              quantity: sharesNum,
+              costBasis: total,
+              price: priceNum,
+              value: total,
+              type: "Stock",
+              sector: "Other",
+              source: "trade",
             });
           }
           onOpenChange(false);
@@ -232,6 +247,7 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
               <Input
                 type="number"
                 step="any"
+                min="0.01"
                 value={shares}
                 onChange={(e) => setShares(e.target.value)}
                 placeholder="10"
@@ -245,6 +261,7 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
               <Input
                 type="number"
                 step="any"
+                min="0.01"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="450.00"

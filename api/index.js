@@ -28413,10 +28413,37 @@ var init_supabaseStorage = __esm({
           const { data: meta } = await supabase.from("portfolio_meta").select("cash").eq("portfolio_id", t.portfolioId).single();
           if (meta) {
             const total = t.total ?? t.shares * t.price;
-            const newCash = t.action === "SELL" ? Number(meta.cash) + total : Math.max(0, Number(meta.cash) - total);
+            const newCash = t.action === "SELL" ? Number(meta.cash) + total : Number(meta.cash) - total;
+            if (newCash < 0) {
+              console.warn(`[supabase] Cash went negative for portfolio ${t.portfolioId}: $${newCash.toFixed(2)}`);
+            }
             await supabase.from("portfolio_meta").update({ cash: newCash }).eq("portfolio_id", t.portfolioId);
           }
         }
+        return this.mapTrade(data);
+      }
+      async getTrade(id) {
+        const { data, error } = await supabase.from("trades").select("*").eq("id", id).single();
+        if (error || !data) return void 0;
+        return this.mapTrade(data);
+      }
+      async deleteTrade(id) {
+        const { error } = await supabase.from("trades").delete().eq("id", id);
+        return !error;
+      }
+      async updateTrade(id, updates) {
+        const row = {};
+        if (updates.price !== void 0) row.price = updates.price;
+        if (updates.shares !== void 0) row.shares = updates.shares;
+        if (updates.total !== void 0) row.total = updates.total;
+        if (updates.pnl !== void 0) row.pnl = updates.pnl;
+        if (updates.rationale !== void 0) row.rationale = updates.rationale;
+        if (updates.action !== void 0) row.action = updates.action;
+        if (updates.ticker !== void 0) row.ticker = updates.ticker;
+        if (updates.name !== void 0) row.name = updates.name;
+        if (updates.date !== void 0) row.date = updates.date;
+        const { data, error } = await supabase.from("trades").update(row).eq("id", id).select().single();
+        if (error) return void 0;
         return this.mapTrade(data);
       }
       // ── CHAT MESSAGES ─────────────────────────────────────────────────────────────
@@ -39906,6 +39933,18 @@ var DatabaseStorage = class {
     const rows = await db.insert(trades).values(trade).returning();
     return rows[0];
   }
+  async getTrade(id) {
+    const rows = await db.select().from(trades).where(eq(trades.id, id));
+    return rows[0];
+  }
+  async deleteTrade(id) {
+    const rows = await db.delete(trades).where(eq(trades.id, id)).returning();
+    return rows.length > 0;
+  }
+  async updateTrade(id, updates) {
+    const rows = await db.update(trades).set(updates).where(eq(trades.id, id)).returning();
+    return rows[0];
+  }
   async getChatMessages(portfolioId) {
     return db.select().from(chatMessages).where(eq(chatMessages.portfolioId, portfolioId)).orderBy(chatMessages.timestamp);
   }
@@ -40057,12 +40096,28 @@ var MemStorage = class {
         if (insertTrade.action === "SELL") {
           meta.cash += total;
         } else if (insertTrade.action === "BUY") {
-          meta.cash = Math.max(0, meta.cash - total);
+          meta.cash = meta.cash - total;
+          if (meta.cash < 0) {
+            console.warn(`[storage] Cash went negative for portfolio ${insertTrade.portfolioId}: $${meta.cash.toFixed(2)}`);
+          }
         }
         this.portfolioMeta.set(insertTrade.portfolioId, meta);
       }
     }
     return trade;
+  }
+  async getTrade(id) {
+    return this.trades.get(id);
+  }
+  async deleteTrade(id) {
+    return this.trades.delete(id);
+  }
+  async updateTrade(id, updates) {
+    const existing = this.trades.get(id);
+    if (!existing) return void 0;
+    const updated = { ...existing, ...updates, id };
+    this.trades.set(id, updated);
+    return updated;
   }
   async getChatMessages(portfolioId) {
     return Array.from(this.chatMessages.values()).filter((m) => m.portfolioId === portfolioId).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
@@ -49799,55 +49854,112 @@ async function registerRoutes(httpServer, app2) {
     if (!result.success) {
       return res.status(400).json({ error: "Invalid trade data", details: result.error.flatten() });
     }
-    const trade = await storage.createTrade(result.data);
+    if (result.data.shares <= 0 || result.data.price <= 0) {
+      return res.status(400).json({ error: "Shares and price must be greater than 0" });
+    }
     if (result.data.action === "SELL" && result.data.portfolioId) {
       const holdings2 = await storage.getHoldings(result.data.portfolioId);
       const holding = holdings2.find(
         (h) => h.ticker.toUpperCase() === result.data.ticker.toUpperCase()
       );
-      if (holding) {
-        const remaining = holding.quantity - result.data.shares;
-        if (remaining <= 0) {
-          await storage.deleteHolding(holding.id);
-        } else {
-          const costPerShare = holding.costBasis / holding.quantity;
+      if (!holding) {
+        return res.status(400).json({ error: `No holding found for ticker ${result.data.ticker.toUpperCase()}` });
+      }
+      if (result.data.shares > holding.quantity) {
+        return res.status(400).json({ error: `Cannot sell ${result.data.shares} shares \u2014 only ${holding.quantity} held` });
+      }
+    }
+    const trade = await storage.createTrade(result.data);
+    try {
+      if (result.data.action === "SELL" && result.data.portfolioId) {
+        const holdings2 = await storage.getHoldings(result.data.portfolioId);
+        const holding = holdings2.find(
+          (h) => h.ticker.toUpperCase() === result.data.ticker.toUpperCase()
+        );
+        if (holding) {
+          const remaining = holding.quantity - result.data.shares;
+          if (remaining <= 0) {
+            await storage.deleteHolding(holding.id);
+          } else {
+            const costPerShare = holding.costBasis / holding.quantity;
+            await storage.updateHolding(holding.id, {
+              quantity: remaining,
+              costBasis: costPerShare * remaining,
+              value: holding.price * remaining
+            });
+          }
+        }
+      }
+      if (result.data.action === "BUY" && result.data.portfolioId) {
+        const holdings2 = await storage.getHoldings(result.data.portfolioId);
+        const holding = holdings2.find(
+          (h) => h.ticker.toUpperCase() === result.data.ticker.toUpperCase()
+        );
+        if (holding) {
+          const newQty = holding.quantity + result.data.shares;
+          const newCostBasis = holding.costBasis + result.data.shares * result.data.price;
           await storage.updateHolding(holding.id, {
-            quantity: remaining,
-            costBasis: costPerShare * remaining,
-            value: holding.price * remaining
+            quantity: newQty,
+            costBasis: newCostBasis,
+            value: holding.price * newQty
+          });
+        } else {
+          await storage.createHolding({
+            portfolioId: result.data.portfolioId,
+            ticker: result.data.ticker.toUpperCase(),
+            name: result.data.ticker.toUpperCase(),
+            quantity: result.data.shares,
+            costBasis: result.data.shares * result.data.price,
+            price: result.data.price,
+            value: result.data.shares * result.data.price,
+            type: "Stock",
+            sector: "Unknown",
+            source: "trade"
           });
         }
       }
-    }
-    if (result.data.action === "BUY" && result.data.portfolioId) {
-      const holdings2 = await storage.getHoldings(result.data.portfolioId);
-      const holding = holdings2.find(
-        (h) => h.ticker.toUpperCase() === result.data.ticker.toUpperCase()
-      );
-      if (holding) {
-        const newQty = holding.quantity + result.data.shares;
-        const newCostBasis = holding.costBasis + result.data.shares * result.data.price;
-        await storage.updateHolding(holding.id, {
-          quantity: newQty,
-          costBasis: newCostBasis,
-          value: holding.price * newQty
-        });
-      } else {
-        await storage.createHolding({
-          portfolioId: result.data.portfolioId,
-          ticker: result.data.ticker.toUpperCase(),
-          name: result.data.ticker.toUpperCase(),
-          quantity: result.data.shares,
-          costBasis: result.data.shares * result.data.price,
-          price: result.data.price,
-          value: result.data.shares * result.data.price,
-          type: "Stock",
-          sector: "Unknown",
-          source: "trade"
-        });
-      }
+    } catch (err) {
+      console.error("[routes] Error updating holdings after trade:", err);
     }
     res.status(201).json(trade);
+  });
+  app2.delete("/api/trades/:id", async (req, res) => {
+    const trade = await storage.getTrade(req.params.id);
+    if (!trade) return res.status(404).json({ error: "Trade not found" });
+    if (trade.portfolioId) {
+      const total = trade.total ?? trade.shares * trade.price;
+      try {
+        const { supabase: sb, isSupabaseEnabled: isSupa } = await Promise.resolve().then(() => (init_supabase(), supabase_exports));
+        if (isSupa) {
+          const { data: meta } = await sb.from("portfolio_meta").select("cash").eq("portfolio_id", trade.portfolioId).single();
+          if (meta) {
+            const newCash = trade.action === "BUY" ? Number(meta.cash) + total : Number(meta.cash) - total;
+            await sb.from("portfolio_meta").update({ cash: newCash }).eq("portfolio_id", trade.portfolioId);
+          }
+        }
+      } catch {
+      }
+      const memMeta = storage.portfolioMeta?.get(trade.portfolioId);
+      if (memMeta) {
+        if (trade.action === "BUY") memMeta.cash += total;
+        else memMeta.cash -= total;
+        storage.portfolioMeta?.set(trade.portfolioId, memMeta);
+      }
+    }
+    const deleted = await storage.deleteTrade(req.params.id);
+    if (!deleted) return res.status(500).json({ error: "Failed to delete trade" });
+    res.json({ success: true });
+  });
+  app2.put("/api/trades/:id", async (req, res) => {
+    const { price, shares, total, rationale } = req.body ?? {};
+    const updates = {};
+    if (price !== void 0) updates.price = price;
+    if (shares !== void 0) updates.shares = shares;
+    if (total !== void 0) updates.total = total;
+    if (rationale !== void 0) updates.rationale = rationale;
+    const updated = await storage.updateTrade(req.params.id, updates);
+    if (!updated) return res.status(404).json({ error: "Trade not found" });
+    res.json(updated);
   });
   app2.get("/api/chat", async (req, res) => {
     const portfolioId = req.query.portfolioId;

@@ -76,6 +76,21 @@ export class DatabaseStorage implements IStorage {
     return rows[0];
   }
 
+  async getTrade(id: string): Promise<Trade | undefined> {
+    const rows = await db.select().from(trades).where(eq(trades.id, id));
+    return rows[0];
+  }
+
+  async deleteTrade(id: string): Promise<boolean> {
+    const rows = await db.delete(trades).where(eq(trades.id, id)).returning();
+    return rows.length > 0;
+  }
+
+  async updateTrade(id: string, updates: Partial<InsertTrade>): Promise<Trade | undefined> {
+    const rows = await db.update(trades).set(updates).where(eq(trades.id, id)).returning();
+    return rows[0];
+  }
+
   async getChatMessages(portfolioId: string): Promise<ChatMessage[]> {
     return db.select().from(chatMessages).where(eq(chatMessages.portfolioId, portfolioId)).orderBy(chatMessages.timestamp);
   }

@@ -42,6 +42,16 @@ export function AddPositionDialog({ portfolioId, open, onOpenChange }: AddPositi
     const qty = parseFloat(quantity);
     const cost = parseFloat(costBasis);
     const prc = parseFloat(price) || cost / qty;
+
+    if (qty <= 0 || isNaN(qty)) {
+      toast({ title: "Invalid quantity", description: "Quantity must be greater than 0", variant: "destructive" });
+      return;
+    }
+    if (prc <= 0 || isNaN(prc)) {
+      toast({ title: "Invalid price", description: "Price must be greater than 0", variant: "destructive" });
+      return;
+    }
+
     const value = qty * prc;
     const gainLoss = value - cost;
     const gainLossPct = cost > 0 ? (gainLoss / cost) * 100 : 0;
