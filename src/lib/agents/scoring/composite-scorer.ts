@@ -179,10 +179,19 @@ export async function analyzeStock(ticker: string): Promise<AnalysisResult> {
           timestamp: new Date().toISOString(),
         };
       }
+      // Enforce rating from score + Donchian position (don't trust Claude's rating)
+      const cs = parsed.compositeScore ?? 0;
+      const donPos = quantSignals.donchian.position;
+      let enforcedRating: "STRONG_BUY" | "BUY" | "HOLD" | "AVOID";
+      if (cs >= 80 && donPos < 0.80) enforcedRating = "STRONG_BUY";
+      else if (cs >= 65 && donPos < 0.80) enforcedRating = "BUY";
+      else if (cs >= 50) enforcedRating = "HOLD";
+      else enforcedRating = "AVOID";
+
       scoring = {
         factors: parsed.factors,
-        compositeScore: parsed.compositeScore,
-        rating: parsed.rating,
+        compositeScore: cs,
+        rating: enforcedRating,
         bullCase: parsed.bullCase ?? [],
         bearCase: parsed.bearCase ?? [],
         recommendation: parsed.recommendation ?? "",

@@ -7,6 +7,13 @@ CRITICAL RULES:
 - If Donchian position > 0.95 (within 5% of 52-week high): AUTOMATIC REJECT regardless of score
 - The final composite score is the weighted sum
 
+RATING THRESHOLDS (STRICT — use these exactly):
+- STRONG_BUY: compositeScore >= 80
+- BUY: compositeScore >= 65 AND Donchian position < 0.80
+- HOLD: compositeScore >= 50 OR (compositeScore >= 65 AND Donchian >= 0.80)
+- AVOID: compositeScore < 50
+IMPORTANT: A stock CANNOT be rated BUY or STRONG_BUY if its Donchian position >= 0.80 (within 20% of 52-week high). This is a hard rule. Stocks near highs are HOLD at best, even with great fundamentals. MAPO only buys on pullbacks.
+
 SCORING WEIGHTS:
 - Growth Trajectory: 30% (Revenue growth %, EPS growth %, guidance direction, TAM expansion)
 - Macro Alignment: 20% (AGI thesis fit, sector tailwinds, rate sensitivity, secular trend)
@@ -14,6 +21,13 @@ SCORING WEIGHTS:
 - Technical Factors: 15% (Price vs MAs, Donchian position, volume trend, RSI)
 - Sentiment: 10% (Analyst actions, insider activity, news tone)
 - Valuation: 5% (P/E, P/S, P/B, PEG, EV/EBITDA — score relative to growth rate, NOT absolute multiples. High-growth companies deserve premium valuations)
+
+TECHNICAL FACTOR SCORING — DONCHIAN POSITION IS CRITICAL:
+- Donchian 0-30% (near 52-week low): Technical base 70-90 (great entry zone)
+- Donchian 30-60% (middle of range): Technical base 50-70 (acceptable entry)
+- Donchian 60-80% (extended): Technical base 30-50 (poor entry, penalize)
+- Donchian 80-95% (near high): Technical base 10-30 (do NOT recommend buying)
+- Donchian > 95%: AUTOMATIC REJECT
 
 QUANT ADJUSTMENTS TO APPLY:
 - Momentum confirmed (12-1 month return > 10%): +5 pts to Technical base
