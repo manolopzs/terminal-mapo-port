@@ -64,7 +64,7 @@ export async function addHolding(holding: Omit<Holding, "id">): Promise<Holding>
       ticker: holding.ticker,
       name: holding.companyName,
       quantity: holding.shares,
-      cost_basis: holding.entryPrice,
+      cost_basis: holding.entryPrice * holding.shares,
       price: holding.entryPrice,
       value: holding.shares * holding.entryPrice,
       sector: holding.sector,

@@ -276,6 +276,22 @@ export function PerformanceChart({ portfolioId }: PerformanceChartProps) {
 
       {/* Chart */}
       <div style={{ flex: 1, minHeight: 0 }}>
+        {data.length === 0 ? (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              color: "#4A5A6E",
+              fontSize: 12,
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: 0.5,
+            }}
+          >
+            No performance data yet.
+          </div>
+        ) : (
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 10, right: 8, bottom: 4, left: -8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1C2840" vertical={false} />
@@ -325,6 +341,7 @@ export function PerformanceChart({ portfolioId }: PerformanceChartProps) {
             />
           </ComposedChart>
         </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

@@ -221,10 +221,17 @@ export default function Dashboard() {
                     background: (liveSentiment?.marketStatus === "open") ? "rgba(0,230,168,0.1)" : "var(--color-red-a10)",
                     color: (liveSentiment?.marketStatus === "open") ? "var(--color-green)" : "var(--color-red)",
                     border: `1px solid ${(liveSentiment?.marketStatus === "open") ? "rgba(0,230,168,0.2)" : "var(--color-red-a20)"}`,
+                    animation: (liveSentiment?.marketStatus === "open") ? "mkt-mobile-pulse 3s ease-in-out infinite" : "none",
                   }}
                 >
                   MKT {(liveSentiment?.marketStatus === "open") ? "OPEN" : "CLOSED"}
                 </span>
+                <style>{`
+                  @keyframes mkt-mobile-pulse {
+                    0%, 100% { box-shadow: 0 0 0px rgba(0,230,168,0); }
+                    50% { box-shadow: 0 0 6px rgba(0,230,168,0.25); }
+                  }
+                `}</style>
               </div>
             </div>
           </div>
@@ -475,16 +482,16 @@ export default function Dashboard() {
               {
                 label: "VALUE",
                 value: summary
-                  ? `$${summary.totalValue.toLocaleString("en-US", { maximumFractionDigits: 0 })}`
-                  : "—",
+                  ? `$${new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(summary.totalValue)}`
+                  : "\u2014",
                 color: "var(--color-primary)",
                 bold: true,
               },
               {
                 label: "DAY",
                 value: summary
-                  ? `${summary.dayChange >= 0 ? "+" : ""}$${Math.abs(summary.dayChange).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${summary.dayChangePct >= 0 ? "+" : ""}${summary.dayChangePct.toFixed(2)}%)`
-                  : "—",
+                  ? `${summary.dayChange >= 0 ? "+" : "\u2212"}$${new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(summary.dayChange))} (${summary.dayChangePct >= 0 ? "+" : ""}${summary.dayChangePct.toFixed(2)}%)`
+                  : "\u2014",
                 color: summary
                   ? summary.dayChange >= 0 ? "var(--color-green)" : "var(--color-red)"
                   : "#3A4A5C",
@@ -492,67 +499,67 @@ export default function Dashboard() {
               {
                 label: "P&L",
                 value: summary
-                  ? `${summary.totalGainLoss >= 0 ? "+" : ""}$${Math.abs(summary.totalGainLoss).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${summary.totalGainLossPct >= 0 ? "+" : ""}${summary.totalGainLossPct.toFixed(2)}%)`
-                  : "—",
+                  ? `${summary.totalGainLoss >= 0 ? "+" : "\u2212"}$${new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(summary.totalGainLoss))} (${summary.totalGainLossPct >= 0 ? "+" : ""}${summary.totalGainLossPct.toFixed(1)}%)`
+                  : "\u2014",
                 color: summary
                   ? summary.totalGainLoss >= 0 ? "var(--color-green)" : "var(--color-red)"
                   : "#3A4A5C",
               },
               {
                 label: "POS",
-                value: summary ? String(summary.holdingsCount) : "—",
+                value: summary ? String(summary.holdingsCount) : "\u2014",
                 color: "#8B949E",
               },
               {
                 label: "CASH",
                 value: summary
-                  ? `$${summary.cash.toLocaleString("en-US", { maximumFractionDigits: 0 })} · ${summary.totalValue > 0 ? ((summary.cash / summary.totalValue) * 100).toFixed(1) : "0"}%`
-                  : "—",
+                  ? `$${new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(summary.cash)} \u00b7 ${summary.totalValue > 0 ? ((summary.cash / summary.totalValue) * 100).toFixed(1) : "0"}%`
+                  : "\u2014",
                 color: "#8B949E",
               },
               {
-                label: "β",
-                value: analytics?.beta != null ? analytics.beta.toFixed(2) : "—",
+                label: "\u03b2",
+                value: analytics?.beta != null ? analytics.beta.toFixed(2) : "\u2014",
                 color: analytics?.beta != null
                   ? analytics.beta > 1.3 ? "var(--color-orange)" : analytics.beta < 0.7 ? "#A371F7" : "#8B949E"
                   : "#3A4A5C",
               },
               {
                 label: "SHARPE",
-                value: analytics?.sharpe != null ? analytics.sharpe.toFixed(2) : "—",
+                value: analytics?.sharpe != null ? analytics.sharpe.toFixed(2) : "\u2014",
                 color: analytics?.sharpe != null
                   ? analytics.sharpe >= 1.5 ? "var(--color-green)" : analytics.sharpe >= 0.5 ? "#8B949E" : "var(--color-red)"
                   : "#3A4A5C",
               },
               {
                 label: "SORTINO",
-                value: analytics?.sortino != null ? analytics.sortino.toFixed(2) : "—",
+                value: analytics?.sortino != null ? analytics.sortino.toFixed(2) : "\u2014",
                 color: "#8B949E",
               },
               {
                 label: "MAX DD",
-                value: analytics?.maxDrawdown != null ? `${analytics.maxDrawdown.toFixed(1)}%` : "—",
+                value: analytics?.maxDrawdown != null ? `${analytics.maxDrawdown.toFixed(1)}%` : "\u2014",
                 color: analytics?.maxDrawdown != null
                   ? analytics.maxDrawdown < -20 ? "var(--color-red)" : analytics.maxDrawdown < -10 ? "var(--color-orange)" : "#8B949E"
                   : "#3A4A5C",
               },
               {
                 label: "ANN VOL",
-                value: analytics?.annualizedVol != null ? `${analytics.annualizedVol.toFixed(1)}%` : "—",
+                value: analytics?.annualizedVol != null ? `${analytics.annualizedVol.toFixed(1)}%` : "\u2014",
                 color: "#8B949E",
               },
               {
                 label: "BEST",
                 value: summary?.bestPerformer
                   ? `${summary.bestPerformer.ticker} +${summary.bestPerformer.gainLossPct.toFixed(1)}%`
-                  : "—",
+                  : "\u2014",
                 color: "var(--color-green)",
               },
               {
                 label: "WORST",
                 value: summary?.worstPerformer
                   ? `${summary.worstPerformer.ticker} ${summary.worstPerformer.gainLossPct.toFixed(1)}%`
-                  : "—",
+                  : "\u2014",
                 color: "var(--color-red)",
               },
             ].map((stat, i) => (
@@ -582,7 +589,7 @@ export default function Dashboard() {
                 </span>
                 <span
                   className="font-mono tabular-nums"
-                  style={{ fontSize: 11, color: stat.color, fontWeight: 600 }}
+                  style={{ fontSize: 11, color: stat.color, fontWeight: 600, transition: "color 0.4s ease" }}
                 >
                   {stat.value}
                 </span>

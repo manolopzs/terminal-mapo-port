@@ -55,6 +55,10 @@ const PULSE_STYLE = `
   0% { width: 0%; }
   100% { width: 100%; }
 }
+@keyframes screener-row-slide-in {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
 `;
 
 const FACTOR_KEYS: { key: string; label: string }[] = [
@@ -298,8 +302,8 @@ export function ScreenerTab() {
               fontWeight: 700,
               letterSpacing: 1.5,
               textTransform: "uppercase",
-              background: "var(--color-primary-a12)",
-              border: "1px solid rgba(212,168,83,0.4)",
+              background: "linear-gradient(135deg, rgba(212,168,83,0.2) 0%, rgba(212,168,83,0.12) 100%)",
+              border: "1px solid rgba(212,168,83,0.5)",
               borderRadius: 4,
               color: "var(--color-primary)",
               fontFamily: "'Inter', system-ui, sans-serif",
@@ -308,10 +312,11 @@ export function ScreenerTab() {
               alignItems: "center",
               gap: 8,
               flexShrink: 0,
-              transition: "all 0.12s",
+              transition: "all 0.15s ease",
+              boxShadow: "0 0 12px rgba(212,168,83,0.15)",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,168,83,0.22)"; e.currentTarget.style.borderColor = "rgba(212,168,83,0.7)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "var(--color-primary-a12)"; e.currentTarget.style.borderColor = "rgba(212,168,83,0.4)"; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(212,168,83,0.32) 0%, rgba(212,168,83,0.2) 100%)"; e.currentTarget.style.borderColor = "rgba(212,168,83,0.8)"; e.currentTarget.style.boxShadow = "0 0 20px rgba(212,168,83,0.3)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(212,168,83,0.2) 0%, rgba(212,168,83,0.12) 100%)"; e.currentTarget.style.borderColor = "rgba(212,168,83,0.5)"; e.currentTarget.style.boxShadow = "0 0 12px rgba(212,168,83,0.15)"; }}
           >
             <Zap size={12} />
             DEPLOY AGENTS
@@ -324,20 +329,20 @@ export function ScreenerTab() {
               fontWeight: 700,
               letterSpacing: 1.5,
               textTransform: "uppercase",
-              background: "rgba(0,230,168,0.06)",
-              border: "1px solid rgba(0,230,168,0.3)",
+              background: "transparent",
+              border: "1px solid #2A3A54",
               borderRadius: 4,
-              color: "var(--color-green)",
+              color: "#5A6B80",
               fontFamily: "'Inter', system-ui, sans-serif",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               gap: 8,
               flexShrink: 0,
-              transition: "all 0.12s",
+              transition: "all 0.15s ease",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(0,230,168,0.14)"; e.currentTarget.style.borderColor = "rgba(0,230,168,0.5)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(0,230,168,0.06)"; e.currentTarget.style.borderColor = "rgba(0,230,168,0.3)"; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(90,107,128,0.08)"; e.currentTarget.style.borderColor = "#4A5A6E"; e.currentTarget.style.color = "#8B949E"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "#2A3A54"; e.currentTarget.style.color = "#5A6B80"; }}
           >
             <Database size={12} />
             CACHED RESULTS
@@ -453,8 +458,8 @@ export function ScreenerTab() {
             <div style={{ position: "relative", height: 6, background: "#0F1825", borderRadius: 3, overflow: "hidden", marginBottom: 6, border: "1px solid #1C2840" }}>
               <div style={{
                 position: "absolute", top: 0, left: 0, height: "100%", width: `${deployProgress}%`,
-                background: "linear-gradient(90deg, #D4A853, #00E6A8)", borderRadius: 3,
-                transition: "width 0.3s ease", boxShadow: "0 0 8px rgba(212,168,83,0.4)",
+                background: "linear-gradient(90deg, #D4A853 0%, #C49B3C 25%, #A8B84A 50%, #4DC98A 75%, #00E6A8 100%)", borderRadius: 3,
+                transition: "width 0.5s cubic-bezier(0.4, 0, 0.2, 1)", boxShadow: "0 0 10px rgba(212,168,83,0.35), 0 0 4px rgba(0,230,168,0.2)",
               }} />
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -552,14 +557,15 @@ export function ScreenerTab() {
             const quantSignals = result.quantSignals ?? null;
             const hasDetail = factors || quantSignals;
 
+            const rowIndex = accepted.indexOf(result);
             return (
-              <div key={ticker}>
+              <div key={ticker} style={{ animation: `screener-row-slide-in 0.35s ease-out ${rowIndex * 0.04}s both` }}>
                 <div
                   style={{
                     display: "grid", gridTemplateColumns: "90px 80px 110px 1fr 110px",
                     padding: "9px 16px", borderBottom: isExpanded ? "none" : "1px solid rgba(28,40,64,0.5)", alignItems: "center",
                     background: action === "BUY" ? "rgba(0,230,168,0.025)" : action === "AVOID" ? "rgba(255,68,88,0.025)" : "transparent",
-                    transition: "background 0.1s",
+                    transition: "background 0.15s ease",
                     cursor: hasDetail ? "pointer" : "default",
                   }}
                   onClick={() => { if (hasDetail) setExpandedTicker(isExpanded ? null : ticker); }}

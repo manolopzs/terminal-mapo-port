@@ -4,6 +4,16 @@ import type { AgentState, PipelineStage, LogEntry } from '@/lib/agent-bus';
 
 type LayerKey = 'intelligence' | 'agi' | 'risk';
 
+const CYCLING_TEXTS: string[] = [
+  'Scanning market...',
+  'Filtering candidates...',
+  'Scoring stocks...',
+  'Evaluating signals...',
+  'Analyzing fundamentals...',
+  'Cross-referencing data...',
+  'Ranking results...',
+];
+
 const LAYER_ORDER: LayerKey[] = ['intelligence', 'agi', 'risk'];
 
 const LAYER_LABELS: Record<LayerKey, string> = {
@@ -145,6 +155,8 @@ export function AgentConsole() {
   const [expanded, setExpanded] = useState(false);
   const busState = useAgentBus?.();
   const logRef = useRef<HTMLDivElement>(null);
+  const [cycleIdx, setCycleIdx] = useState(0);
+  const [prevLogLen, setPrevLogLen] = useState(0);
 
   const agents: AgentState[] = busState?.agents ?? [];
   const pipeline: PipelineStage[] = busState?.pipeline ?? [];
@@ -154,10 +166,21 @@ export function AgentConsole() {
 
   const runningCount = agents.filter(a => a.status === 'running').length;
 
+  // Cycle through status texts when agents are running
+  useEffect(() => {
+    if (!isAnyRunning) return;
+    const interval = setInterval(() => {
+      setCycleIdx(prev => (prev + 1) % CYCLING_TEXTS.length);
+    }, 2200);
+    return () => clearInterval(interval);
+  }, [isAnyRunning]);
+
+  // Auto-scroll log to bottom when new entries arrive
   useEffect(() => {
     if (logRef.current && log.length > 0) {
-      logRef.current.scrollTop = 0;
+      logRef.current.scrollTop = logRef.current.scrollHeight;
     }
+    setPrevLogLen(log.length);
   }, [log.length]);
 
   const groupedAgents: Partial<Record<LayerKey, AgentState[]>> = {};
@@ -173,12 +196,30 @@ export function AgentConsole() {
     <>
       <style>{`
         @keyframes pulse-dot {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.3; transform: scale(1.3); }
         }
         @keyframes pulse-text {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
+        }
+        @keyframes agent-fade-in {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes glow-border {
+          0%, 100% { box-shadow: 0 0 4px rgba(212,168,83,0.3); }
+          50% { box-shadow: 0 0 12px rgba(212,168,83,0.6); }
+        }
+        @keyframes cycle-text-in {
+          0% { opacity: 0; transform: translateY(6px); }
+          15% { opacity: 1; transform: translateY(0); }
+          85% { opacity: 1; transform: translateY(0); }
+          100% { opacity: 0; transform: translateY(-6px); }
+        }
+        @keyframes running-stripe {
+          0% { background-position: 0% 0%; }
+          100% { background-position: 200% 0%; }
         }
       `}</style>
 
@@ -207,8 +248,10 @@ export function AgentConsole() {
               width: 5,
               height: 5,
               borderRadius: '50%',
-              background: 'var(--color-green)',
+              background: isAnyRunning ? 'var(--color-primary)' : 'var(--color-green)',
               animation: 'pulse-dot 2s infinite',
+              boxShadow: isAnyRunning ? '0 0 6px rgba(212,168,83,0.6)' : '0 0 4px rgba(0,230,168,0.4)',
+              transition: 'background 0.3s ease, box-shadow 0.3s ease',
             }}
           />
           <span
@@ -237,10 +280,13 @@ export function AgentConsole() {
             style={{
               fontFamily: "'JetBrains Mono', monospace",
               fontSize: 9,
-              color: '#7A8A9E',
+              color: isAnyRunning ? 'var(--color-primary)' : '#7A8A9E',
+              transition: 'color 0.3s ease',
             }}
           >
-            {lastOperation ?? 'SYSTEM MONITORING · ALL AGENTS IDLE'}
+            {isAnyRunning
+              ? CYCLING_TEXTS[cycleIdx]
+              : (lastOperation ?? 'SYSTEM MONITORING \u00b7 ALL AGENTS IDLE')}
           </span>
         </div>
 
@@ -257,10 +303,11 @@ export function AgentConsole() {
             style={{
               fontFamily: "'JetBrains Mono', monospace",
               fontSize: 9,
-              color: '#4A5A6E',
+              color: runningCount > 0 ? 'var(--color-green)' : '#4A5A6E',
+              transition: 'color 0.3s ease',
             }}
           >
-            {agents.length} AGENTS
+            {runningCount > 0 ? `${runningCount} RUNNING` : `${agents.length} AGENTS`}
           </span>
           <span
             style={{
@@ -367,6 +414,7 @@ export function AgentConsole() {
                               : 'transparent',
                           borderLeft: `2px solid ${LAYER_ACCENT[layer]}`,
                           boxSizing: 'border-box',
+                          transition: 'background 0.3s ease',
                         }}
                       >
                         <div style={getStatusDotStyle(agent.status)} />
@@ -379,21 +427,36 @@ export function AgentConsole() {
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
+                            transition: 'color 0.3s ease',
                           }}
                         >
                           {agent.name ?? agent.id}
                         </span>
                         <div style={{ flex: 1 }} />
-                        <span
-                          style={{
-                            fontFamily: "'JetBrains Mono', monospace",
-                            fontSize: 8,
-                            color: '#2E3E52',
-                            flexShrink: 0,
-                          }}
-                        >
-                          {formatTime(agent.lastRun)}
-                        </span>
+                        {agent.status === 'running' ? (
+                          <span
+                            style={{
+                              fontFamily: "'JetBrains Mono', monospace",
+                              fontSize: 8,
+                              color: 'var(--color-green)',
+                              flexShrink: 0,
+                              animation: 'pulse-text 1.5s infinite',
+                            }}
+                          >
+                            {CYCLING_TEXTS[(cycleIdx + idx) % CYCLING_TEXTS.length]}
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              fontFamily: "'JetBrains Mono', monospace",
+                              fontSize: 8,
+                              color: '#2E3E52',
+                              flexShrink: 0,
+                            }}
+                          >
+                            {formatTime(agent.lastRun)}
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -511,6 +574,8 @@ export function AgentConsole() {
                             boxSizing: 'border-box',
                             display: 'flex',
                             flexDirection: 'column',
+                            transition: 'box-shadow 0.3s ease, border-color 0.3s ease, background 0.3s ease',
+                            animation: stage.status === 'running' ? 'glow-border 2s ease-in-out infinite' : 'none',
                             ...styles.container,
                           }}
                         >
@@ -553,11 +618,13 @@ export function AgentConsole() {
                             style={{
                               fontFamily: "'JetBrains Mono', monospace",
                               fontSize: 8,
-                              color: '#2E3E52',
+                              color: stage.status === 'complete' ? 'var(--color-green)' : stage.status === 'running' ? 'var(--color-primary)' : '#2E3E52',
                               alignSelf: 'center',
+                              transition: 'color 0.3s ease',
+                              animation: stage.status === 'running' ? 'pulse-text 1.5s infinite' : 'none',
                             }}
                           >
-                            →
+                            {'\u2192'}
                           </span>
                         )}
                       </div>
@@ -631,6 +698,7 @@ export function AgentConsole() {
                       display: 'flex',
                       gap: 8,
                       alignItems: 'flex-start',
+                      animation: idx >= prevLogLen - 1 ? 'agent-fade-in 0.4s ease-out' : 'none',
                     }}
                   >
                     {/* Time */}
@@ -658,7 +726,7 @@ export function AgentConsole() {
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {entry.agent ?? '—'}
+                      {entry.agentName ?? '—'}
                     </span>
                     {/* Message */}
                     <span

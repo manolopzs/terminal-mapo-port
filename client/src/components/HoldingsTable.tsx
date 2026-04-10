@@ -28,6 +28,23 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
         <span className="terminal-badge">{holdings.length} POSITIONS</span>
       </div>
       <div className="flex-1 overflow-auto" style={{ padding: 0 }}>
+        {holdings.length === 0 ? (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              minHeight: 120,
+              color: "#4A5A6E",
+              fontSize: 12,
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: 0.5,
+            }}
+          >
+            No positions. Log a trade to get started.
+          </div>
+        ) : (
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 420 }}>
           <colgroup>
             <col style={{ width: "20%" }} />
@@ -131,7 +148,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                         lineHeight: 1.15,
                       }}
                     >
-                      ${(h.value ?? 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                      ${(h.value ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </td>
 
@@ -172,12 +189,13 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                       color: pnlColor,
                       padding: "6px 6px",
                       textAlign: "right",
+                      transition: "color 0.4s ease",
                     }}
                   >
-                    {(h.gainLoss ?? 0) >= 0 ? "+" : ""}$
+                    {(h.gainLoss ?? 0) >= 0 ? "+" : "\u2212"}$
                     {Math.abs(h.gainLoss ?? 0).toLocaleString("en-US", {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
                     })}
                   </td>
 
@@ -190,6 +208,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                       color: pnlColor,
                       padding: "6px 6px",
                       textAlign: "right",
+                      transition: "color 0.4s ease",
                     }}
                   >
                     {pnlPct >= 0 ? "+" : ""}
@@ -205,6 +224,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                       padding: "6px 6px",
                       textAlign: "right",
                       fontWeight: 600,
+                      transition: "color 0.4s ease",
                     }}
                   >
                     {chgPct >= 0 ? "+" : ""}
@@ -259,7 +279,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {h.sector ?? "—"}
+                    {(!h.sector || h.sector === "Unknown") ? "\u2014" : h.sector}
                   </td>
 
                   {/* DELETE */}
@@ -296,6 +316,7 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
             })}
           </tbody>
         </table>
+        )}
       </div>
 
       {/* Footer — always visible */}

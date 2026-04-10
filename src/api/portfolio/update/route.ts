@@ -127,12 +127,38 @@ async function handleSell(body: UpdatePortfolioBody, portfolioId: string | null)
   const { ticker, shares, price, rationale, entryScore } = body;
   const upper = ticker.toUpperCase();
 
-  const { error: deleteError } = await sb
+  // Fetch current holding to compute remaining shares
+  const { data: existing, error: fetchError } = await sb
     .from("holdings")
-    .delete()
-    .eq("ticker", upper);
+    .select("*")
+    .eq("ticker", upper)
+    .maybeSingle();
 
-  if (deleteError) throw new Error(deleteError.message);
+  if (fetchError) throw new Error(fetchError.message);
+
+  const currentShares = existing ? Number(existing.shares ?? existing.quantity ?? 0) : 0;
+  const remainingShares = currentShares - shares;
+
+  if (remainingShares <= 0) {
+    // Full sell — remove the holding
+    const { error: deleteError } = await sb
+      .from("holdings")
+      .delete()
+      .eq("ticker", upper);
+    if (deleteError) throw new Error(deleteError.message);
+  } else {
+    // Partial sell — reduce quantity
+    const { error: updateError } = await sb
+      .from("holdings")
+      .update({
+        quantity: remainingShares,
+        value: remainingShares * price,
+        price,
+      })
+      .eq("ticker", upper);
+    if (updateError) throw new Error(updateError.message);
+  }
+
   await logTrade(upper, "SELL", shares, price, rationale, portfolioId, entryScore, body.date);
 }
 

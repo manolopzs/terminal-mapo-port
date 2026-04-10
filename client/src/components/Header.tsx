@@ -61,7 +61,7 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
         { label: "1D", value: dayChangePct },
         { label: "5D", value: null },
         { label: "1M", value: null },
-        { label: "30D", value: null },
+        { label: "ALL", value: null },
       ];
     }
 
@@ -83,7 +83,7 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
       { label: "1D", value: oneDay },
       { label: "5D", value: fiveDay },
       { label: "1M", value: oneMonth },
-      { label: "30D", value: sinceInception },
+      { label: "ALL", value: sinceInception },
     ];
   }, [perfData, dayChangePct]);
 
@@ -325,10 +325,17 @@ export function Header({ portfolioId, liveSentiment, liveQuotes }: HeaderProps) 
             color: isOpen ? "var(--color-green)" : "var(--color-red)",
             border: `1px solid ${isOpen ? "var(--color-green-a20)" : "var(--color-red-a20)"}`,
             lineHeight: 1.6,
+            animation: isOpen ? "mkt-badge-pulse 3s ease-in-out infinite" : "none",
           }}
         >
           MKT {isOpen ? "OPEN" : "CLOSED"}
         </div>
+        <style>{`
+          @keyframes mkt-badge-pulse {
+            0%, 100% { box-shadow: 0 0 0px rgba(0,230,168,0); }
+            50% { box-shadow: 0 0 8px rgba(0,230,168,0.3); }
+          }
+        `}</style>
 
         {/* Live dot + time */}
         <div className="flex flex-col items-center">

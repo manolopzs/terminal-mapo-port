@@ -236,6 +236,7 @@ function MarketPulseSection({ pulse }: { pulse: MarketPulseData }) {
         padding: "12px 14px",
         borderBottom: "2px solid #1C2840",
         background: "rgba(28,40,64,0.15)",
+        animation: "market-pulse-fade-in 0.6s ease-out",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -303,9 +304,16 @@ function MacroCalendarSection({ events }: { events: MacroEvent[] }) {
               display: "flex",
               alignItems: "center",
               gap: 8,
-              padding: "4px 0",
+              padding: "4px 4px",
+              marginLeft: -4,
+              marginRight: -4,
               borderBottom: i < upcoming.length - 1 ? "1px solid #0F1520" : "none",
+              borderRadius: 3,
+              cursor: "default",
+              transition: "background 0.15s ease",
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(212,168,83,0.04)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
             <SignalDot color={color} pulse={isImminent} />
             <span style={{
@@ -451,6 +459,10 @@ export function MarketTab({ portfolioHoldings }: { portfolioHoldings?: Array<{ t
           @keyframes pulse-dot {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.5; transform: scale(1.4); }
+          }
+          @keyframes market-pulse-fade-in {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
           }
         `}</style>
       </div>

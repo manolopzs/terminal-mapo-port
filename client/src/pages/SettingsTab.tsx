@@ -9,7 +9,7 @@ const API_CHECKS: { key: string; label: string; endpoint: string; hint: string }
   { key: "pulse", label: "Market Pulse", endpoint: "/api/market/pulse", hint: "Finnhub composite" },
   { key: "performance", label: "Performance", endpoint: "/api/performance?portfolioId=test", hint: "FMP + AlphaVantage" },
   { key: "auth", label: "Auth", endpoint: "/api/login", hint: "AUTH_EMAIL / AUTH_PASS" },
-  { key: "anthropic", label: "AI Analyst (Claude)", endpoint: "/api/ai/brief", hint: "ANTHROPIC_API_KEY" },
+  { key: "anthropic", label: "AI Analyst (Claude)", endpoint: "/api/briefing", hint: "ANTHROPIC_API_KEY" },
 ];
 
 type Status = "checking" | "ok" | "error" | "warn";

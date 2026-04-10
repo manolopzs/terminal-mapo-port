@@ -69,8 +69,12 @@ export async function registerRoutes(
 
   // Portfolios
   app.get("/api/portfolios", async (_req, res) => {
-    const portfolios = await storage.getPortfolios();
-    res.json(portfolios);
+    try {
+      const portfolios = await storage.getPortfolios();
+      res.json(portfolios);
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to fetch portfolios", detail: error?.message });
+    }
   });
 
   app.post("/api/portfolios", async (req, res) => {
@@ -90,9 +94,13 @@ export async function registerRoutes(
 
   // Holdings
   app.get("/api/holdings", async (req, res) => {
-    const portfolioId = req.query.portfolioId as string | undefined;
-    const holdings = await storage.getHoldings(portfolioId);
-    res.json(holdings);
+    try {
+      const portfolioId = req.query.portfolioId as string | undefined;
+      const holdings = await storage.getHoldings(portfolioId);
+      res.json(holdings);
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to fetch holdings", detail: error?.message });
+    }
   });
 
   app.post("/api/holdings", async (req, res) => {
@@ -124,18 +132,24 @@ export async function registerRoutes(
   app.put("/api/portfolio/:id/cash", async (req, res) => {
     const { cash } = req.body ?? {};
     if (typeof cash !== "number") return res.status(400).json({ error: "cash must be a number" });
+    // Update in-memory storage if available
     const meta = (storage as any).portfolioMeta?.get(req.params.id);
     if (meta) {
       meta.cash = cash;
       (storage as any).portfolioMeta.set(req.params.id, meta);
     }
-    // Also update Supabase if available
-    try {
-      const { supabase, isSupabaseEnabled } = await import("./lib/supabase.js");
-      if (isSupabaseEnabled) {
-        await supabase.from("portfolio_meta").update({ cash }).eq("portfolio_id", req.params.id);
+    // Update Supabase if available
+    if (isSupabaseEnabled) {
+      try {
+        const { supabase } = await import("./lib/supabase.js");
+        const { error } = await supabase.from("portfolio_meta").update({ cash }).eq("portfolio_id", req.params.id);
+        if (error) {
+          return res.status(500).json({ error: "Failed to update cash in database", detail: error.message });
+        }
+      } catch (e: any) {
+        return res.status(500).json({ error: "Failed to update cash", detail: e?.message ?? String(e) });
       }
-    } catch {}
+    }
     res.json({ success: true, cash });
   });
 
@@ -610,7 +624,8 @@ RESPONSE INSTRUCTIONS:
           }
 
           const totalValue = cash + holdingsValue;
-          const pctReturn = ((totalValue - startingCapital) / startingCapital) * 100;
+          const denominator = startingCapital > 0 ? startingCapital : (totalValue > 0 ? totalValue : 1);
+          const pctReturn = startingCapital > 0 ? ((totalValue - startingCapital) / denominator) * 100 : 0;
           const vooReturn = prices.VOO?.[date] ? ((prices.VOO[date] - vooBase) / vooBase) * 100 : 0;
           const qqqReturn = prices.QQQ?.[date] ? ((prices.QQQ[date] - qqqBase) / qqqBase) * 100 : 0;
 
@@ -635,7 +650,8 @@ RESPONSE INSTRUCTIONS:
               liveHoldingsValue += (shares as number) * livePrice;
             }
             const todayTotalValue = cash + liveHoldingsValue;
-            const todayPctReturn = ((todayTotalValue - startingCapital) / startingCapital) * 100;
+            const todayDenominator = startingCapital > 0 ? startingCapital : (todayTotalValue > 0 ? todayTotalValue : 1);
+            const todayPctReturn = startingCapital > 0 ? ((todayTotalValue - startingCapital) / todayDenominator) * 100 : 0;
 
             const [vooQuote, qqqQuote] = await Promise.all([
               fmp.getFMPQuote("VOO"),
@@ -1278,82 +1294,6 @@ Return ONLY valid JSON, no markdown, no backticks, no explanation:
     } catch (error: any) {
       console.error("MAPO score error:", error);
       return res.status(500).json({ error: "Failed to compute MAPO score", detail: error.message });
-    }
-  });
-
-  // ====== STOCK SCREENER ======
-  // Uses MAPO curated universe (AGI thesis + broad market small/mid cap)
-  // enriched with live FMP profile data, filtered by sector/cap params
-  app.post("/api/screen", async (req, res) => {
-    try {
-      const { sector, maxMarketCap = 50_000_000_000, minMarketCap = 500_000_000 } = req.body;
-
-      // MAPO universe: AGI thesis + broad small/mid cap, all <$50B, exclusion-list clean
-      const MAPO_UNIVERSE: Record<string, string[]> = {
-        "Technology": ["COHR","SMCI","CRDO","CIEN","LITE","AAOI","VIAV","IIVI","FORM","ACMR","ONTO","AEHR","ICHR","AEIS","MKSI","NTAP","PSTG","ESTC","GTLB","MXCHIP"],
-        "Industrials": ["STRL","ATKR","POWL","NVEE","GVA","IESC","TPIC","MYR","EME","PWR","PCOR","ESAB","GTLS","TDW","MYRG","HLIO"],
-        "Utilities": ["VST","NRG","CEG","OGE","CLNE","NRUC","MGEE","AVA","IDACORP","NWE","PNM","SPWR"],
-        "Energy": ["TALO","NOG","CIVI","OVV","SM","MTDR","CHRD","GPOR","VTLE","MGY"],
-        "Financials": ["DLO","RELY","STEP","LPLA","COOP","KNSL","RYAN","HIMS","AFRM","UPST"],
-        "Health Care": ["HIMS","ACAD","CRVS","RXRX","RCKT","ARWR","TMDX","IRTC","OMCL","TDOC"],
-        "Consumer Discretionary": ["ELF","BOOT","SHAK","TXRH","WING","CAVA","KRUS","PTLO","FAT"],
-        "Communication Services": ["DV","MGNI","IAS","TTD","PUBM","APPS","VNET","CLFD"],
-        "Materials": ["IOSP","TREX","AZEK","IBP","UFP","PGTI"],
-        "Real Estate": ["REXR","IIPR","STAG","COLD","EXR","LSI"],
-      };
-
-      // If sector specified, use that universe; otherwise flatten all
-      let candidates: string[];
-      if (sector && MAPO_UNIVERSE[sector]) {
-        candidates = MAPO_UNIVERSE[sector];
-      } else {
-        candidates = Object.values(MAPO_UNIVERSE).flat();
-      }
-
-      // Remove exclusion list tickers
-      candidates = candidates.filter(t => !isExcluded(t).excluded);
-
-      // Fetch profiles in batches of 10
-      const batchSize = 10;
-      const profiles: any[] = [];
-      for (let i = 0; i < candidates.length && i < 80; i += batchSize) {
-        const batch = candidates.slice(i, i + batchSize);
-        const batchProfiles = await Promise.allSettled(batch.map(t => fmp.getProfile(t)));
-        batchProfiles.forEach(r => {
-          if (r.status === "fulfilled" && r.value?.[0]) profiles.push(r.value[0]);
-        });
-      }
-
-      const filtered = profiles
-        .filter(p => {
-          const cap = p.marketCap ?? p.mktCap ?? 0;
-          return cap >= minMarketCap && cap <= maxMarketCap;
-        })
-        .sort((a, b) => ((b.marketCap ?? b.mktCap ?? 0) - (a.marketCap ?? a.mktCap ?? 0)))
-        .slice(0, 40)
-        .map(p => {
-          const cap = p.marketCap ?? p.mktCap ?? 0;
-          return {
-          ticker: p.symbol,
-          name: p.companyName,
-          sector: p.sector,
-          industry: p.industry,
-          marketCapB: cap ? `$${(cap / 1e9).toFixed(1)}B` : "?",
-          price: p.price,
-          change: p.changes,
-          changePct: p.changesPercentage ?? ((p.changes / (p.price - p.changes)) * 100),
-          beta: p.beta,
-          volume: p.volAvg,
-          high52w: p.range?.split("-")?.[1] ?? null,
-          low52w: p.range?.split("-")?.[0] ?? null,
-          exchange: p.exchangeShortName,
-          description: (p.description ?? "").slice(0, 120),
-        };
-        });
-
-      res.json(filtered);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
     }
   });
 

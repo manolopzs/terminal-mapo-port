@@ -42219,8 +42219,21 @@ async function handleSell(body, portfolioId) {
   const sb = getSb();
   const { ticker, shares, price, rationale, entryScore } = body;
   const upper = ticker.toUpperCase();
-  const { error: deleteError } = await sb.from("holdings").delete().eq("ticker", upper);
-  if (deleteError) throw new Error(deleteError.message);
+  const { data: existing, error: fetchError } = await sb.from("holdings").select("*").eq("ticker", upper).maybeSingle();
+  if (fetchError) throw new Error(fetchError.message);
+  const currentShares = existing ? Number(existing.shares ?? existing.quantity ?? 0) : 0;
+  const remainingShares = currentShares - shares;
+  if (remainingShares <= 0) {
+    const { error: deleteError } = await sb.from("holdings").delete().eq("ticker", upper);
+    if (deleteError) throw new Error(deleteError.message);
+  } else {
+    const { error: updateError } = await sb.from("holdings").update({
+      quantity: remainingShares,
+      value: remainingShares * price,
+      price
+    }).eq("ticker", upper);
+    if (updateError) throw new Error(updateError.message);
+  }
   await logTrade(upper, "SELL", shares, price, rationale, portfolioId, entryScore, body.date);
 }
 async function handleTrim(body, portfolioId) {
@@ -49784,8 +49797,12 @@ async function registerRoutes(httpServer, app2) {
   app2.get("/api/cron/screen", cronScreenRoute);
   app2.post("/api/portfolio/update", portfolioUpdateRoute);
   app2.get("/api/portfolios", async (_req, res) => {
-    const portfolios2 = await storage.getPortfolios();
-    res.json(portfolios2);
+    try {
+      const portfolios2 = await storage.getPortfolios();
+      res.json(portfolios2);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch portfolios", detail: error?.message });
+    }
   });
   app2.post("/api/portfolios", async (req, res) => {
     const { name, type } = req.body;
@@ -49801,9 +49818,13 @@ async function registerRoutes(httpServer, app2) {
     res.json({ success: true });
   });
   app2.get("/api/holdings", async (req, res) => {
-    const portfolioId = req.query.portfolioId;
-    const holdings2 = await storage.getHoldings(portfolioId);
-    res.json(holdings2);
+    try {
+      const portfolioId = req.query.portfolioId;
+      const holdings2 = await storage.getHoldings(portfolioId);
+      res.json(holdings2);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch holdings", detail: error?.message });
+    }
   });
   app2.post("/api/holdings", async (req, res) => {
     const result = insertHoldingSchema.safeParse(req.body);
@@ -49835,12 +49856,16 @@ async function registerRoutes(httpServer, app2) {
       meta.cash = cash;
       storage.portfolioMeta.set(req.params.id, meta);
     }
-    try {
-      const { supabase: supabase3, isSupabaseEnabled: isSupabaseEnabled3 } = await Promise.resolve().then(() => (init_supabase(), supabase_exports));
-      if (isSupabaseEnabled3) {
-        await supabase3.from("portfolio_meta").update({ cash }).eq("portfolio_id", req.params.id);
+    if (isSupabaseEnabled) {
+      try {
+        const { supabase: supabase3 } = await Promise.resolve().then(() => (init_supabase(), supabase_exports));
+        const { error } = await supabase3.from("portfolio_meta").update({ cash }).eq("portfolio_id", req.params.id);
+        if (error) {
+          return res.status(500).json({ error: "Failed to update cash in database", detail: error.message });
+        }
+      } catch (e) {
+        return res.status(500).json({ error: "Failed to update cash", detail: e?.message ?? String(e) });
       }
-    } catch {
     }
     res.json({ success: true, cash });
   });
@@ -49904,16 +49929,27 @@ async function registerRoutes(httpServer, app2) {
             value: holding.price * newQty
           });
         } else {
+          let companyName = result.data.name || result.data.ticker.toUpperCase();
+          let sector = "Unknown";
+          try {
+            const profile = await getProfile(result.data.ticker.toUpperCase());
+            const p = Array.isArray(profile) ? profile[0] : profile;
+            if (p) {
+              companyName = p.companyName ?? companyName;
+              sector = p.sector ?? "Unknown";
+            }
+          } catch {
+          }
           await storage.createHolding({
             portfolioId: result.data.portfolioId,
             ticker: result.data.ticker.toUpperCase(),
-            name: result.data.ticker.toUpperCase(),
+            name: companyName,
             quantity: result.data.shares,
             costBasis: result.data.shares * result.data.price,
             price: result.data.price,
             value: result.data.shares * result.data.price,
             type: "Stock",
-            sector: "Unknown",
+            sector,
             source: "trade"
           });
         }
@@ -50216,7 +50252,8 @@ RESPONSE INSTRUCTIONS:
             }
           }
           const totalValue = cash + holdingsValue;
-          const pctReturn = (totalValue - startingCapital) / startingCapital * 100;
+          const denominator = startingCapital > 0 ? startingCapital : totalValue > 0 ? totalValue : 1;
+          const pctReturn = startingCapital > 0 ? (totalValue - startingCapital) / denominator * 100 : 0;
           const vooReturn = prices2.VOO?.[date2] ? (prices2.VOO[date2] - vooBase2) / vooBase2 * 100 : 0;
           const qqqReturn = prices2.QQQ?.[date2] ? (prices2.QQQ[date2] - qqqBase2) / qqqBase2 * 100 : 0;
           performanceData2.push({
@@ -50238,7 +50275,8 @@ RESPONSE INSTRUCTIONS:
               liveHoldingsValue += shares * livePrice;
             }
             const todayTotalValue = cash + liveHoldingsValue;
-            const todayPctReturn = (todayTotalValue - startingCapital) / startingCapital * 100;
+            const todayDenominator = startingCapital > 0 ? startingCapital : todayTotalValue > 0 ? todayTotalValue : 1;
+            const todayPctReturn = startingCapital > 0 ? (todayTotalValue - startingCapital) / todayDenominator * 100 : 0;
             const [vooQuote, qqqQuote] = await Promise.all([
               getFMPQuote("VOO"),
               getFMPQuote("QQQ")
@@ -50836,64 +50874,6 @@ Return ONLY valid JSON, no markdown, no backticks, no explanation:
     } catch (error) {
       console.error("MAPO score error:", error);
       return res.status(500).json({ error: "Failed to compute MAPO score", detail: error.message });
-    }
-  });
-  app2.post("/api/screen", async (req, res) => {
-    try {
-      const { sector, maxMarketCap = 5e10, minMarketCap = 5e8 } = req.body;
-      const MAPO_UNIVERSE = {
-        "Technology": ["COHR", "SMCI", "CRDO", "CIEN", "LITE", "AAOI", "VIAV", "IIVI", "FORM", "ACMR", "ONTO", "AEHR", "ICHR", "AEIS", "MKSI", "NTAP", "PSTG", "ESTC", "GTLB", "MXCHIP"],
-        "Industrials": ["STRL", "ATKR", "POWL", "NVEE", "GVA", "IESC", "TPIC", "MYR", "EME", "PWR", "PCOR", "ESAB", "GTLS", "TDW", "MYRG", "HLIO"],
-        "Utilities": ["VST", "NRG", "CEG", "OGE", "CLNE", "NRUC", "MGEE", "AVA", "IDACORP", "NWE", "PNM", "SPWR"],
-        "Energy": ["TALO", "NOG", "CIVI", "OVV", "SM", "MTDR", "CHRD", "GPOR", "VTLE", "MGY"],
-        "Financials": ["DLO", "RELY", "STEP", "LPLA", "COOP", "KNSL", "RYAN", "HIMS", "AFRM", "UPST"],
-        "Health Care": ["HIMS", "ACAD", "CRVS", "RXRX", "RCKT", "ARWR", "TMDX", "IRTC", "OMCL", "TDOC"],
-        "Consumer Discretionary": ["ELF", "BOOT", "SHAK", "TXRH", "WING", "CAVA", "KRUS", "PTLO", "FAT"],
-        "Communication Services": ["DV", "MGNI", "IAS", "TTD", "PUBM", "APPS", "VNET", "CLFD"],
-        "Materials": ["IOSP", "TREX", "AZEK", "IBP", "UFP", "PGTI"],
-        "Real Estate": ["REXR", "IIPR", "STAG", "COLD", "EXR", "LSI"]
-      };
-      let candidates;
-      if (sector && MAPO_UNIVERSE[sector]) {
-        candidates = MAPO_UNIVERSE[sector];
-      } else {
-        candidates = Object.values(MAPO_UNIVERSE).flat();
-      }
-      candidates = candidates.filter((t) => !isExcluded2(t).excluded);
-      const batchSize = 10;
-      const profiles = [];
-      for (let i = 0; i < candidates.length && i < 80; i += batchSize) {
-        const batch = candidates.slice(i, i + batchSize);
-        const batchProfiles = await Promise.allSettled(batch.map((t) => getProfile(t)));
-        batchProfiles.forEach((r) => {
-          if (r.status === "fulfilled" && r.value?.[0]) profiles.push(r.value[0]);
-        });
-      }
-      const filtered = profiles.filter((p) => {
-        const cap = p.marketCap ?? p.mktCap ?? 0;
-        return cap >= minMarketCap && cap <= maxMarketCap;
-      }).sort((a, b) => (b.marketCap ?? b.mktCap ?? 0) - (a.marketCap ?? a.mktCap ?? 0)).slice(0, 40).map((p) => {
-        const cap = p.marketCap ?? p.mktCap ?? 0;
-        return {
-          ticker: p.symbol,
-          name: p.companyName,
-          sector: p.sector,
-          industry: p.industry,
-          marketCapB: cap ? `$${(cap / 1e9).toFixed(1)}B` : "?",
-          price: p.price,
-          change: p.changes,
-          changePct: p.changesPercentage ?? p.changes / (p.price - p.changes) * 100,
-          beta: p.beta,
-          volume: p.volAvg,
-          high52w: p.range?.split("-")?.[1] ?? null,
-          low52w: p.range?.split("-")?.[0] ?? null,
-          exchange: p.exchangeShortName,
-          description: (p.description ?? "").slice(0, 120)
-        };
-      });
-      res.json(filtered);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
     }
   });
   app2.get("/api/score-history", async (req, res) => {
