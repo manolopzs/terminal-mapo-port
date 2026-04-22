@@ -615,11 +615,18 @@ RESPONSE INSTRUCTIONS:
             }
           }
 
-          // Calc holdings value
+          // Calc holdings value — carry forward last known price if today's price is missing
           let holdingsValue = 0;
           for (const [ticker, shares] of Object.entries(positions)) {
-            if (prices[ticker]?.[date]) {
-              holdingsValue += shares * prices[ticker][date];
+            let price = prices[ticker]?.[date];
+            if (!price) {
+              // Find the most recent price before this date
+              const tickerDates = Object.keys(prices[ticker] ?? {}).sort();
+              const prevDate = tickerDates.filter(d => d <= date).pop();
+              price = prevDate ? prices[ticker][prevDate] : null;
+            }
+            if (price) {
+              holdingsValue += shares * price;
             }
           }
 
