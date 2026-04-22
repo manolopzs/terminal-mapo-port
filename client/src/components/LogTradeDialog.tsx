@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
-import { useHoldings, useCreateTrade, useUpdateHolding, useDeleteHolding, useCreateHolding } from "@/hooks/use-portfolio";
+import { useHoldings, useCreateTrade } from "@/hooks/use-portfolio";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -25,9 +26,7 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
 
   const { data: holdings } = useHoldings(portfolioId || undefined);
   const createTrade = useCreateTrade();
-  const updateHolding = useUpdateHolding();
-  const deleteHolding = useDeleteHolding();
-  const createHolding = useCreateHolding();
+  const queryClient = useQueryClient();
 
   // Find matching holding for auto-fill and P&L calc
   const matchedHolding = useMemo(() => {
@@ -71,59 +70,10 @@ export function LogTradeDialog({ open, onOpenChange, portfolioId }: LogTradeDial
       },
       {
         onSuccess: () => {
-          if (action === "SELL" && matchedHolding) {
-            if (isFullExit) {
-              deleteHolding.mutate(matchedHolding.id);
-            } else {
-              // Partial sell — subtract sold shares' cost using avg cost per share
-              // (avoids floating point drift from proportional multiply)
-              const avgCostPerShare = matchedHolding.costBasis / matchedHolding.quantity;
-              const newQty = matchedHolding.quantity - sharesNum;
-              const newCost = avgCostPerShare * newQty;
-              const newValue = newQty * priceNum;
-              updateHolding.mutate({
-                id: matchedHolding.id,
-                data: {
-                  quantity: newQty,
-                  costBasis: newCost,
-                  value: newValue,
-                  price: priceNum,
-                  gainLoss: newValue - newCost,
-                  gainLossPct: newCost > 0 ? ((newValue - newCost) / newCost) * 100 : 0,
-                },
-              });
-            }
-          } else if (action === "BUY" && matchedHolding) {
-            // Add-on buy — update holding with new avg cost
-            const newQty = matchedHolding.quantity + sharesNum;
-            const newCost = matchedHolding.costBasis + total;
-            const newValue = newQty * priceNum;
-            updateHolding.mutate({
-              id: matchedHolding.id,
-              data: {
-                quantity: newQty,
-                costBasis: newCost,
-                value: newValue,
-                price: priceNum,
-                gainLoss: newValue - newCost,
-                gainLossPct: newCost > 0 ? ((newValue - newCost) / newCost) * 100 : 0,
-              },
-            });
-          } else if (action === "BUY" && !matchedHolding) {
-            // New position — create holding
-            createHolding.mutate({
-              portfolioId,
-              ticker: ticker.toUpperCase(),
-              name: ticker.toUpperCase(),
-              quantity: sharesNum,
-              costBasis: total,
-              price: priceNum,
-              value: total,
-              type: "Stock",
-              sector: "Other",
-              source: "trade",
-            });
-          }
+          // Server handles all holding updates (create/update/delete) in POST /api/trades
+          // Just invalidate caches so UI refreshes
+          queryClient.invalidateQueries({ queryKey: ["/api/holdings"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/summary"] });
           onOpenChange(false);
           resetForm();
         },
