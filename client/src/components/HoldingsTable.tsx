@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useDeleteHolding } from "@/hooks/use-portfolio";
 import type { Holding } from "@shared/schema";
 
 interface HoldingsTableProps {
@@ -9,7 +8,6 @@ interface HoldingsTableProps {
 
 export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
   const sorted = [...holdings].sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
-  const deleteHolding = useDeleteHolding();
 
   const totals = useMemo(() => {
     const totalCost = holdings.reduce((s, h) => s + (h.costBasis ?? 0), 0);
@@ -65,7 +63,6 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
               const dayPct = h.dayChangePct ?? 0;
               const dayColor = dayPct > 0 ? "var(--color-green)" : dayPct < 0 ? "var(--color-red)" : "#5A6B80";
               const avgCost = (h.quantity ?? 0) > 0 ? (h.costBasis ?? 0) / (h.quantity ?? 1) : 0;
-              const sector = (!h.sector || h.sector === "Unknown") ? "" : h.sector;
               const qty = (h.quantity ?? 0) % 1 === 0 ? (h.quantity ?? 0).toFixed(0) : (h.quantity ?? 0).toFixed(2);
 
               return (
@@ -83,11 +80,6 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
                         {qty}sh
                       </span>
                     </div>
-                    {sector && (
-                      <div style={{ fontSize: 8, color: "#3A4A5C", fontFamily: "'Inter', system-ui, sans-serif", marginTop: 1, letterSpacing: 0.3 }}>
-                        {sector}
-                      </div>
-                    )}
                   </td>
 
                   {/* VALUE */}
