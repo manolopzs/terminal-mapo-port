@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Trash2 } from "lucide-react";
 import { useDeleteHolding } from "@/hooks/use-portfolio";
 import type { Holding } from "@shared/schema";
 
@@ -21,6 +20,8 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
     return { totalCost, totalVal, totalDayChg, pnl, pnlPct };
   }, [holdings]);
 
+  const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   return (
     <div className="terminal-panel flex-1" style={{ minHeight: 0 }}>
       <div className="terminal-panel-header">
@@ -29,287 +30,116 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
       </div>
       <div className="flex-1 overflow-auto" style={{ padding: 0 }}>
         {holdings.length === 0 ? (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-              minHeight: 120,
-              color: "#4A5A6E",
-              fontSize: 12,
-              fontFamily: "'JetBrains Mono', monospace",
-              letterSpacing: 0.5,
-            }}
-          >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", minHeight: 120, color: "#4A5A6E", fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>
             No positions. Log a trade to get started.
           </div>
         ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 420 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <colgroup>
-            <col style={{ width: "20%" }} />
-            <col style={{ width: "12%" }} />
-            <col style={{ width: "7%" }} />
+            <col style={{ width: "22%" }} />
+            <col style={{ width: "16%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "14%" }} />
             <col style={{ width: "10%" }} />
             <col style={{ width: "10%" }} />
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "6%" }} />
-            <col style={{ width: "6%" }} />
-            <col style={{ width: "2%" }} />
           </colgroup>
           <thead>
-            <tr
-              style={{
-                position: "sticky",
-                top: 0,
-                background: "#0B0F1A",
-                zIndex: 1,
-                borderBottom: "1px solid #1C2840",
-              }}
-            >
-              {["TICKER", "VALUE", "QTY", "ENTRY", "PRICE", "P&L $", "P&L%", "DAY%", "ALLOC", "SECTOR", ""].map((h) => (
-                <th
-                  key={h || "actions"}
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 600,
-                    color: "#4A5A6E",
-                    letterSpacing: 1.3,
-                    textTransform: "uppercase",
-                    padding: h === "TICKER" ? "6px 6px 6px 10px" : "6px 6px",
-                    textAlign: h === "TICKER" ? "left" : "right",
-                    fontFamily: "'Inter', system-ui, sans-serif",
-                  }}
-                >
-                  {h}
-                </th>
+            <tr style={{ position: "sticky", top: 0, background: "#0B0F1A", zIndex: 1, borderBottom: "1px solid #1C2840" }}>
+              {["TICKER", "VALUE", "ENTRY", "PRICE", "P&L", "DAY", "WT%"].map((h, i) => (
+                <th key={h} style={{
+                  fontSize: 9, fontWeight: 600, color: "#4A5A6E", letterSpacing: 1.5,
+                  textTransform: "uppercase", padding: "7px 8px",
+                  textAlign: i === 0 ? "left" : "right",
+                  fontFamily: "'Inter', system-ui, sans-serif",
+                }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {sorted.map((h) => {
               const alloc = totalValue > 0 ? ((h.value ?? 0) / totalValue) * 100 : 0;
-              const chgPct = h.dayChangePct ?? 0;
-              const chgColor = chgPct > 0 ? "var(--color-green)" : chgPct < 0 ? "var(--color-red)" : "#8B949E";
+              const pnl = h.gainLoss ?? 0;
               const pnlPct = h.gainLossPct ?? 0;
-              const pnlColor = pnlPct >= 0 ? "var(--color-green)" : "var(--color-red)";
+              const pnlColor = pnl >= 0 ? "var(--color-green)" : "var(--color-red)";
+              const dayPct = h.dayChangePct ?? 0;
+              const dayColor = dayPct > 0 ? "var(--color-green)" : dayPct < 0 ? "var(--color-red)" : "#5A6B80";
               const avgCost = (h.quantity ?? 0) > 0 ? (h.costBasis ?? 0) / (h.quantity ?? 1) : 0;
-              const shortName = h.name.length > 15 ? h.name.slice(0, 15) + "…" : h.name;
+              const sector = (!h.sector || h.sector === "Unknown") ? "" : h.sector;
+              const qty = (h.quantity ?? 0) % 1 === 0 ? (h.quantity ?? 0).toFixed(0) : (h.quantity ?? 0).toFixed(2);
+
               return (
-                <tr
-                  key={h.id}
-                  className="group"
-                  style={{
-                    borderBottom: "1px solid rgba(28, 40, 64, 0.5)",
-                    transition: "background 0.1s",
-                  }}
+                <tr key={h.id} style={{ borderBottom: "1px solid rgba(28,40,64,0.4)", transition: "background 0.1s" }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-primary-a03)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 >
-                  {/* TICKER + name */}
-                  <td style={{ padding: "6px 6px 6px 10px" }}>
-                    <div
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: "var(--color-primary)",
-                        fontFamily: "'JetBrains Mono', monospace",
-                        lineHeight: 1.15,
-                        letterSpacing: 0.5,
-                      }}
-                    >
-                      {h.ticker}
+                  {/* TICKER + qty + sector */}
+                  <td style={{ padding: "8px 8px" }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-primary)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: 0.5 }}>
+                        {h.ticker}
+                      </span>
+                      <span style={{ fontSize: 9, color: "#4A5A6E", fontFamily: "'JetBrains Mono', monospace" }}>
+                        {qty}sh
+                      </span>
                     </div>
-                    <div
-                      style={{
-                        fontSize: 9,
-                        color: "#3A4A5C",
-                        lineHeight: 1.1,
-                        marginTop: 1,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {shortName}
-                    </div>
+                    {sector && (
+                      <div style={{ fontSize: 8, color: "#3A4A5C", fontFamily: "'Inter', system-ui, sans-serif", marginTop: 1, letterSpacing: 0.3 }}>
+                        {sector}
+                      </div>
+                    )}
                   </td>
 
                   {/* VALUE */}
-                  <td style={{ padding: "6px 6px", textAlign: "right" }}>
-                    <div
-                      className="font-mono tabular-nums"
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: "#E8EDF2",
-                        lineHeight: 1.15,
-                      }}
-                    >
-                      ${(h.value ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </div>
+                  <td style={{ padding: "8px 8px", textAlign: "right" }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "#E8EDF2", fontFamily: "'JetBrains Mono', monospace" }}>
+                      ${fmt(h.value ?? 0)}
+                    </span>
                   </td>
 
-                  {/* QTY */}
-                  <td
-                    className="font-mono tabular-nums"
-                    style={{ fontSize: 10, color: "#6A7A8E", padding: "6px 6px", textAlign: "right" }}
-                  >
-                    {(h.quantity ?? 0) < 1
-                      ? (h.quantity ?? 0).toFixed(3)
-                      : (h.quantity ?? 0) % 1 === 0
-                        ? (h.quantity ?? 0).toFixed(0)
-                        : (h.quantity ?? 0).toFixed(2)}
-                  </td>
-
-                  {/* ENTRY (avg cost) */}
-                  <td
-                    className="font-mono tabular-nums"
-                    style={{ fontSize: 10, color: "#5A6B80", padding: "6px 6px", textAlign: "right" }}
-                  >
-                    ${avgCost.toFixed(2)}
+                  {/* ENTRY */}
+                  <td style={{ padding: "8px 8px", textAlign: "right" }}>
+                    <span style={{ fontSize: 10, color: "#5A6B80", fontFamily: "'JetBrains Mono', monospace" }}>
+                      ${avgCost.toFixed(2)}
+                    </span>
                   </td>
 
                   {/* PRICE */}
-                  <td
-                    className="font-mono tabular-nums"
-                    style={{ fontSize: 10, color: "#C9D1D9", padding: "6px 6px", textAlign: "right" }}
-                  >
-                    ${(h.price ?? 0).toFixed(2)}
+                  <td style={{ padding: "8px 8px", textAlign: "right" }}>
+                    <span style={{ fontSize: 10, color: "#C9D1D9", fontFamily: "'JetBrains Mono', monospace" }}>
+                      ${(h.price ?? 0).toFixed(2)}
+                    </span>
                   </td>
 
-                  {/* P&L $ */}
-                  <td
-                    className="font-mono tabular-nums"
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 600,
-                      color: pnlColor,
-                      padding: "6px 6px",
-                      textAlign: "right",
-                      transition: "color 0.4s ease",
-                    }}
-                  >
-                    {(h.gainLoss ?? 0) >= 0 ? "+" : "\u2212"}$
-                    {Math.abs(h.gainLoss ?? 0).toLocaleString("en-US", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
+                  {/* P&L ($ + %) */}
+                  <td style={{ padding: "8px 8px", textAlign: "right" }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: pnlColor, fontFamily: "'JetBrains Mono', monospace", transition: "color 0.4s ease" }}>
+                      {pnl >= 0 ? "+" : "\u2212"}${fmt(Math.abs(pnl))}
+                    </div>
+                    <div style={{ fontSize: 9, color: pnlColor, fontFamily: "'JetBrains Mono', monospace", opacity: 0.7, marginTop: 1 }}>
+                      {pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(1)}%
+                    </div>
                   </td>
 
-                  {/* P&L% */}
-                  <td
-                    className="font-mono tabular-nums"
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: pnlColor,
-                      padding: "6px 6px",
-                      textAlign: "right",
-                      transition: "color 0.4s ease",
-                    }}
-                  >
-                    {pnlPct >= 0 ? "+" : ""}
-                    {pnlPct.toFixed(1)}%
+                  {/* DAY */}
+                  <td style={{ padding: "8px 8px", textAlign: "right" }}>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: dayColor, fontFamily: "'JetBrains Mono', monospace", transition: "color 0.4s ease" }}>
+                      {dayPct >= 0 ? "+" : ""}{dayPct.toFixed(2)}%
+                    </span>
                   </td>
 
-                  {/* DAY% */}
-                  <td
-                    className="font-mono tabular-nums"
-                    style={{
-                      fontSize: 10,
-                      color: chgColor,
-                      padding: "6px 6px",
-                      textAlign: "right",
-                      fontWeight: 600,
-                      transition: "color 0.4s ease",
-                    }}
-                  >
-                    {chgPct >= 0 ? "+" : ""}
-                    {chgPct.toFixed(2)}%
-                  </td>
-
-                  {/* ALLOC% with mini bar */}
-                  <td style={{ padding: "6px 6px", textAlign: "right" }}>
-                    <div
-                      className="font-mono tabular-nums"
-                      style={{ fontSize: 9, color: "#5A6B80", lineHeight: 1.15 }}
-                    >
+                  {/* WEIGHT with bar */}
+                  <td style={{ padding: "8px 8px", textAlign: "right" }}>
+                    <div style={{ fontSize: 9, color: "#5A6B80", fontFamily: "'JetBrains Mono', monospace" }}>
                       {alloc.toFixed(1)}%
                     </div>
-                    <div
-                      style={{
-                        height: 2,
-                        background: "#1A2436",
-                        borderRadius: 1,
-                        marginTop: 2,
-                        overflow: "hidden",
-                      }}
-                    >
-                      <div
-                        style={{
-                          height: "100%",
-                          width: `${Math.min(alloc * 4, 100)}%`,
-                          background:
-                            alloc > 25
-                              ? "var(--color-orange)"
-                              : alloc > 15
-                                ? "var(--color-primary)"
-                                : "#3A5A7C",
-                          borderRadius: 1,
-                          transition: "width 0.4s ease",
-                        }}
-                      />
+                    <div style={{ height: 2, background: "#1A2436", borderRadius: 1, marginTop: 2 }}>
+                      <div style={{
+                        height: "100%", width: `${Math.min(alloc * 4, 100)}%`, borderRadius: 1,
+                        background: alloc > 25 ? "var(--color-orange)" : alloc > 15 ? "var(--color-primary)" : "#3A5A7C",
+                        transition: "width 0.4s ease",
+                      }} />
                     </div>
-                  </td>
-
-                  {/* SECTOR */}
-                  <td
-                    style={{
-                      fontSize: 9,
-                      color: "#4A5A6E",
-                      padding: "6px 6px",
-                      textAlign: "right",
-                      fontFamily: "'Inter', system-ui, sans-serif",
-                      letterSpacing: 0.3,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {(!h.sector || h.sector === "Unknown") ? "\u2014" : h.sector}
-                  </td>
-
-                  {/* DELETE */}
-                  <td style={{ padding: "6px 4px", textAlign: "right" }}>
-                    <button
-                      onClick={() => deleteHolding.mutate(h.id)}
-                      disabled={deleteHolding.isPending}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        color: "#8B949E",
-                        padding: "1px 2px",
-                        opacity: 0.25,
-                        transition: "opacity 100ms, color 100ms",
-                        display: "flex",
-                        alignItems: "center",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.opacity = "1";
-                        e.currentTarget.style.color = "var(--color-red)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.opacity = "0.25";
-                        e.currentTarget.style.color = "#8B949E";
-                      }}
-                      data-testid={`delete-holding-${h.id}`}
-                    >
-                      <Trash2 size={9} />
-                    </button>
                   </td>
                 </tr>
               );
@@ -319,83 +149,21 @@ export function HoldingsTable({ holdings, totalValue }: HoldingsTableProps) {
         )}
       </div>
 
-      {/* Footer — always visible */}
       {holdings.length > 0 && (
-        <div
-          style={{
-            flexShrink: 0,
-            borderTop: "1px solid #1C2840",
-            background: "#070B14",
-            padding: "5px 10px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
+        <div style={{
+          flexShrink: 0, borderTop: "1px solid #1C2840", background: "#070B14",
+          padding: "6px 10px", display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span
-              style={{
-                fontSize: 9,
-                fontWeight: 700,
-                letterSpacing: 1.5,
-                textTransform: "uppercase",
-                color: "#4A5A6E",
-              }}
-            >
-              TOTAL P&L
-            </span>
-            <span
-              className="font-mono tabular-nums"
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: totals.pnl >= 0 ? "var(--color-green)" : "var(--color-red)",
-              }}
-            >
-              {totals.pnl >= 0 ? "+" : ""}$
-              {Math.abs(totals.pnl).toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </span>
-            <span
-              className="font-mono tabular-nums"
-              style={{
-                fontSize: 10,
-                fontWeight: 600,
-                color: totals.pnlPct >= 0 ? "var(--color-green)" : "var(--color-red)",
-                opacity: 0.8,
-              }}
-            >
-              ({totals.pnlPct >= 0 ? "+" : ""}
-              {totals.pnlPct.toFixed(2)}%)
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "#4A5A6E" }}>TOTAL P&L</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: totals.pnl >= 0 ? "var(--color-green)" : "var(--color-red)", fontFamily: "'JetBrains Mono', monospace" }}>
+              {totals.pnl >= 0 ? "+" : "\u2212"}${fmt(Math.abs(totals.pnl))} ({totals.pnlPct >= 0 ? "+" : ""}{totals.pnlPct.toFixed(2)}%)
             </span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span
-              style={{
-                fontSize: 9,
-                fontWeight: 600,
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                color: "#3A4A5C",
-              }}
-            >
-              TODAY
-            </span>
-            <span
-              className="font-mono tabular-nums"
-              style={{
-                fontSize: 10,
-                fontWeight: 600,
-                color: totals.totalDayChg >= 0 ? "var(--color-green)" : "var(--color-red)",
-              }}
-            >
-              {totals.totalDayChg >= 0 ? "+" : ""}$
-              {Math.abs(totals.totalDayChg).toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: "#3A4A5C" }}>TODAY</span>
+            <span style={{ fontSize: 10, fontWeight: 600, color: totals.totalDayChg >= 0 ? "var(--color-green)" : "var(--color-red)", fontFamily: "'JetBrains Mono', monospace" }}>
+              {totals.totalDayChg >= 0 ? "+" : "\u2212"}${fmt(Math.abs(totals.totalDayChg))}
             </span>
           </div>
         </div>
