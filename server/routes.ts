@@ -97,6 +97,27 @@ export async function registerRoutes(
     try {
       const portfolioId = req.query.portfolioId as string | undefined;
       const holdings = await storage.getHoldings(portfolioId);
+
+      // Enrich with live quotes (FMP → Yahoo → Finnhub fallback chain)
+      if (holdings.length > 0) {
+        try {
+          const tickers = holdings.map(h => h.ticker).join(",");
+          const quotesRaw = await fmp.getFMPQuote(tickers);
+          const quotes = Array.isArray(quotesRaw) ? quotesRaw : [];
+          for (const h of holdings) {
+            const q = quotes.find((x: any) => x.symbol === h.ticker);
+            if (q) {
+              h.price = q.price ?? h.price;
+              h.value = h.quantity * h.price;
+              h.dayChange = (q.change ?? 0) * h.quantity;
+              h.dayChangePct = q.changesPercentage ?? 0;
+              h.gainLoss = h.value - h.costBasis;
+              h.gainLossPct = h.costBasis > 0 ? (h.gainLoss / h.costBasis) * 100 : 0;
+            }
+          }
+        } catch { /* fall back to stored values */ }
+      }
+
       res.json(holdings);
     } catch (error: any) {
       res.status(500).json({ error: "Failed to fetch holdings", detail: error?.message });
