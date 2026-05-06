@@ -83,15 +83,51 @@ export async function getInsiderTrading(ticker: string) {
   return fmpFetch("/insider-trading", { symbol: ticker, limit: "10" });
 }
 
+// Finnhub fallback for OTC/foreign tickers FMP doesn't cover (e.g. SIVEF)
+async function getFinnhubQuote(ticker: string): Promise<any | null> {
+  const key = process.env.FINNHUB_API_KEY;
+  if (!key) return null;
+  try {
+    const res = await fetch(
+      `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ticker)}&token=${key}`,
+      { signal: AbortSignal.timeout(8000) }
+    );
+    if (!res.ok) return null;
+    const d = await res.json();
+    if (typeof d?.c !== "number" || d.c <= 0) return null;
+    // Map to FMP quote shape
+    return {
+      symbol: ticker.toUpperCase(),
+      price: d.c,
+      change: d.d ?? 0,
+      changesPercentage: d.dp ?? 0,
+      dayLow: d.l,
+      dayHigh: d.h,
+      open: d.o,
+      previousClose: d.pc,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function getQuoteWithFallback(ticker: string): Promise<any[] | null> {
+  // Try FMP first
+  const fmpResult = await fmpFetch("/quote", { symbol: ticker });
+  if (Array.isArray(fmpResult) && fmpResult.length > 0) return fmpResult;
+  // Fall back to Finnhub for OTC/foreign tickers
+  const finnhub = await getFinnhubQuote(ticker);
+  return finnhub ? [finnhub] : null;
+}
+
 export async function getFMPQuote(ticker: string) {
-  // FMP stable API only supports single symbol per call
   const symbols = ticker.split(",").map(s => s.trim()).filter(Boolean);
   if (symbols.length <= 1) {
-    return fmpFetch("/quote", { symbol: ticker });
+    return getQuoteWithFallback(ticker);
   }
   // Batch: fetch each symbol in parallel, merge results
   const results = await Promise.allSettled(
-    symbols.map(s => fmpFetch("/quote", { symbol: s }))
+    symbols.map(s => getQuoteWithFallback(s))
   );
   const merged: any[] = [];
   for (const r of results) {
