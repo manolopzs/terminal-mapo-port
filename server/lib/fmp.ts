@@ -83,7 +83,37 @@ export async function getInsiderTrading(ticker: string) {
   return fmpFetch("/insider-trading", { symbol: ticker, limit: "10" });
 }
 
-// Finnhub fallback for OTC/foreign tickers FMP doesn't cover (e.g. SIVEF)
+// Yahoo Finance fallback for US OTC tickers (PNK/Pink Sheets like SIVEF)
+async function getYahooQuote(ticker: string): Promise<any | null> {
+  try {
+    const res = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}`,
+      { signal: AbortSignal.timeout(8000), headers: { "User-Agent": "Mozilla/5.0" } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const meta = data?.chart?.result?.[0]?.meta;
+    if (!meta?.regularMarketPrice) return null;
+    const price = Number(meta.regularMarketPrice);
+    const prev = Number(meta.chartPreviousClose ?? meta.previousClose ?? price);
+    const change = price - prev;
+    const changePct = prev > 0 ? (change / prev) * 100 : 0;
+    return {
+      symbol: ticker.toUpperCase(),
+      price,
+      change: Math.round(change * 10000) / 10000,
+      changesPercentage: Math.round(changePct * 10000) / 10000,
+      previousClose: prev,
+      open: meta.regularMarketDayLow,
+      dayLow: meta.regularMarketDayLow,
+      dayHigh: meta.regularMarketDayHigh,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Finnhub fallback (used as last resort)
 async function getFinnhubQuote(ticker: string): Promise<any | null> {
   const key = process.env.FINNHUB_API_KEY;
   if (!key) return null;
@@ -95,7 +125,6 @@ async function getFinnhubQuote(ticker: string): Promise<any | null> {
     if (!res.ok) return null;
     const d = await res.json();
     if (typeof d?.c !== "number" || d.c <= 0) return null;
-    // Map to FMP quote shape
     return {
       symbol: ticker.toUpperCase(),
       price: d.c,
@@ -112,10 +141,13 @@ async function getFinnhubQuote(ticker: string): Promise<any | null> {
 }
 
 async function getQuoteWithFallback(ticker: string): Promise<any[] | null> {
-  // Try FMP first
+  // 1. FMP (covers most US listed stocks)
   const fmpResult = await fmpFetch("/quote", { symbol: ticker });
   if (Array.isArray(fmpResult) && fmpResult.length > 0) return fmpResult;
-  // Fall back to Finnhub for OTC/foreign tickers
+  // 2. Yahoo (covers US OTC/pink sheets like SIVEF)
+  const yahoo = await getYahooQuote(ticker);
+  if (yahoo) return [yahoo];
+  // 3. Finnhub (last resort, may return foreign exchange data)
   const finnhub = await getFinnhubQuote(ticker);
   return finnhub ? [finnhub] : null;
 }
