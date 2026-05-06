@@ -649,23 +649,36 @@ RESPONSE INSTRUCTIONS:
         const lastDate = performanceData[performanceData.length - 1]?.date;
         if (lastDate && lastDate < today) {
           try {
-            const currentHoldings = await storage.getHoldings(portfolioId);
+            // Fetch live FMP quotes for all current positions
+            const tickerList = Object.keys(positions);
+            const liveQuotes = tickerList.length > 0
+              ? await fmp.getFMPQuote(tickerList.join(","))
+              : null;
+            const liveQuoteArr = Array.isArray(liveQuotes) ? liveQuotes : [];
+
             let liveHoldingsValue = 0;
             for (const [ticker, shares] of Object.entries(positions)) {
-              const h = currentHoldings.find((x: any) => x.ticker === ticker);
-              const livePrice = h?.price ?? prices[ticker]?.[lastDate] ?? 0;
-              liveHoldingsValue += (shares as number) * livePrice;
+              const q = liveQuoteArr.find((x: any) => x.symbol === ticker);
+              // Priority: live FMP quote → last historical price → carry-forward (skip if all missing)
+              let livePrice: number | null = q?.price ?? null;
+              if (!livePrice) {
+                const tickerDates = Object.keys(prices[ticker] ?? {}).sort();
+                const lastKnown = tickerDates[tickerDates.length - 1];
+                livePrice = lastKnown ? prices[ticker][lastKnown] : null;
+              }
+              if (livePrice) {
+                liveHoldingsValue += (shares as number) * livePrice;
+              }
             }
             const todayTotalValue = cash + liveHoldingsValue;
-            const todayDenominator = startingCapital > 0 ? startingCapital : (todayTotalValue > 0 ? todayTotalValue : 1);
-            const todayPctReturn = startingCapital > 0 ? ((todayTotalValue - startingCapital) / todayDenominator) * 100 : 0;
+            const todayPctReturn = startingCapital > 0 ? ((todayTotalValue - startingCapital) / startingCapital) * 100 : 0;
 
             const [vooQuote, qqqQuote] = await Promise.all([
               fmp.getFMPQuote("VOO"),
               fmp.getFMPQuote("QQQ"),
             ]);
-            const liveVooPrice = vooQuote?.[0]?.price ?? vooQuote?.price ?? prices.VOO?.[lastDate] ?? vooBase;
-            const liveQqqPrice = qqqQuote?.[0]?.price ?? qqqQuote?.price ?? prices.QQQ?.[lastDate] ?? qqqBase;
+            const liveVooPrice = vooQuote?.[0]?.price ?? prices.VOO?.[lastDate] ?? vooBase;
+            const liveQqqPrice = qqqQuote?.[0]?.price ?? prices.QQQ?.[lastDate] ?? qqqBase;
             const todayVooReturn = ((liveVooPrice - vooBase) / vooBase) * 100;
             const todayQqqReturn = ((liveQqqPrice - qqqBase) / qqqBase) * 100;
 
@@ -675,7 +688,9 @@ RESPONSE INSTRUCTIONS:
               voo: Math.round(todayVooReturn * 100) / 100,
               qqq: Math.round(todayQqqReturn * 100) / 100,
             });
-          } catch { /* non-fatal — chart still works without today point */ }
+          } catch (e) {
+            console.warn("[performance] today point failed:", e);
+          }
         }
 
         return res.json(performanceData);
