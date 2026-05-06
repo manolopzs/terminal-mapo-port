@@ -140,10 +140,22 @@ async function getFinnhubQuote(ticker: string): Promise<any | null> {
   }
 }
 
+// Normalize FMP/Yahoo/Finnhub quote shapes to a consistent format
+// FMP stable returns changePercentage (no "s"), legacy v3 used changesPercentage
+function normalizeQuote(q: any): any {
+  if (!q) return q;
+  return {
+    ...q,
+    changesPercentage: q.changesPercentage ?? q.changePercentage ?? 0,
+  };
+}
+
 async function getQuoteWithFallback(ticker: string): Promise<any[] | null> {
   // 1. FMP (covers most US listed stocks)
   const fmpResult = await fmpFetch("/quote", { symbol: ticker });
-  if (Array.isArray(fmpResult) && fmpResult.length > 0) return fmpResult;
+  if (Array.isArray(fmpResult) && fmpResult.length > 0) {
+    return fmpResult.map(normalizeQuote);
+  }
   // 2. Yahoo (covers US OTC/pink sheets like SIVEF)
   const yahoo = await getYahooQuote(ticker);
   if (yahoo) return [yahoo];
