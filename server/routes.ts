@@ -665,12 +665,13 @@ RESPONSE INSTRUCTIONS:
           });
         }
 
-        // Append live "today" data point so chart always shows current performance
+        // Always replace today's datapoint with live quotes — historical FMP prices
+        // may not include OTC tickers (e.g. SIVEF) or be available mid-trading-day.
         const today = new Date().toISOString().split("T")[0];
         const lastDate = performanceData[performanceData.length - 1]?.date;
-        if (lastDate && lastDate < today) {
+        if (lastDate) {
           try {
-            // Fetch live FMP quotes for all current positions
+            // Fetch live quotes for all current positions (FMP→Yahoo→Finnhub fallback)
             const tickerList = Object.keys(positions);
             const liveQuotes = tickerList.length > 0
               ? await fmp.getFMPQuote(tickerList.join(","))
@@ -680,7 +681,6 @@ RESPONSE INSTRUCTIONS:
             let liveHoldingsValue = 0;
             for (const [ticker, shares] of Object.entries(positions)) {
               const q = liveQuoteArr.find((x: any) => x.symbol === ticker);
-              // Priority: live FMP quote → last historical price → carry-forward (skip if all missing)
               let livePrice: number | null = q?.price ?? null;
               if (!livePrice) {
                 const tickerDates = Object.keys(prices[ticker] ?? {}).sort();
@@ -703,12 +703,19 @@ RESPONSE INSTRUCTIONS:
             const todayVooReturn = ((liveVooPrice - vooBase) / vooBase) * 100;
             const todayQqqReturn = ((liveQqqPrice - qqqBase) / qqqBase) * 100;
 
-            performanceData.push({
+            const livePoint = {
               date: today,
               portfolio: Math.round(todayPctReturn * 100) / 100,
               voo: Math.round(todayVooReturn * 100) / 100,
               qqq: Math.round(todayQqqReturn * 100) / 100,
-            });
+            };
+
+            // If last point is already today, replace it; otherwise append
+            if (lastDate === today) {
+              performanceData[performanceData.length - 1] = livePoint;
+            } else {
+              performanceData.push(livePoint);
+            }
           } catch (e) {
             console.warn("[performance] today point failed:", e);
           }
