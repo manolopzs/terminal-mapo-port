@@ -182,6 +182,43 @@ export async function getFMPQuote(ticker: string) {
   return merged.length > 0 ? merged : null;
 }
 
+// Yahoo Finance historical daily prices fallback (no API key required)
+async function getYahooDailyPrices(ticker: string): Promise<{ date: string; open: number; high: number; low: number; close: number; volume: number }[]> {
+  try {
+    const to = Math.floor(Date.now() / 1000);
+    const from = to - 365 * 24 * 3600; // 1 year back
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&period1=${from}&period2=${to}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(12000), headers: { "User-Agent": "Mozilla/5.0" } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const result = data?.chart?.result?.[0];
+    if (!result) return [];
+    const timestamps: number[] = result.timestamps ?? result.timestamp ?? [];
+    const ohlcv = result.indicators?.quote?.[0] ?? {};
+    const opens: number[] = ohlcv.open ?? [];
+    const highs: number[] = ohlcv.high ?? [];
+    const lows: number[] = ohlcv.low ?? [];
+    const closes: number[] = ohlcv.close ?? [];
+    const volumes: number[] = ohlcv.volume ?? [];
+    const bars: { date: string; open: number; high: number; low: number; close: number; volume: number }[] = [];
+    for (let i = 0; i < timestamps.length; i++) {
+      if (!closes[i]) continue;
+      const date = new Date(timestamps[i] * 1000).toISOString().split("T")[0];
+      bars.push({
+        date,
+        open: opens[i] ?? closes[i],
+        high: highs[i] ?? closes[i],
+        low: lows[i] ?? closes[i],
+        close: closes[i],
+        volume: volumes[i] ?? 0,
+      });
+    }
+    return bars.sort((a, b) => b.date.localeCompare(a.date));
+  } catch {
+    return [];
+  }
+}
+
 // Daily price history for quant signals (SMA, momentum, beta, Donchian)
 // Returns bars newest-first. Results are cached to avoid duplicate requests.
 const _priceCache = new Map<string, { data: any[]; ts: number }>();
@@ -198,22 +235,32 @@ export async function getDailyPrices(ticker: string): Promise<{ date: string; op
   const existing = _priceInflight.get(key);
   if (existing) return existing;
 
-  const p = fmpFetch("/historical-price-eod/full", { symbol: key }).then((data: any) => {
-    if (!data || !Array.isArray(data)) return [];
-    const bars = data
-      .map((d: any) => ({
-        date: d.date,
-        open: d.open ?? d.adjOpen ?? 0,
-        high: d.high ?? d.adjHigh ?? 0,
-        low: d.low ?? d.adjLow ?? 0,
-        close: d.close ?? d.adjClose ?? 0,
-        volume: d.volume ?? 0,
-      }))
-      .sort((a: any, b: any) => b.date.localeCompare(a.date));
-    _priceCache.set(key, { data: bars, ts: Date.now() });
-    _priceInflight.delete(key);
-    return bars;
-  }).catch(() => { _priceInflight.delete(key); return []; });
+  const p = (async () => {
+    try {
+      // Try FMP first; fall back to Yahoo Finance if FMP plan limit is hit
+      const fmpData = await fmpFetch("/historical-price-eod/full", { symbol: key });
+      if (Array.isArray(fmpData) && fmpData.length > 0) {
+        const bars = fmpData
+          .map((d: any) => ({
+            date: d.date,
+            open: d.open ?? d.adjOpen ?? 0,
+            high: d.high ?? d.adjHigh ?? 0,
+            low: d.low ?? d.adjLow ?? 0,
+            close: d.close ?? d.adjClose ?? 0,
+            volume: d.volume ?? 0,
+          }))
+          .sort((a: any, b: any) => b.date.localeCompare(a.date));
+        _priceCache.set(key, { data: bars, ts: Date.now() });
+        return bars;
+      }
+      // FMP unavailable — use Yahoo Finance
+      const bars = await getYahooDailyPrices(key);
+      _priceCache.set(key, { data: bars, ts: Date.now() });
+      return bars;
+    } finally {
+      _priceInflight.delete(key);
+    }
+  })();
 
   _priceInflight.set(key, p);
   return p;

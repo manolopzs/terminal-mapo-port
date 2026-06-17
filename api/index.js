@@ -28216,13 +28216,83 @@ async function getUpgradesDowngrades(ticker) {
 async function getInsiderTrading(ticker) {
   return fmpFetch("/insider-trading", { symbol: ticker, limit: "10" });
 }
+async function getYahooQuote(ticker) {
+  try {
+    const res = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}`,
+      { signal: AbortSignal.timeout(8e3), headers: { "User-Agent": "Mozilla/5.0" } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const meta = data?.chart?.result?.[0]?.meta;
+    if (!meta?.regularMarketPrice) return null;
+    const price = Number(meta.regularMarketPrice);
+    const prev = Number(meta.chartPreviousClose ?? meta.previousClose ?? price);
+    const change = price - prev;
+    const changePct = prev > 0 ? change / prev * 100 : 0;
+    return {
+      symbol: ticker.toUpperCase(),
+      price,
+      change: Math.round(change * 1e4) / 1e4,
+      changesPercentage: Math.round(changePct * 1e4) / 1e4,
+      previousClose: prev,
+      open: meta.regularMarketDayLow,
+      dayLow: meta.regularMarketDayLow,
+      dayHigh: meta.regularMarketDayHigh
+    };
+  } catch {
+    return null;
+  }
+}
+async function getFinnhubQuote(ticker) {
+  const key = process.env.FINNHUB_API_KEY;
+  if (!key) return null;
+  try {
+    const res = await fetch(
+      `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ticker)}&token=${key}`,
+      { signal: AbortSignal.timeout(8e3) }
+    );
+    if (!res.ok) return null;
+    const d = await res.json();
+    if (typeof d?.c !== "number" || d.c <= 0) return null;
+    return {
+      symbol: ticker.toUpperCase(),
+      price: d.c,
+      change: d.d ?? 0,
+      changesPercentage: d.dp ?? 0,
+      dayLow: d.l,
+      dayHigh: d.h,
+      open: d.o,
+      previousClose: d.pc
+    };
+  } catch {
+    return null;
+  }
+}
+function normalizeQuote(q) {
+  if (!q) return q;
+  return {
+    ...q,
+    changesPercentage: q.changesPercentage ?? q.changePercentage ?? 0
+  };
+}
+async function getQuoteWithFallback(ticker) {
+  const fmpResult = await fmpFetch("/quote", { symbol: ticker });
+  if (Array.isArray(fmpResult) && fmpResult.length > 0) {
+    return fmpResult.map(normalizeQuote);
+  }
+  const yahoo = await getYahooQuote(ticker);
+  if (yahoo) return [yahoo];
+  const finnhub2 = await getFinnhubQuote(ticker);
+  return finnhub2 ? [finnhub2] : null;
+}
 async function getFMPQuote(ticker) {
   const symbols = ticker.split(",").map((s) => s.trim()).filter(Boolean);
   if (symbols.length <= 1) {
-    return fmpFetch("/quote", { symbol: ticker });
+    return getQuoteWithFallback(ticker);
   }
   const results = await Promise.allSettled(
-    symbols.map((s) => fmpFetch("/quote", { symbol: s }))
+    symbols.map((s) => getQuoteWithFallback(s))
   );
   const merged = [];
   for (const r of results) {
@@ -28232,6 +28302,41 @@ async function getFMPQuote(ticker) {
   }
   return merged.length > 0 ? merged : null;
 }
+async function getYahooDailyPrices(ticker) {
+  try {
+    const to = Math.floor(Date.now() / 1e3);
+    const from = to - 365 * 24 * 3600;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&period1=${from}&period2=${to}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(12e3), headers: { "User-Agent": "Mozilla/5.0" } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const result = data?.chart?.result?.[0];
+    if (!result) return [];
+    const timestamps = result.timestamps ?? result.timestamp ?? [];
+    const ohlcv = result.indicators?.quote?.[0] ?? {};
+    const opens = ohlcv.open ?? [];
+    const highs = ohlcv.high ?? [];
+    const lows = ohlcv.low ?? [];
+    const closes = ohlcv.close ?? [];
+    const volumes = ohlcv.volume ?? [];
+    const bars = [];
+    for (let i = 0; i < timestamps.length; i++) {
+      if (!closes[i]) continue;
+      const date2 = new Date(timestamps[i] * 1e3).toISOString().split("T")[0];
+      bars.push({
+        date: date2,
+        open: opens[i] ?? closes[i],
+        high: highs[i] ?? closes[i],
+        low: lows[i] ?? closes[i],
+        close: closes[i],
+        volume: volumes[i] ?? 0
+      });
+    }
+    return bars.sort((a, b) => b.date.localeCompare(a.date));
+  } catch {
+    return [];
+  }
+}
 async function getDailyPrices(ticker) {
   const key = ticker.toUpperCase();
   const ttl = key === "SPY" ? 36e5 : 3e5;
@@ -28239,23 +28344,28 @@ async function getDailyPrices(ticker) {
   if (cached && Date.now() - cached.ts < ttl) return cached.data;
   const existing = _priceInflight.get(key);
   if (existing) return existing;
-  const p = fmpFetch("/historical-price-eod/full", { symbol: key }).then((data) => {
-    if (!data || !Array.isArray(data)) return [];
-    const bars = data.map((d) => ({
-      date: d.date,
-      open: d.open ?? d.adjOpen ?? 0,
-      high: d.high ?? d.adjHigh ?? 0,
-      low: d.low ?? d.adjLow ?? 0,
-      close: d.close ?? d.adjClose ?? 0,
-      volume: d.volume ?? 0
-    })).sort((a, b) => b.date.localeCompare(a.date));
-    _priceCache.set(key, { data: bars, ts: Date.now() });
-    _priceInflight.delete(key);
-    return bars;
-  }).catch(() => {
-    _priceInflight.delete(key);
-    return [];
-  });
+  const p = (async () => {
+    try {
+      const fmpData = await fmpFetch("/historical-price-eod/full", { symbol: key });
+      if (Array.isArray(fmpData) && fmpData.length > 0) {
+        const bars2 = fmpData.map((d) => ({
+          date: d.date,
+          open: d.open ?? d.adjOpen ?? 0,
+          high: d.high ?? d.adjHigh ?? 0,
+          low: d.low ?? d.adjLow ?? 0,
+          close: d.close ?? d.adjClose ?? 0,
+          volume: d.volume ?? 0
+        })).sort((a, b) => b.date.localeCompare(a.date));
+        _priceCache.set(key, { data: bars2, ts: Date.now() });
+        return bars2;
+      }
+      const bars = await getYahooDailyPrices(key);
+      _priceCache.set(key, { data: bars, ts: Date.now() });
+      return bars;
+    } finally {
+      _priceInflight.delete(key);
+    }
+  })();
   _priceInflight.set(key, p);
   return p;
 }
@@ -49821,6 +49931,25 @@ async function registerRoutes(httpServer, app2) {
     try {
       const portfolioId = req.query.portfolioId;
       const holdings2 = await storage.getHoldings(portfolioId);
+      if (holdings2.length > 0) {
+        try {
+          const tickers = holdings2.map((h) => h.ticker).join(",");
+          const quotesRaw = await getFMPQuote(tickers);
+          const quotes = Array.isArray(quotesRaw) ? quotesRaw : [];
+          for (const h of holdings2) {
+            const q = quotes.find((x) => x.symbol === h.ticker);
+            if (q) {
+              h.price = q.price ?? h.price;
+              h.value = h.quantity * h.price;
+              h.dayChange = (q.change ?? 0) * h.quantity;
+              h.dayChangePct = q.changesPercentage ?? 0;
+              h.gainLoss = h.value - h.costBasis;
+              h.gainLossPct = h.costBasis > 0 ? h.gainLoss / h.costBasis * 100 : 0;
+            }
+          }
+        } catch {
+        }
+      }
       res.json(holdings2);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch holdings", detail: error?.message });
@@ -50247,8 +50376,14 @@ RESPONSE INSTRUCTIONS:
           }
           let holdingsValue = 0;
           for (const [ticker, shares] of Object.entries(positions)) {
-            if (prices2[ticker]?.[date2]) {
-              holdingsValue += shares * prices2[ticker][date2];
+            let price = prices2[ticker]?.[date2];
+            if (!price) {
+              const tickerDates = Object.keys(prices2[ticker] ?? {}).sort();
+              const prevDate = tickerDates.filter((d) => d <= date2).pop();
+              price = prevDate ? prices2[ticker][prevDate] : null;
+            }
+            if (price) {
+              holdingsValue += shares * price;
             }
           }
           const totalValue = cash + holdingsValue;
@@ -50265,33 +50400,47 @@ RESPONSE INSTRUCTIONS:
         }
         const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
         const lastDate = performanceData2[performanceData2.length - 1]?.date;
-        if (lastDate && lastDate < today) {
+        if (lastDate) {
           try {
-            const currentHoldings = await storage.getHoldings(portfolioId);
+            const tickerList = Object.keys(positions);
+            const liveQuotes = tickerList.length > 0 ? await getFMPQuote(tickerList.join(",")) : null;
+            const liveQuoteArr = Array.isArray(liveQuotes) ? liveQuotes : [];
             let liveHoldingsValue = 0;
             for (const [ticker, shares] of Object.entries(positions)) {
-              const h = currentHoldings.find((x) => x.ticker === ticker);
-              const livePrice = h?.price ?? prices2[ticker]?.[lastDate] ?? 0;
-              liveHoldingsValue += shares * livePrice;
+              const q = liveQuoteArr.find((x) => x.symbol === ticker);
+              let livePrice = q?.price ?? null;
+              if (!livePrice) {
+                const tickerDates = Object.keys(prices2[ticker] ?? {}).sort();
+                const lastKnown = tickerDates[tickerDates.length - 1];
+                livePrice = lastKnown ? prices2[ticker][lastKnown] : null;
+              }
+              if (livePrice) {
+                liveHoldingsValue += shares * livePrice;
+              }
             }
             const todayTotalValue = cash + liveHoldingsValue;
-            const todayDenominator = startingCapital > 0 ? startingCapital : todayTotalValue > 0 ? todayTotalValue : 1;
-            const todayPctReturn = startingCapital > 0 ? (todayTotalValue - startingCapital) / todayDenominator * 100 : 0;
+            const todayPctReturn = startingCapital > 0 ? (todayTotalValue - startingCapital) / startingCapital * 100 : 0;
             const [vooQuote, qqqQuote] = await Promise.all([
               getFMPQuote("VOO"),
               getFMPQuote("QQQ")
             ]);
-            const liveVooPrice = vooQuote?.[0]?.price ?? vooQuote?.price ?? prices2.VOO?.[lastDate] ?? vooBase2;
-            const liveQqqPrice = qqqQuote?.[0]?.price ?? qqqQuote?.price ?? prices2.QQQ?.[lastDate] ?? qqqBase2;
+            const liveVooPrice = vooQuote?.[0]?.price ?? prices2.VOO?.[lastDate] ?? vooBase2;
+            const liveQqqPrice = qqqQuote?.[0]?.price ?? prices2.QQQ?.[lastDate] ?? qqqBase2;
             const todayVooReturn = (liveVooPrice - vooBase2) / vooBase2 * 100;
             const todayQqqReturn = (liveQqqPrice - qqqBase2) / qqqBase2 * 100;
-            performanceData2.push({
+            const livePoint = {
               date: today,
               portfolio: Math.round(todayPctReturn * 100) / 100,
               voo: Math.round(todayVooReturn * 100) / 100,
               qqq: Math.round(todayQqqReturn * 100) / 100
-            });
-          } catch {
+            };
+            if (lastDate === today) {
+              performanceData2[performanceData2.length - 1] = livePoint;
+            } else {
+              performanceData2.push(livePoint);
+            }
+          } catch (e) {
+            console.warn("[performance] today point failed:", e);
           }
         }
         return res.json(performanceData2);
