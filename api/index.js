@@ -29095,47 +29095,80 @@ var discovery_exports = {};
 __export(discovery_exports, {
   runDiscovery: () => runDiscovery
 });
-async function runDiscovery() {
-  console.log("[discovery] Scanning FMP company-screener across sectors...");
-  const sectorResults = await Promise.allSettled(
-    SECTORS_TO_SCAN.map(
-      (sector) => screenStocks({
-        sector,
-        marketCapMoreThan: MIN_MARKET_CAP,
-        marketCapLessThan: MAX_MARKET_CAP,
-        country: "US"
-      })
-    )
+async function fetchYahooScreener(scrId) {
+  try {
+    const url = `https://query2.finance.yahoo.com/v1/finance/screener/predefined/saved?formatted=false&scrIds=${scrId}&count=100&offset=0`;
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(8e3),
+      headers: { "User-Agent": "Mozilla/5.0" }
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data?.finance?.result?.[0]?.quotes ?? [];
+  } catch {
+    return [];
+  }
+}
+async function getYahooUniverse() {
+  const results = await Promise.allSettled(
+    YAHOO_SCREENER_IDS.map((id) => fetchYahooScreener(id))
   );
   const allStocks = [];
-  for (const result of sectorResults) {
-    if (result.status === "fulfilled" && Array.isArray(result.value)) {
-      allStocks.push(...result.value);
-    }
+  for (const r of results) {
+    if (r.status === "fulfilled") allStocks.push(...r.value);
+  }
+  return allStocks.filter(
+    (q) => q.quoteType === "EQUITY" && q.market === "us_market" && typeof q.marketCap === "number" && typeof q.regularMarketPrice === "number"
+  ).map((q) => ({
+    symbol: q.symbol,
+    companyName: q.shortName ?? q.longName ?? q.symbol,
+    sector: q.sector ?? "",
+    industry: q.industry ?? "",
+    marketCap: q.marketCap,
+    price: q.regularMarketPrice,
+    volume: q.regularMarketVolume ?? 0,
+    isEtf: false,
+    isFund: false,
+    isAdr: false,
+    isActivelyTrading: true
+  }));
+}
+async function runDiscovery() {
+  let allStocks = [];
+  let source = "FMP";
+  console.log("[discovery] Trying FMP company-screener...");
+  const sectorResults = await Promise.allSettled(
+    SECTORS_TO_SCAN.map(
+      (sector) => screenStocks({ sector, marketCapMoreThan: MIN_MARKET_CAP, marketCapLessThan: MAX_MARKET_CAP, country: "US" })
+    )
+  );
+  for (const r of sectorResults) {
+    if (r.status === "fulfilled" && Array.isArray(r.value)) allStocks.push(...r.value);
   }
   if (allStocks.length === 0) {
-    console.log("[discovery] FMP screener unavailable \u2014 using curated universe fallback");
-    for (const s of STOCK_UNIVERSE) {
-      if (SECTORS_TO_SCAN.includes(s.sector)) {
-        allStocks.push({
-          symbol: s.ticker,
-          companyName: s.companyName,
-          sector: s.sector,
-          industry: s.industry,
-          marketCap: s.marketCap,
-          price: 1,
-          // unknown, passes liquidity check
-          volume: 1e7,
-          // assumed liquid
-          isEtf: false,
-          isFund: false,
-          isAdr: false,
-          isActivelyTrading: true
-        });
-      }
-    }
+    source = "Yahoo Finance";
+    console.log("[discovery] FMP unavailable \u2014 fetching Yahoo Finance screeners...");
+    allStocks = await getYahooUniverse();
+    console.log(`[discovery] Yahoo Finance returned ${allStocks.length} raw stocks`);
   }
-  console.log(`[discovery] ${allStocks.length} stocks across ${SECTORS_TO_SCAN.length} sectors`);
+  if (allStocks.length === 0) {
+    source = "curated fallback";
+    console.log("[discovery] Yahoo Finance unavailable \u2014 using curated stock universe");
+    allStocks = STOCK_UNIVERSE.map((s) => ({
+      symbol: s.ticker,
+      companyName: s.companyName,
+      sector: s.sector,
+      industry: s.industry,
+      marketCap: s.marketCap,
+      price: 10,
+      volume: 1e7,
+      isEtf: false,
+      isFund: false,
+      isAdr: false,
+      isActivelyTrading: true
+    }));
+  }
+  console.log(`[discovery] Source: ${source} \u2014 ${allStocks.length} raw stocks`);
   const seen = /* @__PURE__ */ new Set();
   const unique = [];
   for (const stock of allStocks) {
@@ -29185,43 +29218,33 @@ async function runDiscovery() {
       sector: stock.sector ?? "Unknown",
       industry: stock.industry ?? "Unknown",
       agiAlignmentScore: agiScore,
-      screeningNotes: stock.industry ?? stock.sector ?? "BROAD",
-      screenType: stock.sector ?? "BROAD"
+      screeningNotes: stock.industry || stock.sector || "BROAD",
+      screenType: stock.sector || "BROAD"
     });
   }
   candidates.sort((a, b) => {
-    if (b.agiAlignmentScore !== a.agiAlignmentScore) {
-      return b.agiAlignmentScore - a.agiAlignmentScore;
-    }
+    if (b.agiAlignmentScore !== a.agiAlignmentScore) return b.agiAlignmentScore - a.agiAlignmentScore;
     return b.marketCap - a.marketCap;
   });
   const sectorCount = /* @__PURE__ */ new Map();
   const industryCount = /* @__PURE__ */ new Map();
   const diversified = [];
   for (const c of candidates) {
-    const sector = c.sector;
-    const industry = c.industry;
-    const sc = sectorCount.get(sector) ?? 0;
-    const ic = industryCount.get(industry) ?? 0;
-    if (sc >= MAX_PER_SECTOR) continue;
-    if (ic >= MAX_PER_INDUSTRY) continue;
-    sectorCount.set(sector, sc + 1);
-    industryCount.set(industry, ic + 1);
+    const sc = sectorCount.get(c.sector) ?? 0;
+    const ic = industryCount.get(c.industry) ?? 0;
+    if (sc >= MAX_PER_SECTOR || ic >= MAX_PER_INDUSTRY) continue;
+    sectorCount.set(c.sector, sc + 1);
+    industryCount.set(c.industry, ic + 1);
     diversified.push(c);
     if (diversified.length >= TOP_N) break;
   }
   console.log(`[discovery] ${unique.length} unique \u2192 ${excluded} excluded, ${filtered} filtered \u2192 ${diversified.length} candidates`);
   return {
     candidates: diversified,
-    stats: {
-      total: unique.length,
-      excluded,
-      filtered,
-      passed: diversified.length
-    }
+    stats: { total: unique.length, excluded, filtered, passed: diversified.length }
   };
 }
-var SECTORS_TO_SCAN, MIN_MARKET_CAP, MAX_MARKET_CAP, MIN_LIQUIDITY, TOP_N, MAX_PER_SECTOR, MAX_PER_INDUSTRY;
+var MIN_MARKET_CAP, MAX_MARKET_CAP, MIN_LIQUIDITY, TOP_N, MAX_PER_SECTOR, MAX_PER_INDUSTRY, SECTORS_TO_SCAN, YAHOO_SCREENER_IDS;
 var init_discovery = __esm({
   "src/lib/agents/discovery.ts"() {
     "use strict";
@@ -29229,6 +29252,12 @@ var init_discovery = __esm({
     init_exclusion_list();
     init_sector_map();
     init_stock_universe();
+    MIN_MARKET_CAP = 5e8;
+    MAX_MARKET_CAP = 5e10;
+    MIN_LIQUIDITY = 5e6;
+    TOP_N = 30;
+    MAX_PER_SECTOR = 8;
+    MAX_PER_INDUSTRY = 4;
     SECTORS_TO_SCAN = [
       "Technology",
       "Industrials",
@@ -29237,12 +29266,20 @@ var init_discovery = __esm({
       "Healthcare",
       "Energy"
     ];
-    MIN_MARKET_CAP = 5e8;
-    MAX_MARKET_CAP = 5e10;
-    MIN_LIQUIDITY = 5e6;
-    TOP_N = 30;
-    MAX_PER_SECTOR = 8;
-    MAX_PER_INDUSTRY = 4;
+    YAHOO_SCREENER_IDS = [
+      "growth_technology_stocks",
+      // tech mid-caps with growth
+      "aggressive_small_caps",
+      // small/mid cap high-growth
+      "undervalued_growth_stocks",
+      // growth at reasonable price
+      "most_actives",
+      // highest volume — quality proxy
+      "small_cap_gainers",
+      // momentum mid-caps
+      "day_gainers"
+      // top movers — sector diversity
+    ];
   }
 });
 
