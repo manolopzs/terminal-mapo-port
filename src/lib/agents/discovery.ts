@@ -1,13 +1,13 @@
 /**
  * MAPO Dynamic Discovery Agent
- * Uses FMP company-screener API to build a fresh universe every run.
- * No hardcoded ticker lists — the market defines the universe.
+ * Primary: FMP company-screener API. Fallback: curated stock universe.
  *
  * Flow: FMP screener (by sector) → filter ETFs → exclusion → AGI alignment → diversify → top 30
  */
 import { screenStocks } from "../../../server/lib/fmp.js";
 import { isExcluded } from "../constants/exclusion-list.js";
 import { getAgiAlignment } from "../constants/sector-map.js";
+import { STOCK_UNIVERSE } from "../constants/stock-universe.js";
 import type { CandidateTicker } from "../fmp/types.js";
 
 /* ── Sectors to scan — aligned with MAPO AGI thesis ─────────────────────── */
@@ -41,7 +41,7 @@ export interface DiscoveryResult {
 export async function runDiscovery(): Promise<DiscoveryResult> {
   console.log("[discovery] Scanning FMP company-screener across sectors...");
 
-  // Query all sectors in parallel
+  // Query all sectors in parallel via FMP
   const sectorResults = await Promise.allSettled(
     SECTORS_TO_SCAN.map(sector =>
       screenStocks({
@@ -53,7 +53,7 @@ export async function runDiscovery(): Promise<DiscoveryResult> {
     )
   );
 
-  // Collect all raw results
+  // Collect all raw results from FMP
   const allStocks: any[] = [];
   for (const result of sectorResults) {
     if (result.status === "fulfilled" && Array.isArray(result.value)) {
@@ -61,7 +61,29 @@ export async function runDiscovery(): Promise<DiscoveryResult> {
     }
   }
 
-  console.log(`[discovery] FMP returned ${allStocks.length} stocks across ${SECTORS_TO_SCAN.length} sectors`);
+  // If FMP screener is unavailable (plan limit), fall back to curated universe
+  if (allStocks.length === 0) {
+    console.log("[discovery] FMP screener unavailable — using curated universe fallback");
+    for (const s of STOCK_UNIVERSE) {
+      if (SECTORS_TO_SCAN.includes(s.sector)) {
+        allStocks.push({
+          symbol: s.ticker,
+          companyName: s.companyName,
+          sector: s.sector,
+          industry: s.industry,
+          marketCap: s.marketCap,
+          price: 1, // unknown, passes liquidity check
+          volume: 10_000_000, // assumed liquid
+          isEtf: false,
+          isFund: false,
+          isAdr: false,
+          isActivelyTrading: true,
+        });
+      }
+    }
+  }
+
+  console.log(`[discovery] ${allStocks.length} stocks across ${SECTORS_TO_SCAN.length} sectors`);
 
   // Deduplicate by ticker
   const seen = new Set<string>();

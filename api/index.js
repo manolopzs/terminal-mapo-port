@@ -28955,6 +28955,141 @@ var init_sector_map = __esm({
   }
 });
 
+// src/lib/constants/stock-universe.ts
+var STOCK_UNIVERSE;
+var init_stock_universe = __esm({
+  "src/lib/constants/stock-universe.ts"() {
+    "use strict";
+    STOCK_UNIVERSE = [
+      // ── Technology ────────────────────────────────────────────────────────────
+      { ticker: "PLTR", companyName: "Palantir Technologies", sector: "Technology", industry: "Software\u2014Infrastructure", marketCap: 45e9 },
+      { ticker: "APP", companyName: "AppLovin Corp", sector: "Technology", industry: "Software\u2014Application", marketCap: 4e10 },
+      { ticker: "CRWD", companyName: "CrowdStrike Holdings", sector: "Technology", industry: "Software\u2014Infrastructure", marketCap: 38e9 },
+      { ticker: "NET", companyName: "Cloudflare Inc", sector: "Technology", industry: "Software\u2014Infrastructure", marketCap: 18e9 },
+      { ticker: "DDOG", companyName: "Datadog Inc", sector: "Technology", industry: "Software\u2014Application", marketCap: 22e9 },
+      { ticker: "SNOW", companyName: "Snowflake Inc", sector: "Technology", industry: "Software\u2014Application", marketCap: 3e10 },
+      { ticker: "ZS", companyName: "Zscaler Inc", sector: "Technology", industry: "Software\u2014Infrastructure", marketCap: 15e9 },
+      { ticker: "OKTA", companyName: "Okta Inc", sector: "Technology", industry: "Software\u2014Infrastructure", marketCap: 1e10 },
+      { ticker: "MDB", companyName: "MongoDB Inc", sector: "Technology", industry: "Software\u2014Infrastructure", marketCap: 12e9 },
+      { ticker: "HUBS", companyName: "HubSpot Inc", sector: "Technology", industry: "Software\u2014Application", marketCap: 2e10 },
+      { ticker: "TWLO", companyName: "Twilio Inc", sector: "Technology", industry: "Software\u2014Infrastructure", marketCap: 8e9 },
+      { ticker: "U", companyName: "Unity Software", sector: "Technology", industry: "Software\u2014Application", marketCap: 35e8 },
+      { ticker: "MNDY", companyName: "Monday.com Ltd", sector: "Technology", industry: "Software\u2014Application", marketCap: 1e10 },
+      { ticker: "GTLB", companyName: "GitLab Inc", sector: "Technology", industry: "Software\u2014Infrastructure", marketCap: 7e9 },
+      { ticker: "CFLT", companyName: "Confluent Inc", sector: "Technology", industry: "Software\u2014Infrastructure", marketCap: 45e8 },
+      { ticker: "FOUR", companyName: "Shift4 Payments", sector: "Technology", industry: "Software\u2014Infrastructure", marketCap: 4e9 },
+      { ticker: "SEZL", companyName: "Sezzle Inc", sector: "Technology", industry: "Software\u2014Application", marketCap: 6e8 },
+      { ticker: "UPST", companyName: "Upstart Holdings", sector: "Technology", industry: "Credit Services", marketCap: 25e8 },
+      { ticker: "BILL", companyName: "Bill.com Holdings", sector: "Technology", industry: "Software\u2014Application", marketCap: 4e9 },
+      { ticker: "APPN", companyName: "Appian Corp", sector: "Technology", industry: "Software\u2014Application", marketCap: 18e8 },
+      { ticker: "DOCN", companyName: "DigitalOcean Holdings", sector: "Technology", industry: "Software\u2014Infrastructure", marketCap: 35e8 },
+      { ticker: "ESTC", companyName: "Elastic NV", sector: "Technology", industry: "Software\u2014Application", marketCap: 6e9 },
+      { ticker: "NTNX", companyName: "Nutanix Inc", sector: "Technology", industry: "Software\u2014Infrastructure", marketCap: 12e9 },
+      { ticker: "PCTY", companyName: "Paylocity Holding", sector: "Technology", industry: "Software\u2014Application", marketCap: 65e8 },
+      { ticker: "WEX", companyName: "WEX Inc", sector: "Technology", industry: "Software\u2014Infrastructure", marketCap: 55e8 },
+      { ticker: "ZI", companyName: "ZoomInfo Technologies", sector: "Technology", industry: "Software\u2014Application", marketCap: 35e8 },
+      { ticker: "DUOL", companyName: "Duolingo Inc", sector: "Technology", industry: "Software\u2014Application", marketCap: 8e9 },
+      { ticker: "SE", companyName: "Sea Limited", sector: "Technology", industry: "Internet Retail", marketCap: 25e9 },
+      { ticker: "SHOP", companyName: "Shopify Inc", sector: "Technology", industry: "Software\u2014Application", marketCap: 45e9 },
+      { ticker: "IOT", companyName: "Samsara Inc", sector: "Technology", industry: "Software\u2014Application", marketCap: 12e9 },
+      { ticker: "FTNT", companyName: "Fortinet Inc", sector: "Technology", industry: "Software\u2014Infrastructure", marketCap: 35e9 },
+      { ticker: "NCNO", companyName: "nCino Inc", sector: "Technology", industry: "Software\u2014Application", marketCap: 28e8 },
+      { ticker: "ACMR", companyName: "ACM Research", sector: "Technology", industry: "Semiconductor Equipment", marketCap: 12e8 },
+      { ticker: "ONTO", companyName: "Onto Innovation", sector: "Technology", industry: "Semiconductor Equipment", marketCap: 35e8 },
+      { ticker: "IPGP", companyName: "IPG Photonics", sector: "Technology", industry: "Electronic Components", marketCap: 4e9 },
+      { ticker: "POWI", companyName: "Power Integrations", sector: "Technology", industry: "Semiconductors", marketCap: 2e9 },
+      { ticker: "AEHR", companyName: "Aehr Test Systems", sector: "Technology", industry: "Semiconductor Equipment", marketCap: 5e8 },
+      { ticker: "CRDO", companyName: "Credo Technology Group", sector: "Technology", industry: "Semiconductors", marketCap: 4e9 },
+      { ticker: "FORM", companyName: "FormFactor Inc", sector: "Technology", industry: "Semiconductor Equipment", marketCap: 12e8 },
+      // ── Communication Services ────────────────────────────────────────────────
+      { ticker: "RDDT", companyName: "Reddit Inc", sector: "Communication Services", industry: "Internet Content & Information", marketCap: 12e9 },
+      { ticker: "SNAP", companyName: "Snap Inc", sector: "Communication Services", industry: "Internet Content & Information", marketCap: 8e9 },
+      { ticker: "PINS", companyName: "Pinterest Inc", sector: "Communication Services", industry: "Internet Content & Information", marketCap: 14e9 },
+      { ticker: "HOOD", companyName: "Robinhood Markets", sector: "Communication Services", industry: "Capital Markets", marketCap: 18e9 },
+      { ticker: "DV", companyName: "DoubleVerify Holdings", sector: "Communication Services", industry: "Software\u2014Application", marketCap: 25e8 },
+      { ticker: "ZETA", companyName: "Zeta Global Holdings", sector: "Communication Services", industry: "Software\u2014Application", marketCap: 3e9 },
+      { ticker: "MGNI", companyName: "Magnite Inc", sector: "Communication Services", industry: "Internet Content & Information", marketCap: 12e8 },
+      { ticker: "PUBM", companyName: "PubMatic Inc", sector: "Communication Services", industry: "Internet Content & Information", marketCap: 7e8 },
+      { ticker: "ANGI", companyName: "Angi Inc", sector: "Communication Services", industry: "Internet Content & Information", marketCap: 6e8 },
+      { ticker: "IAS", companyName: "Integral Ad Science", sector: "Communication Services", industry: "Software\u2014Application", marketCap: 15e8 },
+      // ── Healthcare ────────────────────────────────────────────────────────────
+      { ticker: "HIMS", companyName: "Hims & Hers Health", sector: "Healthcare", industry: "Health Information Services", marketCap: 3e9 },
+      { ticker: "TDOC", companyName: "Teladoc Health", sector: "Healthcare", industry: "Health Information Services", marketCap: 15e8 },
+      { ticker: "DXCM", companyName: "Dexcom Inc", sector: "Healthcare", industry: "Medical Devices", marketCap: 2e10 },
+      { ticker: "ALGN", companyName: "Align Technology", sector: "Healthcare", industry: "Medical Devices", marketCap: 1e10 },
+      { ticker: "IRTC", companyName: "iRhythm Technologies", sector: "Healthcare", industry: "Medical Devices", marketCap: 2e9 },
+      { ticker: "NTRA", companyName: "Natera Inc", sector: "Healthcare", industry: "Diagnostics & Research", marketCap: 12e9 },
+      { ticker: "EXAS", companyName: "Exact Sciences", sector: "Healthcare", industry: "Diagnostics & Research", marketCap: 6e9 },
+      { ticker: "GKOS", companyName: "Glaukos Corp", sector: "Healthcare", industry: "Medical Devices", marketCap: 4e9 },
+      { ticker: "DOCS", companyName: "Doximity Inc", sector: "Healthcare", industry: "Health Information Services", marketCap: 6e9 },
+      { ticker: "PGNY", companyName: "Progyny Inc", sector: "Healthcare", industry: "Health Information Services", marketCap: 12e8 },
+      { ticker: "ACAD", companyName: "ACADIA Pharmaceuticals", sector: "Healthcare", industry: "Biotechnology", marketCap: 35e8 },
+      { ticker: "IONS", companyName: "Ionis Pharmaceuticals", sector: "Healthcare", industry: "Biotechnology", marketCap: 5e9 },
+      { ticker: "ARWR", companyName: "Arrowhead Pharmaceuticals", sector: "Healthcare", industry: "Biotechnology", marketCap: 25e8 },
+      { ticker: "BEAM", companyName: "Beam Therapeutics", sector: "Healthcare", industry: "Biotechnology", marketCap: 12e8 },
+      { ticker: "JAZZ", companyName: "Jazz Pharmaceuticals", sector: "Healthcare", industry: "Drug Manufacturers", marketCap: 5e9 },
+      { ticker: "PRAX", companyName: "Praxis Precision Medicine", sector: "Healthcare", industry: "Biotechnology", marketCap: 2e9 },
+      { ticker: "CYTK", companyName: "Cytokinetics Inc", sector: "Healthcare", industry: "Biotechnology", marketCap: 4e9 },
+      { ticker: "KROS", companyName: "Karros Oncology", sector: "Healthcare", industry: "Biotechnology", marketCap: 9e8 },
+      { ticker: "NKTR", companyName: "Nektar Therapeutics", sector: "Healthcare", industry: "Biotechnology", marketCap: 6e8 },
+      { ticker: "AMED", companyName: "Amedisys Inc", sector: "Healthcare", industry: "Medical Care Facilities", marketCap: 28e8 },
+      // ── Industrials ───────────────────────────────────────────────────────────
+      { ticker: "AXON", companyName: "Axon Enterprise", sector: "Industrials", industry: "Aerospace & Defense", marketCap: 3e10 },
+      { ticker: "LDOS", companyName: "Leidos Holdings", sector: "Industrials", industry: "Defense Contractors", marketCap: 2e10 },
+      { ticker: "CACI", companyName: "CACI International", sector: "Industrials", industry: "Defense Contractors", marketCap: 8e9 },
+      { ticker: "SAIC", companyName: "Science Applications International", sector: "Industrials", industry: "Defense Contractors", marketCap: 6e9 },
+      { ticker: "KTOS", companyName: "Kratos Defense & Security", sector: "Industrials", industry: "Aerospace & Defense", marketCap: 4e9 },
+      { ticker: "RKLB", companyName: "Rocket Lab USA", sector: "Industrials", industry: "Aerospace & Defense", marketCap: 6e9 },
+      { ticker: "ASTS", companyName: "AST SpaceMobile", sector: "Industrials", industry: "Communication Equipment", marketCap: 45e8 },
+      { ticker: "ACHR", companyName: "Archer Aviation", sector: "Industrials", industry: "Aerospace & Defense", marketCap: 3e9 },
+      { ticker: "JOBY", companyName: "Joby Aviation", sector: "Industrials", industry: "Aerospace & Defense", marketCap: 45e8 },
+      { ticker: "LUNR", companyName: "Intuitive Machines", sector: "Industrials", industry: "Aerospace & Defense", marketCap: 15e8 },
+      { ticker: "CDRE", companyName: "Cadre Holdings", sector: "Industrials", industry: "Aerospace & Defense", marketCap: 9e8 },
+      { ticker: "HAYW", companyName: "Hayward Holdings", sector: "Industrials", industry: "Specialty Industrial Machinery", marketCap: 2e9 },
+      { ticker: "ATKR", companyName: "Atkore Inc", sector: "Industrials", industry: "Electrical Equipment & Parts", marketCap: 25e8 },
+      { ticker: "FWRD", companyName: "Forward Air Corp", sector: "Industrials", industry: "Integrated Freight & Logistics", marketCap: 12e8 },
+      { ticker: "GXO", companyName: "GXO Logistics", sector: "Industrials", industry: "Integrated Freight & Logistics", marketCap: 45e8 },
+      { ticker: "TTEK", companyName: "Tetra Tech Inc", sector: "Industrials", industry: "Engineering & Construction", marketCap: 5e9 },
+      // ── Energy ────────────────────────────────────────────────────────────────
+      { ticker: "CTRA", companyName: "Coterra Energy", sector: "Energy", industry: "Oil & Gas E&P", marketCap: 16e9 },
+      { ticker: "CHRD", companyName: "Chord Energy", sector: "Energy", industry: "Oil & Gas E&P", marketCap: 6e9 },
+      { ticker: "VALO", companyName: "Valaris Ltd", sector: "Energy", industry: "Oil & Gas Drilling", marketCap: 35e8 },
+      { ticker: "BORR", companyName: "Borr Drilling", sector: "Energy", industry: "Oil & Gas Drilling", marketCap: 9e8 },
+      { ticker: "WHD", companyName: "Cactus Inc", sector: "Energy", industry: "Oil & Gas Equipment & Services", marketCap: 25e8 },
+      { ticker: "CELH", companyName: "Celsius Holdings", sector: "Energy", industry: "Beverages\u2014Non-Alcoholic", marketCap: 35e8 },
+      { ticker: "RRC", companyName: "Range Resources", sector: "Energy", industry: "Oil & Gas E&P", marketCap: 4e9 },
+      { ticker: "SWN", companyName: "Southwestern Energy", sector: "Energy", industry: "Oil & Gas E&P", marketCap: 2e9 },
+      // ── Utilities (data center / power infrastructure) ────────────────────────
+      { ticker: "EQIX", companyName: "Equinix Inc", sector: "Utilities", industry: "Data Center REITs", marketCap: 48e9 },
+      { ticker: "DLR", companyName: "Digital Realty Trust", sector: "Utilities", industry: "Data Center REITs", marketCap: 4e10 },
+      { ticker: "CLNC", companyName: "Clearway Energy", sector: "Utilities", industry: "Utilities\u2014Renewable", marketCap: 25e8 },
+      { ticker: "AES", companyName: "AES Corp", sector: "Utilities", industry: "Utilities\u2014Diversified", marketCap: 8e9 },
+      { ticker: "BEP", companyName: "Brookfield Renewable", sector: "Utilities", industry: "Utilities\u2014Renewable", marketCap: 1e10 },
+      { ticker: "NOVA", companyName: "Sunnova Energy", sector: "Utilities", industry: "Utilities\u2014Renewable", marketCap: 6e8 },
+      { ticker: "ARRY", companyName: "Array Technologies", sector: "Utilities", industry: "Solar", marketCap: 12e8 },
+      { ticker: "MAXN", companyName: "Maxeon Solar Technologies", sector: "Utilities", industry: "Solar", marketCap: 5e8 },
+      { ticker: "SHLS", companyName: "Shoals Technologies", sector: "Utilities", industry: "Solar", marketCap: 8e8 },
+      { ticker: "AMBP", companyName: "Ardagh Metal Packaging", sector: "Utilities", industry: "Packaging & Containers", marketCap: 15e8 },
+      // ── Financials / Fintech ──────────────────────────────────────────────────
+      { ticker: "NU", companyName: "Nu Holdings", sector: "Technology", industry: "Credit Services", marketCap: 5e10 },
+      { ticker: "AFRM", companyName: "Affirm Holdings", sector: "Technology", industry: "Credit Services", marketCap: 12e9 },
+      { ticker: "SOFI", companyName: "SoFi Technologies", sector: "Technology", industry: "Credit Services", marketCap: 8e9 },
+      { ticker: "DAVE", companyName: "Dave Inc", sector: "Technology", industry: "Software\u2014Application", marketCap: 7e8 },
+      { ticker: "RELY", companyName: "Remitly Global", sector: "Technology", industry: "Software\u2014Application", marketCap: 25e8 },
+      { ticker: "PAYO", companyName: "Payoneer Global", sector: "Technology", industry: "Software\u2014Application", marketCap: 18e8 },
+      { ticker: "FLYW", companyName: "Flywire Corp", sector: "Technology", industry: "Software\u2014Application", marketCap: 12e8 },
+      { ticker: "PRCT", companyName: "PROCEPT BioRobotics", sector: "Healthcare", industry: "Medical Devices", marketCap: 35e8 },
+      // ── Consumer / High Growth ────────────────────────────────────────────────
+      { ticker: "ONON", companyName: "On Holding AG", sector: "Technology", industry: "Footwear & Accessories", marketCap: 18e9 },
+      { ticker: "DECK", companyName: "Deckers Outdoor", sector: "Technology", industry: "Footwear & Accessories", marketCap: 15e9 },
+      { ticker: "FICO", companyName: "Fair Isaac Corp", sector: "Technology", industry: "Software\u2014Application", marketCap: 4e10 },
+      { ticker: "CPNG", companyName: "Coupang Inc", sector: "Technology", industry: "Internet Retail", marketCap: 3e10 },
+      { ticker: "MELI", companyName: "MercadoLibre Inc", sector: "Technology", industry: "Internet Retail", marketCap: 48e9 },
+      { ticker: "GLOB", companyName: "Globant SA", sector: "Technology", industry: "Information Technology Services", marketCap: 35e8 }
+    ];
+  }
+});
+
 // src/lib/agents/discovery.ts
 var discovery_exports = {};
 __export(discovery_exports, {
@@ -28978,7 +29113,29 @@ async function runDiscovery() {
       allStocks.push(...result.value);
     }
   }
-  console.log(`[discovery] FMP returned ${allStocks.length} stocks across ${SECTORS_TO_SCAN.length} sectors`);
+  if (allStocks.length === 0) {
+    console.log("[discovery] FMP screener unavailable \u2014 using curated universe fallback");
+    for (const s of STOCK_UNIVERSE) {
+      if (SECTORS_TO_SCAN.includes(s.sector)) {
+        allStocks.push({
+          symbol: s.ticker,
+          companyName: s.companyName,
+          sector: s.sector,
+          industry: s.industry,
+          marketCap: s.marketCap,
+          price: 1,
+          // unknown, passes liquidity check
+          volume: 1e7,
+          // assumed liquid
+          isEtf: false,
+          isFund: false,
+          isAdr: false,
+          isActivelyTrading: true
+        });
+      }
+    }
+  }
+  console.log(`[discovery] ${allStocks.length} stocks across ${SECTORS_TO_SCAN.length} sectors`);
   const seen = /* @__PURE__ */ new Set();
   const unique = [];
   for (const stock of allStocks) {
@@ -29071,6 +29228,7 @@ var init_discovery = __esm({
     init_fmp();
     init_exclusion_list();
     init_sector_map();
+    init_stock_universe();
     SECTORS_TO_SCAN = [
       "Technology",
       "Industrials",
